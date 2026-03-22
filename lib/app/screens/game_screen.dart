@@ -1,7 +1,9 @@
+import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import '../models/client_game_state.dart';
 import '../services/game_service.dart';
 import '../services/presence_service.dart';
+import '../../game/kout_game.dart';
 
 class GameScreen extends StatefulWidget {
   const GameScreen({super.key});
@@ -13,7 +15,7 @@ class GameScreen extends StatefulWidget {
 class _GameScreenState extends State<GameScreen> {
   GameService? _gameService;
   PresenceService? _presenceService;
-  ClientGameState? _gameState;
+  KoutGame? _koutGame;
   bool _initialized = false;
 
   @override
@@ -30,12 +32,31 @@ class _GameScreenState extends State<GameScreen> {
     _gameService = GameService(gameId: gameId, myUid: myUid);
     _presenceService = PresenceService(gameId: gameId, myUid: myUid);
 
-    _gameService!.stateStream.listen((state) {
-      if (mounted) setState(() => _gameState = state);
-    });
+    _koutGame = KoutGame(
+      stateStream: _gameService!.stateStream,
+      onAction: (action, data) => _handleAction(action, data),
+    );
 
     _gameService!.startListening();
     _presenceService!.start();
+  }
+
+  void _handleAction(String action, Map<String, dynamic> data) {
+    if (_gameService == null) return;
+    switch (action) {
+      case 'playCard':
+        _gameService!.sendPlayCard(data['card'] as String);
+        break;
+      case 'bid':
+        _gameService!.sendBid(data['bidAmount'] as int);
+        break;
+      case 'pass':
+        _gameService!.sendPass();
+        break;
+      case 'selectTrump':
+        _gameService!.sendTrumpSelection(data['suit'] as String);
+        break;
+    }
   }
 
   @override
@@ -45,30 +66,16 @@ class _GameScreenState extends State<GameScreen> {
     super.dispose();
   }
 
-  String _phaseLabel(ClientGameState state) {
-    switch (state.phase.name) {
-      case 'bidding':
-        return 'Bidding phase';
-      case 'trumpSelection':
-        return 'Trump selection phase';
-      case 'playing':
-        return 'Playing phase';
-      case 'scoring':
-        return 'Scoring phase';
-      default:
-        return state.phase.name;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
+    if (_koutGame == null) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Game')),
-      body: Center(
-        child: _gameState == null
-            ? const CircularProgressIndicator()
-            : Text(_phaseLabel(_gameState!)),
-      ),
+      body: GameWidget(game: _koutGame!),
     );
   }
 }

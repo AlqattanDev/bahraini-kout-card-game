@@ -39,6 +39,7 @@ dependencies:
   cloud_firestore: ^5.0.0
   cloud_functions: ^5.0.0
   firebase_messaging: ^15.0.0
+  flame: ^1.17.0
 
 dev_dependencies:
   flutter_test:
