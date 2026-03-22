@@ -5,6 +5,7 @@ import 'package:flame/effects.dart';
 import 'package:flutter/animation.dart';
 import '../app/models/client_game_state.dart';
 import '../shared/models/game_state.dart';
+import 'components/ambient_decoration.dart';
 import 'components/card_component.dart';
 import 'components/hand_component.dart';
 import 'components/player_seat.dart';
@@ -26,6 +27,7 @@ class KoutGame extends FlameGame {
   HandComponent? _hand;
   TrickAreaComponent? _trickArea;
   ScoreDisplayComponent? _scoreDisplay;
+  AmbientDecorationComponent? _ambientDecoration;
   final List<PlayerSeatComponent> _seats = [];
 
   // Animation manager
@@ -95,6 +97,16 @@ class KoutGame extends FlameGame {
         _seats.add(seat);
         add(seat);
       }
+
+      // Ambient decoration layer (tea glass silhouettes + geometric overlay)
+      // Added after seats so we have their positions
+      _ambientDecoration = AmbientDecorationComponent(
+        seatPositions: [
+          for (int i = 0; i < 4; i++)
+            layout.seatPosition(i, state.mySeatIndex),
+        ],
+      );
+      add(_ambientDecoration!);
     }
 
     for (int i = 0; i < state.playerUids.length && i < _seats.length; i++) {
