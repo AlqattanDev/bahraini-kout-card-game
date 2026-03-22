@@ -9,3 +9,5 @@ export { placeBid } from './functions/place-bid';
 export { selectTrump } from './functions/select-trump';
 export { playCard } from './functions/play-card';
 export { getMyHand } from './functions/get-my-hand';
+export { buildDisconnectTimer, disconnectTimerDocId } from './presence/presence-monitor';
+export { evaluateDisconnect } from './presence/disconnect-handler';
