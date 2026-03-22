@@ -1,9 +1,11 @@
+import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flame/components.dart';
+import 'package:flame/effects.dart';
 import '../theme/kout_theme.dart';
 
 /// Displays a player seat: circular avatar frame, name, card count badge,
-/// team color dot, and an active-turn glow.
+/// team color dot, gold rope border, and an active-turn glow pulse.
 class PlayerSeatComponent extends PositionComponent {
   String playerName;
   int cardCount;
@@ -14,6 +16,9 @@ class PlayerSeatComponent extends PositionComponent {
   static const double _radius = 36.0;
   static const double _badgeRadius = 12.0;
 
+  // Glow pulse component — added/removed when active state changes
+  _GlowPulseComponent? _glowPulse;
+
   PlayerSeatComponent({
     required this.playerName,
     required this.cardCount,
@@ -22,19 +27,24 @@ class PlayerSeatComponent extends PositionComponent {
     this.isDealer = false,
     super.position,
     super.anchor = Anchor.center,
-  }) : super(size: Vector2.all(_radius * 2 + 20));
+  }) : super(size: Vector2.all(_radius * 2 + 24));
+
+  @override
+  void onMount() {
+    super.onMount();
+    _updateGlowPulse();
+  }
 
   @override
   void render(Canvas canvas) {
     final center = Offset(size.x / 2, size.y / 2);
 
-    // Glow when active
-    if (isActive) {
-      final glowPaint = Paint()
-        ..color = KoutTheme.accent.withOpacity(0.4)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 14);
-      canvas.drawCircle(center, _radius + 8, glowPaint);
-    }
+    // Gold rope border (concentric dashed circles)
+    _drawRopeBorder(canvas, center);
+
+    // Circle fill
+    final fillPaint = Paint()..color = KoutTheme.secondary.withOpacity(0.85);
+    canvas.drawCircle(center, _radius - 2, fillPaint);
 
     // Outer ring — team color
     final teamColor = isTeamA ? KoutTheme.teamAColor : KoutTheme.teamBColor;
@@ -43,10 +53,6 @@ class PlayerSeatComponent extends PositionComponent {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3.0;
     canvas.drawCircle(center, _radius, ringPaint);
-
-    // Circle fill
-    final fillPaint = Paint()..color = KoutTheme.secondary.withOpacity(0.85);
-    canvas.drawCircle(center, _radius - 2, fillPaint);
 
     // Active border highlight
     if (isActive) {
@@ -60,7 +66,11 @@ class PlayerSeatComponent extends PositionComponent {
     // Dealer dot
     if (isDealer) {
       final dealerPaint = Paint()..color = const Color(0xFFFFFFFF);
-      canvas.drawCircle(Offset(center.dx + _radius - 6, center.dy - _radius + 6), 5, dealerPaint);
+      canvas.drawCircle(
+        Offset(center.dx + _radius - 6, center.dy - _radius + 6),
+        5,
+        dealerPaint,
+      );
     }
 
     // Player name
@@ -88,6 +98,44 @@ class PlayerSeatComponent extends PositionComponent {
       badgeCenter,
       10,
     );
+
+    // Team color indicator dot (below avatar)
+    final teamDotCenter = Offset(center.dx, center.dy + _radius + 8);
+    final teamDotPaint = Paint()..color = teamColor;
+    canvas.drawCircle(teamDotCenter, 5, teamDotPaint);
+    // Thin border around team dot
+    final teamDotBorder = Paint()
+      ..color = const Color(0xFFFFFFFF).withOpacity(0.5)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0;
+    canvas.drawCircle(teamDotCenter, 5, teamDotBorder);
+  }
+
+  /// Draws a gold rope border: two concentric dashed circles.
+  void _drawRopeBorder(Canvas canvas, Offset center) {
+    const dashCount = 24;
+    const dashAngle = math.pi * 2 / dashCount;
+    const dashLength = dashAngle * 0.55; // each dash covers ~55% of segment
+
+    for (int ring = 0; ring < 2; ring++) {
+      final r = _radius + 6.0 + ring * 3.5;
+      final ropePaint = Paint()
+        ..color = KoutTheme.accent.withOpacity(0.6 - ring * 0.15)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.5
+        ..strokeCap = StrokeCap.round;
+
+      for (int i = 0; i < dashCount; i++) {
+        final startAngle = i * dashAngle + (ring.isOdd ? dashAngle / 2 : 0);
+        final path = Path();
+        path.addArc(
+          Rect.fromCircle(center: center, radius: r),
+          startAngle,
+          dashLength,
+        );
+        canvas.drawPath(path, ropePaint);
+      }
+    }
   }
 
   void _drawText(
@@ -124,10 +172,71 @@ class PlayerSeatComponent extends PositionComponent {
     required bool teamA,
     bool dealer = false,
   }) {
+    final wasActive = isActive;
     playerName = name;
     cardCount = cards;
     isActive = active;
     isTeamA = teamA;
     isDealer = dealer;
+
+    // Update glow pulse when active state changes
+    if (wasActive != active && isMounted) {
+      _updateGlowPulse();
+    }
+  }
+
+  void _updateGlowPulse() {
+    if (isActive) {
+      if (_glowPulse == null) {
+        _glowPulse = _GlowPulseComponent(radius: _radius);
+        add(_glowPulse!);
+      }
+    } else {
+      _glowPulse?.removeFromParent();
+      _glowPulse = null;
+    }
+  }
+}
+
+/// Animated glow ring that pulses behind an active player seat.
+class _GlowPulseComponent extends PositionComponent {
+  final double radius;
+  double _opacity = 0.4;
+
+  _GlowPulseComponent({required this.radius})
+      : super(anchor: Anchor.center);
+
+  @override
+  void onMount() {
+    super.onMount();
+    // Parent is PlayerSeatComponent; center within its coordinate space
+    position = Vector2(
+      parent!.size.x / 2,
+      parent!.size.y / 2,
+    );
+    size = Vector2.all((radius + 12) * 2);
+
+    // Repeating opacity pulse: fade 0.15 → 0.5 → 0.15
+    add(
+      OpacityEffect.to(
+        0.15,
+        EffectController(
+          duration: 0.8,
+          reverseDuration: 0.8,
+          infinite: true,
+          curve: Curve.linear,
+        ),
+      ),
+    );
+    _opacity = 0.4;
+  }
+
+  @override
+  void render(Canvas canvas) {
+    final center = Offset(size.x / 2, size.y / 2);
+    final glowPaint = Paint()
+      ..color = KoutTheme.accent.withOpacity(_opacity)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 14);
+    canvas.drawCircle(center, radius + 8, glowPaint);
   }
 }
