@@ -184,14 +184,14 @@ void main() {
     });
 
     group('toString', () {
-      test('toString returns the encoded form', () {
+      test('toString returns human-readable form', () {
         final card = GameCard(suit: Suit.spades, rank: Rank.ace);
-        expect(card.toString(), equals('SA'));
+        expect(card.toString(), equals('ace of spades'));
       });
 
-      test('joker toString returns JO', () {
+      test('joker toString returns Joker', () {
         final joker = GameCard.joker();
-        expect(joker.toString(), equals('JO'));
+        expect(joker.toString(), equals('Joker'));
       });
     });
   });

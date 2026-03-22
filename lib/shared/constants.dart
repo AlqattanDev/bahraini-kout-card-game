@@ -1,4 +1,4 @@
-import 'package:bahraini_kout/shared/models/card.dart';
+import 'package:bahraini_kout/shared/models/enums.dart';
 
 const Map<Suit, String> suitInitial = {
   Suit.spades: 'S',
