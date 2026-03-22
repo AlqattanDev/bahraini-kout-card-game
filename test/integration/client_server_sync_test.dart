@@ -244,10 +244,11 @@ void main() {
 
     // Scores are stored as num in Firestore (could be int or double).
     test('parses scores stored as double (Firestore num)', () {
+      // Build a document where scores are explicitly doubles, matching what the
+      // Firestore SDK may return on some platforms.
       final doc = _buildGameDocument();
-      // Override with double values to simulate Firestore deserialization
-      (doc['scores'] as Map<String, dynamic>)['a'] = 5.0;
-      (doc['scores'] as Map<String, dynamic>)['b'] = 10.0;
+      // Replace the scores map with a fresh dynamic map containing doubles.
+      doc['scores'] = <String, dynamic>{'a': 5.0, 'b': 10.0};
       final state = ClientGameState.fromMap(doc, 'uid-0', []);
       expect(state.scores[Team.a], 5);
       expect(state.scores[Team.b], 10);
