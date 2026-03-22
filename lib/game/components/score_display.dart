@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flame/components.dart';
 import '../../app/models/client_game_state.dart';
 import '../../shared/models/enums.dart';
+import '../../shared/models/game_state.dart';
 import '../theme/kout_theme.dart';
 
 /// Displays team scores, current bid, trump suit, and trick counts at the top.
