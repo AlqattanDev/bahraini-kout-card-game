@@ -9,6 +9,7 @@ import 'components/card_component.dart';
 import 'components/hand_component.dart';
 import 'components/player_seat.dart';
 import 'components/score_display.dart';
+import 'components/table_background.dart';
 import 'components/trick_area.dart';
 import 'managers/layout_manager.dart';
 import 'managers/animation_manager.dart';
@@ -41,6 +42,9 @@ class KoutGame extends FlameGame {
     final safeSize = hasLayout ? size : Vector2(375, 812);
     layout = LayoutManager(safeSize);
     _animationManager = AnimationManager(game: this);
+
+    // Wood grain table background — rendered first (behind everything else)
+    add(TableBackgroundComponent());
     _stateSub = stateStream.listen((state) {
       currentState = state;
       _onStateUpdate(state);
