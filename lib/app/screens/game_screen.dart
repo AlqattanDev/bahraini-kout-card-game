@@ -4,6 +4,10 @@ import '../models/client_game_state.dart';
 import '../services/game_service.dart';
 import '../services/presence_service.dart';
 import '../../game/kout_game.dart';
+import '../../game/overlays/bid_overlay.dart';
+import '../../game/overlays/trump_selector.dart';
+import '../../game/overlays/round_result_overlay.dart';
+import '../../game/overlays/game_over_overlay.dart';
 
 class GameScreen extends StatefulWidget {
   const GameScreen({super.key});
@@ -75,7 +79,59 @@ class _GameScreenState extends State<GameScreen> {
     }
 
     return Scaffold(
-      body: GameWidget(game: _koutGame!),
+      body: GameWidget(
+        game: _koutGame!,
+        overlayBuilderMap: {
+          'bid': (context, game) {
+            final koutGame = game as KoutGame;
+            return BidOverlay(
+              onBid: (amount) {
+                koutGame.overlays.remove('bid');
+                koutGame.onAction('bid', {'bidAmount': amount});
+              },
+              onPass: () {
+                koutGame.overlays.remove('bid');
+                koutGame.onAction('pass', {});
+              },
+            );
+          },
+          'trump': (context, game) {
+            final koutGame = game as KoutGame;
+            return TrumpSelectorOverlay(
+              onSelect: (suit) {
+                koutGame.overlays.remove('trump');
+                koutGame.onAction('selectTrump', {'suit': suit});
+              },
+            );
+          },
+          'roundResult': (context, game) {
+            final koutGame = game as KoutGame;
+            final state = koutGame.currentState;
+            if (state == null) return const SizedBox.shrink();
+            return RoundResultOverlay(
+              state: state,
+              onContinue: () {
+                koutGame.overlays.remove('roundResult');
+              },
+            );
+          },
+          'gameOver': (context, game) {
+            final koutGame = game as KoutGame;
+            final state = koutGame.currentState;
+            if (state == null) return const SizedBox.shrink();
+            return GameOverOverlay(
+              state: state,
+              onReturnToMenu: () {
+                koutGame.overlays.remove('gameOver');
+                Navigator.of(context).pushNamedAndRemoveUntil(
+                  '/',
+                  (route) => false,
+                );
+              },
+            );
+          },
+        },
+      ),
     );
   }
 }
