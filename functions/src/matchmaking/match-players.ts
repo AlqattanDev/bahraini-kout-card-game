@@ -36,6 +36,68 @@ export function findBestGroup(players: QueuedPlayer[]): QueuedPlayer[] | null {
 }
 
 /**
+ * Calculate the ELO bracket half-width for a player based on how long they
+ * have been waiting in the queue.
+ *
+ * Starts at ±200, expands by ±100 every 15 seconds, capped at ±500.
+ * Examples:
+ *   0–14s  → 200
+ *   15–29s → 300
+ *   30–44s → 400
+ *   45+s   → 500 (cap)
+ */
+export function calculateBracket(queuedAt: Date): number {
+  const waitTimeMs = Date.now() - queuedAt.getTime();
+  const waitTimeSec = waitTimeMs / 1000;
+  const expansions = Math.floor(waitTimeSec / 15);
+  return Math.min(200 + expansions * 100, 500);
+}
+
+/**
+ * Find the best group of 4 players using time-based ELO bracket expansion.
+ *
+ * A group is valid when all 4 players' ELO ratings fall within the bracket
+ * of the player who has waited the longest (i.e. who has the widest bracket).
+ *
+ * Algorithm:
+ * 1. Sort by ELO.
+ * 2. For each window of 4 consecutive ELO-sorted players, check whether the
+ *    ELO spread is within the widest bracket among those 4 players.
+ * 3. Among all valid windows, return the one with the smallest spread.
+ *
+ * Returns null if no valid group of 4 exists.
+ */
+export function findBestMatch(players: QueuedPlayer[]): QueuedPlayer[] | null {
+  if (players.length < 4) return null;
+
+  const sorted = [...players].sort((a, b) => a.eloRating - b.eloRating);
+
+  let bestWindow: QueuedPlayer[] | null = null;
+  let bestSpread = Infinity;
+
+  for (let i = 0; i <= sorted.length - 4; i++) {
+    const window = sorted.slice(i, i + 4);
+    const spread = window[3].eloRating - window[0].eloRating;
+
+    // The effective bracket is the largest bracket among the 4 candidates
+    const maxBracket = Math.max(
+      ...window.map((p) => {
+        const queuedAt = p.queuedAt instanceof Date ? p.queuedAt : p.queuedAt.toDate();
+        return calculateBracket(queuedAt);
+      })
+    );
+
+    // The group is compatible if the ELO spread fits within the widest bracket
+    if (spread <= maxBracket * 2 && spread < bestSpread) {
+      bestSpread = spread;
+      bestWindow = window;
+    }
+  }
+
+  return bestWindow;
+}
+
+/**
  * Shuffle an array of seats [0,1,2,3] and assign to players.
  * Returns a record of uid -> seat index.
  */
@@ -103,7 +165,7 @@ export function computeMatch(allPlayers: QueuedPlayer[]): {
     return aTime.getTime() - bTime.getTime();
   });
 
-  const group = findBestGroup(byTime);
+  const group = findBestMatch(byTime);
   if (!group) return null;
 
   const seatAssignment = assignSeats(group);
