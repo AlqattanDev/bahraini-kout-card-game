@@ -5,6 +5,7 @@ import '../../game/theme/kout_theme.dart';
 ///
 /// Displays bid buttons for 5/Bab, 6, 7, 8/Kout and a Pass button.
 /// Styled with Diwaniya colors (burgundy background, gold buttons, cream text).
+/// Buttons show bilingual labels (English / Arabic).
 class BidOverlay extends StatelessWidget {
   final void Function(int amount) onBid;
   final VoidCallback onPass;
@@ -31,26 +32,39 @@ class BidOverlay extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
-              'Place Your Bid',
-              style: TextStyle(
-                color: KoutTheme.accent,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.2,
-              ),
+            // Bilingual heading
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Place Your Bid',
+                  style: KoutTheme.headingStyle.copyWith(
+                    color: KoutTheme.accent,
+                    fontSize: 18,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  'ضع مزايدتك',
+                  style: KoutTheme.arabicHeadingStyle.copyWith(
+                    color: KoutTheme.accent,
+                    fontSize: 16,
+                  ),
+                  textDirection: TextDirection.rtl,
+                ),
+              ],
             ),
             const SizedBox(height: 20),
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _bidButton('5\nBab', 5),
-                const SizedBox(width: 12),
-                _bidButton('6', 6),
-                const SizedBox(width: 12),
-                _bidButton('7', 7),
-                const SizedBox(width: 12),
-                _bidButton('8\nKout', 8),
+                _bidButton('5', KoutTheme.gameTerms['bab']!, 5),
+                const SizedBox(width: 10),
+                _bidButton('6', ('6', '٦'), 6),
+                const SizedBox(width: 10),
+                _bidButton('7', ('7', '٧'), 7),
+                const SizedBox(width: 10),
+                _bidButton('8', KoutTheme.gameTerms['kout']!, 8),
               ],
             ),
             const SizedBox(height: 16),
@@ -64,9 +78,20 @@ class BidOverlay extends StatelessWidget {
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              child: const Text(
-                'Pass',
-                style: TextStyle(fontSize: 14, letterSpacing: 1),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    KoutTheme.gameTerms['pass']!.$1,
+                    style: KoutTheme.bodyStyle,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    KoutTheme.gameTerms['pass']!.$2,
+                    style: KoutTheme.arabicBodyStyle,
+                    textDirection: TextDirection.rtl,
+                  ),
+                ],
               ),
             ),
           ],
@@ -75,26 +100,47 @@ class BidOverlay extends StatelessWidget {
     );
   }
 
-  Widget _bidButton(String label, int amount) {
+  Widget _bidButton(String number, (String, String) label, int amount) {
     return ElevatedButton(
       onPressed: () => onBid(amount),
       style: ElevatedButton.styleFrom(
         backgroundColor: KoutTheme.accent,
         foregroundColor: const Color(0xFF3B1A1B),
-        minimumSize: const Size(64, 64),
+        minimumSize: const Size(68, 68),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(10),
         ),
         elevation: 4,
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
       ),
-      child: Text(
-        label,
-        textAlign: TextAlign.center,
-        style: const TextStyle(
-          fontSize: 15,
-          fontWeight: FontWeight.bold,
-          height: 1.2,
-        ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            number,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          Text(
+            label.$1,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          Text(
+            label.$2,
+            textAlign: TextAlign.center,
+            textDirection: TextDirection.rtl,
+            style: const TextStyle(
+              fontSize: 9,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
       ),
     );
   }
