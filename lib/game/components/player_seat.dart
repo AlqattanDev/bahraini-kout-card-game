@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flame/components.dart';
 import 'package:flame/effects.dart';
+import 'package:flutter/animation.dart';
 import '../theme/kout_theme.dart';
 
 /// Displays a player seat: circular avatar frame, name, card count badge,
@@ -210,9 +211,10 @@ class _GlowPulseComponent extends PositionComponent {
   void onMount() {
     super.onMount();
     // Parent is PlayerSeatComponent; center within its coordinate space
+    final parentSeat = parent as PlayerSeatComponent;
     position = Vector2(
-      parent!.size.x / 2,
-      parent!.size.y / 2,
+      parentSeat.size.x / 2,
+      parentSeat.size.y / 2,
     );
     size = Vector2.all((radius + 12) * 2);
 
@@ -224,7 +226,7 @@ class _GlowPulseComponent extends PositionComponent {
           duration: 0.8,
           reverseDuration: 0.8,
           infinite: true,
-          curve: Curve.linear,
+          curve: Curves.linear,
         ),
       ),
     );

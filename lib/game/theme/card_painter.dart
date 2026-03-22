@@ -1,5 +1,4 @@
 import 'dart:ui';
-import 'package:flutter/painting.dart' show BorderRadius, RRect, TextAlign;
 import '../theme/geometric_patterns.dart';
 import '../theme/kout_theme.dart';
 

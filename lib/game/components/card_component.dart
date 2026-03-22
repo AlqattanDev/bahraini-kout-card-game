@@ -1,9 +1,7 @@
 import 'dart:ui';
 import 'package:flame/components.dart';
 import 'package:flame/events.dart';
-import 'package:flutter/painting.dart' show RRect;
 import '../../shared/models/card.dart';
-import '../../shared/models/enums.dart';
 import '../theme/card_painter.dart';
 import '../theme/kout_theme.dart';
 

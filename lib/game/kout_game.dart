@@ -1,8 +1,6 @@
 import 'dart:async';
 import 'package:flame/components.dart';
 import 'package:flame/game.dart';
-import 'package:flame/effects.dart';
-import 'package:flutter/animation.dart';
 import '../app/models/client_game_state.dart';
 import '../shared/models/game_state.dart';
 import 'components/ambient_decoration.dart';

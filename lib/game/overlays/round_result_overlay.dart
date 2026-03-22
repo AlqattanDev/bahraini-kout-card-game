@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../app/models/client_game_state.dart';
-import '../../shared/models/enums.dart';
+import '../../shared/models/game_state.dart';
 import '../../game/theme/kout_theme.dart';
 
 /// Flutter overlay shown during ROUND_SCORING phase.
