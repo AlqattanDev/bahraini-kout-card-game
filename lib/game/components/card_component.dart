@@ -14,6 +14,7 @@ class CardComponent extends PositionComponent with TapCallbacks, HoverCallbacks 
   bool isFaceUp;
   bool isHighlighted;
   bool isDimmed;
+  bool showShadow;
   final void Function(GameCard card)? onTap;
 
   /// The scale this card should return to after interactions (tap/hover).
@@ -28,6 +29,7 @@ class CardComponent extends PositionComponent with TapCallbacks, HoverCallbacks 
     this.isFaceUp = true,
     this.isHighlighted = false,
     this.isDimmed = false,
+    this.showShadow = true,
     this.onTap,
     this.restScale = 1.0,
     super.position,
@@ -44,6 +46,17 @@ class CardComponent extends PositionComponent with TapCallbacks, HoverCallbacks 
       rect,
       const Radius.circular(KoutTheme.cardBorderRadius),
     );
+
+    // Drop shadow — drawn FIRST so it's behind the card
+    if (showShadow) {
+      final shadowRect = rrect.shift(
+        const Offset(KoutTheme.cardShadowOffsetX, KoutTheme.cardShadowOffsetY),
+      );
+      final shadowPaint = Paint()
+        ..color = KoutTheme.cardShadowColor
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, KoutTheme.cardShadowBlur);
+      canvas.drawRRect(shadowRect, shadowPaint);
+    }
 
     if (isFaceUp && card != null) {
       _renderFaceUp(canvas, rect, rrect);
