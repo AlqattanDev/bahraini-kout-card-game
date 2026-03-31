@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'dart:ui';
 import 'package:flame/components.dart';
 import '../../app/models/client_game_state.dart';
@@ -9,9 +10,12 @@ import 'card_component.dart';
 /// Displays the 0–4 cards currently played in the center trick area.
 ///
 /// Cards are positioned by relative seat (0=bottom/me, 1=left, 2=top, 3=right).
+/// Each card gets a base rotation per seat plus random jitter (±4.6°) for a
+/// natural "tossed on table" feel.
 class TrickAreaComponent extends Component {
   final LayoutManager layout;
   final int mySeatIndex;
+  final Random _random = Random();
 
   final List<CardComponent> _trickCards = [];
 
@@ -66,8 +70,9 @@ class TrickAreaComponent extends Component {
       final nudgeFactor = i * 0.06; // each successive card drifts ~6% inward
       final pos = basePos + (center - basePos) * nudgeFactor;
 
-      // Slight rotation per seat for visual variety
-      final angle = _seatAngle(relativeSeat);
+      // Base angle per seat + random jitter ±0.08 rad (≈ ±4.6°) for natural toss feel
+      final angle = _seatBaseAngle(relativeSeat) +
+          (_random.nextDouble() - 0.5) * 0.16;
 
       // Later cards get higher priority (z-order) so play order is
       // visually obvious — the most recent card renders on top.
@@ -75,6 +80,7 @@ class TrickAreaComponent extends Component {
         card: play.card,
         isFaceUp: true,
         isHighlighted: false,
+        showShadow: true,
         position: pos,
         angle: angle,
       )..priority = i;
@@ -84,14 +90,14 @@ class TrickAreaComponent extends Component {
     }
   }
 
-  double _seatAngle(int relativeSeat) {
+  double _seatBaseAngle(int relativeSeat) {
     switch (relativeSeat) {
       case 1:
-        return 0.1;
+        return 0.10;
       case 2:
         return 0.05;
       case 3:
-        return -0.1;
+        return -0.10;
       default:
         return 0.0;
     }
