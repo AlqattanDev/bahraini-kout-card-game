@@ -6,6 +6,7 @@ import '../shared/models/game_state.dart';
 import 'components/ambient_decoration.dart';
 import 'components/card_component.dart';
 import 'components/hand_component.dart';
+import 'components/opponent_hand_fan.dart';
 import '../offline/game_input_sink.dart';
 import '../shared/models/card.dart';
 import '../shared/models/enums.dart';
@@ -34,6 +35,7 @@ class KoutGame extends FlameGame {
   ScoreDisplayComponent? _scoreDisplay;
   AmbientDecorationComponent? _ambientDecoration;
   final List<PlayerSeatComponent> _seats = [];
+  final Map<int, OpponentHandFan> _opponentFans = {};
 
   // Animation manager
   late AnimationManager _animationManager;
@@ -194,6 +196,37 @@ class KoutGame extends FlameGame {
         ],
       );
       add(_ambientDecoration!);
+
+      // Create opponent card-back fans for non-player seats
+      for (int i = 0; i < 4; i++) {
+        if (i == state.mySeatIndex) continue;
+        final relativeSeat = layout.toRelativeSeat(i, state.mySeatIndex);
+        final seatPos = layout.seatPosition(i, state.mySeatIndex);
+
+        final FanDirection dir;
+        final Vector2 offset;
+        switch (relativeSeat) {
+          case 1: // left opponent
+            dir = FanDirection.right;
+            offset = Vector2(50, -10);
+          case 2: // top (partner)
+            dir = FanDirection.above;
+            offset = Vector2(0, -50);
+          case 3: // right opponent
+            dir = FanDirection.left;
+            offset = Vector2(-50, -10);
+          default:
+            continue;
+        }
+
+        final fan = OpponentHandFan(
+          cardCount: 8,
+          position: seatPos + offset,
+          fanDirection: dir,
+        );
+        _opponentFans[i] = fan;
+        add(fan);
+      }
     }
 
     // Build bid/trump label for the bidder's seat
@@ -224,7 +257,7 @@ class KoutGame extends FlameGame {
 
       _seats[i].updateState(
         name: _shortUid(uid),
-        cards: i == state.mySeatIndex ? state.myHand.length : 8,
+        cards: state.cardCounts[i] ?? (i == state.mySeatIndex ? state.myHand.length : 8),
         active: state.currentPlayerUid == uid,
         teamA: i.isEven,
         dealer: uid == state.dealerUid,
@@ -232,6 +265,11 @@ class KoutGame extends FlameGame {
         bidLabel: uid == state.bidderUid ? bidLabel : null,
       );
       _seats[i].position = layout.seatPosition(i, state.mySeatIndex);
+
+      // Update opponent fan card counts
+      if (_opponentFans.containsKey(i)) {
+        _opponentFans[i]!.updateCardCount(state.cardCounts[i] ?? 8);
+      }
     }
   }
 

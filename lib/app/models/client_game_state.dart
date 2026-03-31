@@ -40,6 +40,7 @@ class ClientGameState {
   final List<int> passedPlayers;
   final List<({String playerUid, String action})> bidHistory;
   final List<Team> trickWinners;
+  final Map<int, int> cardCounts;
 
   ClientGameState({
     required this.phase,
@@ -57,6 +58,7 @@ class ClientGameState {
     this.passedPlayers = const [],
     this.bidHistory = const [],
     this.trickWinners = const [],
+    this.cardCounts = const {},
   });
 
   bool get isMyTurn => currentPlayerUid == myUid;
@@ -168,6 +170,11 @@ class ClientGameState {
             .toList()
         : <({String playerUid, String action})>[];
 
+    final rawCardCounts = gameData['cardCounts'] as Map<String, dynamic>?;
+    final cardCounts = rawCardCounts != null
+        ? rawCardCounts.map((k, v) => MapEntry(int.parse(k), (v as num).toInt()))
+        : <int, int>{};
+
     return ClientGameState(
       phase: phase,
       playerUids: playerUids,
@@ -184,6 +191,7 @@ class ClientGameState {
       passedPlayers: passedPlayers,
       bidHistory: bidHistory,
       trickWinners: trickWinners,
+      cardCounts: cardCounts,
     );
   }
 }

@@ -382,6 +382,11 @@ class LocalGameController {
   }
 
   ClientGameState _toClientState(FullGameState full, int forSeat) {
+    final cardCounts = <int, int>{};
+    for (int seat = 0; seat < full.players.length; seat++) {
+      cardCounts[seat] = (full.hands[seat] ?? []).length;
+    }
+
     return ClientGameState(
       phase: full.phase,
       playerUids: full.players.map((p) => p.uid).toList(),
@@ -406,6 +411,7 @@ class LocalGameController {
           .map((e) => (playerUid: full.players[e.seat].uid, action: e.action))
           .toList(),
       trickWinners: List.unmodifiable(full.trickWinners),
+      cardCounts: cardCounts,
     );
   }
 
