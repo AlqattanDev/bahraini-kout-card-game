@@ -69,8 +69,7 @@ class CardComponent extends PositionComponent with TapCallbacks, HoverCallbacks 
     final c = card!;
 
     if (c.isJoker) {
-      // Joker: use CardPainter face with special label
-      CardPainter.paintFace(canvas, rect, 'JO', '★', const Color(0xFF800080));
+      CardPainter.paintJoker(canvas, rect);
       return;
     }
 
