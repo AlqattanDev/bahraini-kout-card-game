@@ -8,13 +8,21 @@ class KoutTheme {
   static const Color textColor = Color(0xFFBACDD9);
   static const Color secondary = Color(0xFF516D73);
   static const Color cardBack = Color(0xFF425944);
-  static const Color cardFace = Color(0xFFFFFFF0);
-  static const Color cardBorder = Color(0xFF738C5A);
+  static const Color cardFace = Color(0xFFFFFFFF);
+  static const Color cardBorder = Color(0xFF2A2A2A);
   static const Color teamAColor = Color(0xFF4A90D9);
   static const Color teamBColor = Color(0xFFD94A4A);
   static const double cardWidth = 70;
   static const double cardHeight = 100;
   static const double cardBorderRadius = 6;
+  static const Color jokerColor = Color(0xFF1A1A1A);
+  static const double cardCornerRankSize = 16.0;
+  static const double cardCornerSuitSize = 14.0;
+  static const double cardCenterSuitSize = 32.0;
+  static const double cardShadowBlur = 4.0;
+  static const double cardShadowOffsetX = 2.0;
+  static const double cardShadowOffsetY = 3.0;
+  static const Color cardShadowColor = Color(0x66000000);
 
   // ---------------------------------------------------------------------------
   // Semantic colors
