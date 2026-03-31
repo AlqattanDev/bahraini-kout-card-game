@@ -64,11 +64,16 @@ class HandComponent extends Component {
         isFaceUp: true,
         isHighlighted: highlight,
         isDimmed: isWaitingForOthers || (hasPlayableCards && !highlight),
+        showShadow: true,
         restScale: handCardScale,
         position: posData.position,
         angle: posData.angle,
         onTap: (c) => onCardTap(c.encode()),
-      )..scale = Vector2.all(handCardScale);
+      )
+        ..scale = Vector2.all(handCardScale)
+        ..priority = i; // Flame renders lower priority first → card 0 behind card 1, etc.
+                        // This means rightmost cards render ON TOP, making shadows between
+                        // overlapping cards visible. Do NOT reverse this.
 
       _cards.add(cardComp);
       add(cardComp);
