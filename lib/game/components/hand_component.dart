@@ -2,7 +2,6 @@ import 'package:flame/components.dart';
 import '../../app/models/client_game_state.dart';
 import '../../shared/models/card.dart';
 import '../managers/layout_manager.dart';
-import '../theme/kout_theme.dart';
 import 'card_component.dart';
 
 /// Displays the local player's hand as a fan of cards at the bottom.
