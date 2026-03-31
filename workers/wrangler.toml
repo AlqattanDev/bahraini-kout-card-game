@@ -1,0 +1,23 @@
+name = "bahraini-kout"
+main = "src/index.ts"
+compatibility_date = "2026-03-23"
+compatibility_flags = ["nodejs_compat"]
+
+[durable_objects]
+bindings = [
+  { name = "GAME_ROOM", class_name = "GameRoom" },
+  { name = "MATCHMAKING_LOBBY", class_name = "MatchmakingLobby" }
+]
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["GameRoom", "MatchmakingLobby"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "kout-db"
+database_id = "95f3b092-2bbb-4193-84cd-78c8debf0255"
+
+[vars]
+JWT_SECRET = "replace-with-actual-secret"
+ENVIRONMENT = "development"

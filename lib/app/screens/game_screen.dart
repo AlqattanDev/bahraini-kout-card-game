@@ -1,6 +1,6 @@
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
-import '../models/client_game_state.dart';
+import '../models/game_mode.dart';
 import '../services/game_service.dart';
 import '../services/presence_service.dart';
 import '../../game/kout_game.dart';
@@ -8,6 +8,12 @@ import '../../game/overlays/bid_overlay.dart';
 import '../../game/overlays/trump_selector.dart';
 import '../../game/overlays/round_result_overlay.dart';
 import '../../game/overlays/game_over_overlay.dart';
+import '../../offline/local_game_controller.dart';
+import '../../offline/human_player_controller.dart';
+import '../../offline/bot_player_controller.dart';
+import '../../offline/player_controller.dart';
+import '../../shared/models/bid.dart';
+import '../../shared/models/card.dart';
 
 class GameScreen extends StatefulWidget {
   const GameScreen({super.key});
@@ -19,7 +25,9 @@ class GameScreen extends StatefulWidget {
 class _GameScreenState extends State<GameScreen> {
   GameService? _gameService;
   PresenceService? _presenceService;
+  LocalGameController? _localController;
   KoutGame? _koutGame;
+  GameMode? _gameMode;
   bool _initialized = false;
 
   @override
@@ -28,38 +36,54 @@ class _GameScreenState extends State<GameScreen> {
     if (_initialized) return;
     _initialized = true;
 
-    final args =
-        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-    final gameId = args?['gameId'] as String? ?? '';
-    final myUid = args?['myUid'] as String? ?? '';
+    final args = ModalRoute.of(context)?.settings.arguments;
 
-    _gameService = GameService(gameId: gameId, myUid: myUid);
-    _presenceService = PresenceService(gameId: gameId, myUid: myUid);
-
-    _koutGame = KoutGame(
-      stateStream: _gameService!.stateStream,
-      onAction: (action, data) => _handleAction(action, data),
-    );
-
-    _gameService!.startListening();
-    _presenceService!.start();
+    if (args is GameMode) {
+      _initFromGameMode(args);
+    } else if (args is Map<String, dynamic>) {
+      // Legacy: online mode from route args map
+      _initFromGameMode(OnlineGameMode(
+        gameId: args['gameId'] as String? ?? '',
+        myUid: args['myUid'] as String? ?? '',
+        token: args['token'] as String? ?? '',
+      ));
+    }
   }
 
-  void _handleAction(String action, Map<String, dynamic> data) {
-    if (_gameService == null) return;
-    switch (action) {
-      case 'playCard':
-        _gameService!.sendPlayCard(data['card'] as String);
-        break;
-      case 'bid':
-        _gameService!.sendBid(data['bidAmount'] as int);
-        break;
-      case 'pass':
-        _gameService!.sendPass();
-        break;
-      case 'selectTrump':
-        _gameService!.sendTrumpSelection(data['suit'] as String);
-        break;
+  void _initFromGameMode(GameMode mode) {
+    _gameMode = mode;
+    switch (mode) {
+      case OnlineGameMode(:final gameId, :final myUid, :final token):
+        _gameService = GameService(gameId: gameId, myUid: myUid, token: token);
+        _presenceService = PresenceService();
+
+        _koutGame = KoutGame(
+          stateStream: _gameService!.stateStream,
+          inputSink: _gameService!,
+        );
+
+        _gameService!.startListening();
+        _presenceService!.start();
+
+      case OfflineGameMode(:final seats):
+        final humanController = HumanPlayerController();
+        final controllers = <int, PlayerController>{};
+        for (final seat in seats) {
+          controllers[seat.seatIndex] = seat.isBot
+              ? BotPlayerController(seatIndex: seat.seatIndex)
+              : humanController;
+        }
+        _localController = LocalGameController(
+          seats: seats,
+          controllers: controllers,
+        );
+
+        _koutGame = KoutGame(
+          stateStream: _localController!.stateStream,
+          inputSink: humanController,
+        );
+
+        _localController!.start();
     }
   }
 
@@ -67,6 +91,7 @@ class _GameScreenState extends State<GameScreen> {
   void dispose() {
     _presenceService?.dispose();
     _gameService?.dispose();
+    _localController?.dispose();
     super.dispose();
   }
 
@@ -79,19 +104,29 @@ class _GameScreenState extends State<GameScreen> {
     }
 
     return Scaffold(
-      body: GameWidget(
-        game: _koutGame!,
-        overlayBuilderMap: {
+      body: Stack(
+        children: [
+          GameWidget(
+            game: _koutGame!,
+            overlayBuilderMap: {
           'bid': (context, game) {
             final koutGame = game as KoutGame;
+            final state = koutGame.currentState;
             return BidOverlay(
+              currentHighBid: state?.currentBid,
+              isForced: koutGame.isHumanForced,
               onBid: (amount) {
+                koutGame.soundManager?.playBidSound();
                 koutGame.overlays.remove('bid');
-                koutGame.onAction('bid', {'bidAmount': amount});
+                final bidAmount = BidAmount.fromValue(amount);
+                if (bidAmount != null) {
+                  koutGame.inputSink.placeBid(bidAmount);
+                }
               },
               onPass: () {
+                koutGame.soundManager?.playBidSound();
                 koutGame.overlays.remove('bid');
-                koutGame.onAction('pass', {});
+                koutGame.inputSink.pass();
               },
             );
           },
@@ -99,8 +134,11 @@ class _GameScreenState extends State<GameScreen> {
             final koutGame = game as KoutGame;
             return TrumpSelectorOverlay(
               onSelect: (suit) {
+                koutGame.soundManager?.playTrumpSound();
                 koutGame.overlays.remove('trump');
-                koutGame.onAction('selectTrump', {'suit': suit});
+                koutGame.inputSink.selectTrump(
+                  Suit.values.firstWhere((e) => e.name == suit),
+                );
               },
             );
           },
@@ -110,6 +148,8 @@ class _GameScreenState extends State<GameScreen> {
             if (state == null) return const SizedBox.shrink();
             return RoundResultOverlay(
               state: state,
+              previousScoreA: koutGame.previousScoreA,
+              previousScoreB: koutGame.previousScoreB,
               onContinue: () {
                 koutGame.overlays.remove('roundResult');
               },
@@ -121,6 +161,15 @@ class _GameScreenState extends State<GameScreen> {
             if (state == null) return const SizedBox.shrink();
             return GameOverOverlay(
               state: state,
+              onPlayAgain: () {
+                koutGame.overlays.remove('gameOver');
+                if (_gameMode is OfflineGameMode) {
+                  Navigator.of(context).pushReplacementNamed(
+                    '/game',
+                    arguments: _gameMode,
+                  );
+                }
+              },
               onReturnToMenu: () {
                 koutGame.overlays.remove('gameOver');
                 Navigator.of(context).pushNamedAndRemoveUntil(
@@ -128,9 +177,31 @@ class _GameScreenState extends State<GameScreen> {
                   (route) => false,
                 );
               },
+              onVictoryAnimationReady: () {
+                koutGame.spawnVictoryParticles();
+              },
             );
           },
         },
+          ),
+          Positioned(
+            top: 8,
+            right: 8,
+            child: IconButton(
+              icon: Icon(
+                _koutGame?.soundManager?.muted == true
+                    ? Icons.volume_off
+                    : Icons.volume_up,
+                color: const Color(0xFF738C5A),
+                size: 24,
+              ),
+              onPressed: () async {
+                await _koutGame?.soundManager?.toggleMute();
+                if (mounted) setState(() {});
+              },
+            ),
+          ),
+        ],
       ),
     );
   }

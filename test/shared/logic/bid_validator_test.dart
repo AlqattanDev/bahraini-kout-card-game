@@ -31,37 +31,50 @@ void main() {
     });
 
     group('validatePass', () {
-      test('allows pass for non-passed player', () {
-        final result = BidValidator.validatePass(passedPlayers: [0, 2], playerIndex: 1);
+      test('allows pass for non-passed player when not last', () {
+        final result = BidValidator.validatePass(passedPlayers: [0], playerIndex: 1, playerCount: 4);
         expect(result.isValid, true);
       });
       test('rejects pass from player who already passed', () {
-        final result = BidValidator.validatePass(passedPlayers: [1], playerIndex: 1);
+        final result = BidValidator.validatePass(passedPlayers: [1], playerIndex: 1, playerCount: 4);
         expect(result.isValid, false);
         expect(result.error, 'already-passed');
+      });
+      test('rejects pass when player is last remaining and no bid exists', () {
+        final result = BidValidator.validatePass(passedPlayers: [0, 2, 3], playerIndex: 1, playerCount: 4, currentHighest: null);
+        expect(result.isValid, false);
+        expect(result.error, 'must-bid');
+      });
+      test('allows pass when player is last remaining but a bid exists', () {
+        final result = BidValidator.validatePass(passedPlayers: [0, 2, 3], playerIndex: 1, playerCount: 4, currentHighest: BidAmount.six);
+        expect(result.isValid, true);
+      });
+    });
+
+    group('isLastBidder', () {
+      test('returns true when 3 others have passed', () {
+        expect(BidValidator.isLastBidder(passedPlayers: [0, 2, 3], playerIndex: 1, playerCount: 4), true);
+      });
+      test('returns false when fewer than 3 have passed', () {
+        expect(BidValidator.isLastBidder(passedPlayers: [0, 2], playerIndex: 1, playerCount: 4), false);
+      });
+      test('returns false when player is in passedPlayers', () {
+        expect(BidValidator.isLastBidder(passedPlayers: [0, 1, 2], playerIndex: 1, playerCount: 4), false);
       });
     });
 
     group('checkBiddingComplete', () {
-      test('bidding complete when 3 players passed', () {
+      test('complete when 3 players passed and a bid exists', () {
         final result = BidValidator.checkBiddingComplete(passedPlayers: [0, 2, 3], currentHighest: BidAmount.six, highestBidderIndex: 1);
         expect(result, BiddingOutcome.won(winnerIndex: 1, bid: BidAmount.six));
       });
-      test('bidding not complete with fewer than 3 passes', () {
+      test('not complete with fewer than 3 passes', () {
         final result = BidValidator.checkBiddingComplete(passedPlayers: [0, 2], currentHighest: BidAmount.six, highestBidderIndex: 1);
         expect(result, BiddingOutcome.ongoing());
       });
-    });
-
-    group('checkMalzoom', () {
-      test('first all-pass triggers reshuffle', () {
-        expect(BidValidator.checkMalzoom(passedPlayers: [0, 1, 2, 3], reshuffleCount: 0), MalzoomOutcome.reshuffle);
-      });
-      test('second all-pass triggers forced bid', () {
-        expect(BidValidator.checkMalzoom(passedPlayers: [0, 1, 2, 3], reshuffleCount: 1), MalzoomOutcome.forcedBid);
-      });
-      test('not all passed returns none', () {
-        expect(BidValidator.checkMalzoom(passedPlayers: [0, 1, 2], reshuffleCount: 0), MalzoomOutcome.none);
+      test('not complete when all 4 passed but no bid', () {
+        final result = BidValidator.checkBiddingComplete(passedPlayers: [0, 1, 2, 3], currentHighest: null, highestBidderIndex: null);
+        expect(result, BiddingOutcome.ongoing());
       });
     });
   });

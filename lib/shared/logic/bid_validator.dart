@@ -7,8 +7,6 @@ class BidValidationResult {
   const BidValidationResult.invalid(this.error) : isValid = false;
 }
 
-enum MalzoomOutcome { none, reshuffle, forcedBid }
-
 class BiddingOutcome {
   final bool isComplete;
   final int? winnerIndex;
@@ -38,14 +36,38 @@ class BidValidator {
     required List<int> passedPlayers,
     required int playerIndex,
   }) {
-    if (passedPlayers.contains(playerIndex)) return const BidValidationResult.invalid('already-passed');
-    if (currentHighest != null && bidAmount.value <= currentHighest.value) return const BidValidationResult.invalid('bid-not-higher');
+    if (passedPlayers.contains(playerIndex)) {
+      return const BidValidationResult.invalid('already-passed');
+    }
+    if (currentHighest != null && bidAmount.value <= currentHighest.value) {
+      return const BidValidationResult.invalid('bid-not-higher');
+    }
     return const BidValidationResult.valid();
   }
 
-  static BidValidationResult validatePass({required List<int> passedPlayers, required int playerIndex}) {
-    if (passedPlayers.contains(playerIndex)) return const BidValidationResult.invalid('already-passed');
+  static BidValidationResult validatePass({
+    required List<int> passedPlayers,
+    required int playerIndex,
+    int playerCount = 4,
+    BidAmount? currentHighest,
+  }) {
+    if (passedPlayers.contains(playerIndex)) {
+      return const BidValidationResult.invalid('already-passed');
+    }
+    if (isLastBidder(passedPlayers: passedPlayers, playerIndex: playerIndex, playerCount: playerCount) && currentHighest == null) {
+      return const BidValidationResult.invalid('must-bid');
+    }
     return const BidValidationResult.valid();
+  }
+
+  static bool isLastBidder({
+    required List<int> passedPlayers,
+    required int playerIndex,
+    int playerCount = 4,
+  }) {
+    if (passedPlayers.contains(playerIndex)) return false;
+    final activePlayers = playerCount - passedPlayers.length;
+    return activePlayers == 1;
   }
 
   static BiddingOutcome checkBiddingComplete({
@@ -57,11 +79,5 @@ class BidValidator {
       return BiddingOutcome.won(winnerIndex: highestBidderIndex, bid: currentHighest);
     }
     return BiddingOutcome.ongoing();
-  }
-
-  static MalzoomOutcome checkMalzoom({required List<int> passedPlayers, required int reshuffleCount}) {
-    if (passedPlayers.length < 4) return MalzoomOutcome.none;
-    if (reshuffleCount < 1) return MalzoomOutcome.reshuffle;
-    return MalzoomOutcome.forcedBid;
   }
 }

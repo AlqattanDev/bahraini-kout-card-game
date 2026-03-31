@@ -1,29 +1,43 @@
 import 'package:flutter/material.dart';
+import '../../shared/models/bid.dart';
 import '../../game/theme/kout_theme.dart';
+import 'overlay_animation_wrapper.dart';
 
-/// Flutter overlay shown during the BIDDING phase when it is the local player's turn.
-///
-/// Displays bid buttons for 5/Bab, 6, 7, 8/Kout and a Pass button.
-/// Styled with Diwaniya colors (burgundy background, gold buttons, cream text).
-/// Buttons show bilingual labels (English / Arabic).
 class BidOverlay extends StatelessWidget {
   final void Function(int amount) onBid;
   final VoidCallback onPass;
+  final BidAmount? currentHighBid;
+  final bool isForced;
 
-  const BidOverlay({super.key, required this.onBid, required this.onPass});
+  const BidOverlay({
+    super.key,
+    required this.onBid,
+    required this.onPass,
+    this.currentHighBid,
+    this.isForced = false,
+  });
+
+  List<BidAmount> get _availableBids {
+    if (currentHighBid == null) return BidAmount.values.toList();
+    return BidAmount.values
+        .where((b) => b.value > currentHighBid!.value)
+        .toList();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Center(
+    final bids = _availableBids;
+
+    return OverlayAnimationWrapper(
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
         decoration: BoxDecoration(
-          color: const Color(0xFF5C1A1B).withOpacity(0.97),
+          color: KoutTheme.primary.withValues(alpha: 0.97),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: KoutTheme.accent, width: 2),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.6),
+              color: Colors.black.withValues(alpha: 0.6),
               blurRadius: 24,
               offset: const Offset(0, 8),
             ),
@@ -32,12 +46,12 @@ class BidOverlay extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Bilingual heading
+            // Heading
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'Place Your Bid',
+                  isForced ? 'You Must Bid' : 'Place Your Bid',
                   style: KoutTheme.headingStyle.copyWith(
                     color: KoutTheme.accent,
                     fontSize: 18,
@@ -45,7 +59,7 @@ class BidOverlay extends StatelessWidget {
                 ),
                 const SizedBox(width: 12),
                 Text(
-                  'ضع مزايدتك',
+                  isForced ? 'لازم تختار' : 'ضع مزايدتك',
                   style: KoutTheme.arabicHeadingStyle.copyWith(
                     color: KoutTheme.accent,
                     fontSize: 16,
@@ -55,49 +69,65 @@ class BidOverlay extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 20),
+            // Bid buttons — only show bids higher than current
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _bidButton('5', KoutTheme.gameTerms['bab']!, 5),
-                const SizedBox(width: 10),
-                _bidButton('6', ('6', '٦'), 6),
-                const SizedBox(width: 10),
-                _bidButton('7', ('7', '٧'), 7),
-                const SizedBox(width: 10),
-                _bidButton('8', KoutTheme.gameTerms['kout']!, 8),
-              ],
-            ),
-            const SizedBox(height: 16),
-            TextButton(
-              onPressed: onPass,
-              style: TextButton.styleFrom(
-                foregroundColor: KoutTheme.textColor,
-                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 10),
-                side: const BorderSide(color: KoutTheme.textColor, width: 1),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    KoutTheme.gameTerms['pass']!.$1,
-                    style: KoutTheme.bodyStyle,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    KoutTheme.gameTerms['pass']!.$2,
-                    style: KoutTheme.arabicBodyStyle,
-                    textDirection: TextDirection.rtl,
+                for (int i = 0; i < bids.length; i++) ...[
+                  if (i > 0) const SizedBox(width: 10),
+                  _bidButton(
+                    '${bids[i].value}',
+                    _labelForBid(bids[i]),
+                    bids[i].value,
                   ),
                 ],
-              ),
+              ],
             ),
+            // Pass button — hidden when forced
+            if (!isForced) ...[
+              const SizedBox(height: 16),
+              TextButton(
+                onPressed: onPass,
+                style: TextButton.styleFrom(
+                  foregroundColor: KoutTheme.textColor,
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 32, vertical: 10),
+                  side: const BorderSide(
+                      color: KoutTheme.textColor, width: 1),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      KoutTheme.gameTerms['pass']!.$1,
+                      style: KoutTheme.bodyStyle,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      KoutTheme.gameTerms['pass']!.$2,
+                      style: KoutTheme.arabicBodyStyle,
+                      textDirection: TextDirection.rtl,
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
       ),
     );
+  }
+
+  (String, String) _labelForBid(BidAmount bid) {
+    return switch (bid) {
+      BidAmount.bab => KoutTheme.gameTerms['bab']!,
+      BidAmount.six => ('6', '٦'),
+      BidAmount.seven => ('7', '٧'),
+      BidAmount.kout => KoutTheme.gameTerms['kout']!,
+    };
   }
 
   Widget _bidButton(String number, (String, String) label, int amount) {
@@ -112,6 +142,13 @@ class BidOverlay extends StatelessWidget {
         ),
         elevation: 4,
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+      ).copyWith(
+        splashFactory: InkRipple.splashFactory,
+        overlayColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.pressed)
+              ? KoutTheme.accent.withValues(alpha: 0.4)
+              : null,
+        ),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,

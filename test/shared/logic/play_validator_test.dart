@@ -29,18 +29,16 @@ void main() {
       expect(result.isValid, true);
     });
 
-    test('rejects joker when player has led suit', () {
+    test('allows joker even when player has led suit', () {
       final hand = [GameCard.joker(), GameCard(suit: Suit.hearts, rank: Rank.seven)];
       final result = PlayValidator.validatePlay(card: GameCard.joker(), hand: hand, ledSuit: Suit.hearts, isLeadPlay: false);
-      expect(result.isValid, false);
-      expect(result.error, 'must-follow-suit');
+      expect(result.isValid, true);
     });
 
-    test('rejects leading with joker', () {
+    test('allows leading with joker (triggers round loss via game controller)', () {
       final hand = [GameCard.joker(), GameCard(suit: Suit.hearts, rank: Rank.ace)];
       final result = PlayValidator.validatePlay(card: GameCard.joker(), hand: hand, ledSuit: null, isLeadPlay: true);
-      expect(result.isValid, false);
-      expect(result.error, 'cannot-lead-joker');
+      expect(result.isValid, true);
     });
 
     test('allows leading with any non-joker card', () {
@@ -54,6 +52,26 @@ void main() {
       final result = PlayValidator.validatePlay(card: GameCard(suit: Suit.spades, rank: Rank.king), hand: hand, ledSuit: null, isLeadPlay: true);
       expect(result.isValid, false);
       expect(result.error, 'card-not-in-hand');
+    });
+  });
+
+  group('PlayValidator.detectJokerLead', () {
+    test('detects joker lead when joker is played as lead', () {
+      expect(PlayValidator.detectJokerLead(GameCard.joker(), true), true);
+    });
+
+    test('no joker lead when joker is played as follow', () {
+      expect(PlayValidator.detectJokerLead(GameCard.joker(), false), false);
+    });
+
+    test('no joker lead when non-joker is played as lead', () {
+      expect(
+        PlayValidator.detectJokerLead(
+          GameCard(suit: Suit.hearts, rank: Rank.ace),
+          true,
+        ),
+        false,
+      );
     });
   });
 

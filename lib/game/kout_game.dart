@@ -6,16 +6,23 @@ import '../shared/models/game_state.dart';
 import 'components/ambient_decoration.dart';
 import 'components/card_component.dart';
 import 'components/hand_component.dart';
+import '../offline/game_input_sink.dart';
+import '../shared/models/card.dart';
+import '../shared/models/enums.dart';
+import '../shared/models/trick.dart';
+import '../shared/logic/trick_resolver.dart';
 import 'components/player_seat.dart';
 import 'components/score_display.dart';
 import 'components/table_background.dart';
 import 'components/trick_area.dart';
 import 'managers/layout_manager.dart';
 import 'managers/animation_manager.dart';
+import 'managers/sound_manager.dart';
+import '../shared/constants/timing.dart';
 
 class KoutGame extends FlameGame {
   final Stream<ClientGameState> stateStream;
-  final void Function(String action, Map<String, dynamic> data) onAction;
+  final GameInputSink inputSink;
 
   StreamSubscription<ClientGameState>? _stateSub;
   ClientGameState? currentState;
@@ -31,10 +38,41 @@ class KoutGame extends FlameGame {
   // Animation manager
   late AnimationManager _animationManager;
 
+  // Sound manager
+  SoundManager? soundManager;
+
   // Track previous trick count to detect new trick plays
   int _prevTrickPlayCount = 0;
 
-  KoutGame({required this.stateStream, required this.onAction});
+  // Track previous phase to detect transitions (e.g. poison joker roundScoring)
+  GamePhase? _prevPhase;
+
+  // Previous scores for round result overlay (snapshot before round scoring)
+  int previousScoreA = 0;
+  int previousScoreB = 0;
+  int _lastScoreA = 0;
+  int _lastScoreB = 0;
+
+  // Turn timer tracking
+  String? _lastCurrentPlayer;
+  GamePhase? _lastTimerPhase;
+  double _turnElapsed = 0.0;
+  static final double _humanTimeout =
+      GameTiming.humanTurnTimeout.inMilliseconds / 1000.0;
+  static const double _botTimeout = 4.0; // average of 3-5s
+
+  KoutGame({required this.stateStream, required this.inputSink});
+
+  /// Whether the human player is forced to bid (last player, no existing bid).
+  bool get isHumanForced {
+    final state = currentState;
+    if (state == null) return false;
+    if (state.phase != GamePhase.bidding) return false;
+    if (!state.isMyTurn) return false;
+    final othersPassed = state.passedPlayers.length >= 3;
+    final noBidYet = state.currentBid == null;
+    return othersPassed && noBidYet;
+  }
 
   @override
   Future<void> onLoad() async {
@@ -42,6 +80,8 @@ class KoutGame extends FlameGame {
     final safeSize = hasLayout ? size : Vector2(375, 812);
     layout = LayoutManager(safeSize);
     _animationManager = AnimationManager(game: this);
+    soundManager = SoundManager();
+    await soundManager!.init();
 
     // Wood grain table background — rendered first (behind everything else)
     add(TableBackgroundComponent());
@@ -56,6 +96,48 @@ class KoutGame extends FlameGame {
     super.onGameResize(newSize);
     layout = LayoutManager(newSize);
     _scoreDisplay?.updateWidth(newSize.x);
+  }
+
+  @override
+  void update(double dt) {
+    super.update(dt);
+    // Tick turn timer for active player's ring
+    final state = currentState;
+    if (state == null) return;
+
+    final isActionPhase = state.phase == GamePhase.bidding ||
+        state.phase == GamePhase.trumpSelection ||
+        state.phase == GamePhase.playing;
+
+    if (isActionPhase && state.currentPlayerUid != null) {
+      // Reset timer when active player or phase changes
+      if (state.currentPlayerUid != _lastCurrentPlayer ||
+          state.phase != _lastTimerPhase) {
+        _lastCurrentPlayer = state.currentPlayerUid;
+        _lastTimerPhase = state.phase;
+        _turnElapsed = 0.0;
+      }
+      _turnElapsed += dt;
+
+      // Update the active seat's timer ring
+      final isHuman = state.currentPlayerUid == state.myUid;
+      final timeout = isHuman ? _humanTimeout : _botTimeout;
+      final progress = (1.0 - (_turnElapsed / timeout)).clamp(0.0, 1.0);
+
+      for (int i = 0; i < _seats.length; i++) {
+        final uid = state.playerUids[i];
+        if (uid == state.currentPlayerUid) {
+          _seats[i].timerProgress = progress;
+        } else {
+          _seats[i].timerProgress = 0.0;
+        }
+      }
+    } else {
+      _lastCurrentPlayer = null;
+      for (final seat in _seats) {
+        seat.timerProgress = 0.0;
+      }
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -77,6 +159,13 @@ class KoutGame extends FlameGame {
       add(_scoreDisplay!);
     }
     _scoreDisplay!.updateState(state);
+
+    // Track scores — only update when NOT in roundScoring so that when
+    // roundScoring arrives the _last values still hold pre-round scores.
+    if (state.phase != GamePhase.roundScoring) {
+      _lastScoreA = state.scores[Team.a] ?? 0;
+      _lastScoreB = state.scores[Team.b] ?? 0;
+    }
   }
 
   void _updateSeats(ClientGameState state) {
@@ -107,14 +196,40 @@ class KoutGame extends FlameGame {
       add(_ambientDecoration!);
     }
 
+    // Build bid/trump label for the bidder's seat
+    String? bidLabel;
+    if (state.currentBid != null && state.bidderUid != null) {
+      final bidText = state.currentBid!.isKout
+          ? 'KOUT'
+          : 'Bid: ${state.currentBid!.value}';
+      if (state.trumpSuit != null) {
+        bidLabel = '$bidText | ${_suitSymbol(state.trumpSuit!)}';
+      } else {
+        bidLabel = bidText;
+      }
+    }
+
     for (int i = 0; i < state.playerUids.length && i < _seats.length; i++) {
       final uid = state.playerUids[i];
+
+      // Find this player's bid action from history
+      String? bidAction;
+      if (state.phase == GamePhase.bidding || state.phase == GamePhase.trumpSelection) {
+        for (final entry in state.bidHistory) {
+          if (entry.playerUid == uid) {
+            bidAction = entry.action;
+          }
+        }
+      }
+
       _seats[i].updateState(
         name: _shortUid(uid),
         cards: i == state.mySeatIndex ? state.myHand.length : 8,
         active: state.currentPlayerUid == uid,
         teamA: i.isEven,
         dealer: uid == state.dealerUid,
+        bidAction: bidAction,
+        bidLabel: uid == state.bidderUid ? bidLabel : null,
       );
       _seats[i].position = layout.seatPosition(i, state.mySeatIndex);
     }
@@ -124,7 +239,7 @@ class KoutGame extends FlameGame {
     if (_hand == null) {
       _hand = HandComponent(
         layout: layout,
-        onCardTap: (code) => onAction('playCard', {'card': code}),
+        onCardTap: (code) => inputSink.playCard(GameCard.decode(code)),
       );
       add(_hand!);
     }
@@ -142,21 +257,50 @@ class KoutGame extends FlameGame {
 
     final newCount = state.currentTrickPlays.length;
 
+    // Trick complete: all 4 cards played → trick win sound + flash winning seat
+    if (newCount == 4 && _prevTrickPlayCount < 4) {
+      soundManager?.playTrickWinSound();
+      _flashTrickWinnerSeat(state);
+    }
+
+    // Trick collected: trick cleared after being full → trick collect sound
+    if (newCount == 0 && _prevTrickPlayCount > 0) {
+      soundManager?.playTrickCollectSound();
+    }
+
     // Animate newly played card if count increased
     if (newCount > _prevTrickPlayCount && newCount > 0) {
       final lastPlay = state.currentTrickPlays.last;
       final absoluteSeat = state.playerUids.indexOf(lastPlay.playerUid);
       if (absoluteSeat >= 0) {
-        final target = layout.trickCardPosition(
-          layout.toRelativeSeat(absoluteSeat, state.mySeatIndex),
-        );
+        final relativeSeat = layout.toRelativeSeat(absoluteSeat, state.mySeatIndex);
+        final target = layout.trickCardPosition(relativeSeat);
+
+        // For the human player (relative seat 0), start from the card's
+        // actual position in the hand fan — not the generic seat center.
+        // Check previousCardPositions first (card was removed before rebuild).
+        Vector2 origin;
+        final bool isFromHand = relativeSeat == 0;
+        if (isFromHand && _hand != null) {
+          final cardCode = lastPlay.card.encode();
+          origin = _hand!.previousCardPositions[cardCode] ??
+              _hand!.cardPositions[cardCode] ??
+              layout.seatPosition(absoluteSeat, state.mySeatIndex);
+        } else {
+          origin = layout.seatPosition(absoluteSeat, state.mySeatIndex);
+        }
+
+        // Match the source scale: hand cards are scaled up, opponent cards are 1.0
+        final sourceScale = isFromHand ? HandComponent.handCardScale : 1.0;
+
         final tempCard = CardComponent(
           card: lastPlay.card,
           isFaceUp: true,
-          position: layout.seatPosition(absoluteSeat, state.mySeatIndex),
+          position: origin,
           anchor: Anchor.center,
-        );
+        )..scale = Vector2.all(sourceScale);
         add(tempCard);
+        soundManager?.playCardSound();
         _animationManager.animateCardPlay(tempCard, target).then((_) {
           tempCard.removeFromParent();
           _trickArea!.updateState(state);
@@ -176,6 +320,16 @@ class KoutGame extends FlameGame {
   // ---------------------------------------------------------------------------
 
   void _updateOverlays(ClientGameState state) {
+    // Detect poison joker: transition from playing → roundScoring when the
+    // player's sole remaining card is the Joker (never actually played).
+    if (state.phase == GamePhase.roundScoring &&
+        _prevPhase == GamePhase.playing &&
+        state.myHand.length == 1 &&
+        state.myHand.first.isJoker) {
+      soundManager?.playPoisonJokerSound();
+    }
+    _prevPhase = state.phase;
+
     const allOverlays = ['bid', 'trump', 'roundResult', 'gameOver'];
 
     // Determine which single overlay (if any) should be shown
@@ -192,6 +346,15 @@ class KoutGame extends FlameGame {
         targetOverlay = 'roundResult';
         break;
       case GamePhase.gameOver:
+        if (!overlays.isActive('gameOver')) {
+          final myScore = state.scores[state.myTeam] ?? 0;
+          final oppScore = state.scores[state.myTeam.opponent] ?? 0;
+          if (myScore > oppScore) {
+            soundManager?.playVictorySound();
+          } else {
+            soundManager?.playDefeatSound();
+          }
+        }
         targetOverlay = 'gameOver';
         break;
       default:
@@ -207,13 +370,95 @@ class KoutGame extends FlameGame {
 
     // Show the target overlay if not already visible
     if (targetOverlay != null && !overlays.isActive(targetOverlay)) {
+      // Snapshot previous scores and play sound when showing round result
+      if (targetOverlay == 'roundResult') {
+        previousScoreA = _lastScoreA;
+        previousScoreB = _lastScoreB;
+
+        // Determine if my team won the round
+        final myTeam = state.myTeam;
+        final bidderSeat = state.bidderUid != null
+            ? state.playerUids.indexOf(state.bidderUid!)
+            : -1;
+        final bidderTeam = bidderSeat >= 0 ? teamForSeat(bidderSeat) : null;
+        final isMyTeamBidder = bidderTeam == myTeam;
+        final bidValue = state.currentBid?.value ?? 0;
+        final bidderTricks =
+            bidderTeam != null ? (state.tricks[bidderTeam] ?? 0) : 0;
+        final bidderWon = bidderTricks >= bidValue;
+        final myTeamWon = isMyTeamBidder ? bidderWon : !bidderWon;
+
+        if (myTeamWon) {
+          soundManager?.playRoundWinSound();
+        } else {
+          soundManager?.playRoundLossSound();
+        }
+      }
       overlays.add(targetOverlay);
     }
   }
 
   // ---------------------------------------------------------------------------
+  // Victory particles
+  // ---------------------------------------------------------------------------
+
+  /// Spawns a large gold particle burst at the center of the table for victory.
+  void spawnVictoryParticles() {
+    _animationManager.animateTrickWin(
+      layout.trickCenter,
+      particleCount: 24,
+      durationSeconds: 1.0,
+    );
+  }
+
+  // ---------------------------------------------------------------------------
   // Helpers
   // ---------------------------------------------------------------------------
+
+  /// Resolves the trick winner from [state] and flashes that player's seat.
+  ///
+  /// Requires trumpSuit to be set and exactly 4 plays in currentTrickPlays.
+  /// Silently skips if either condition is not met.
+  void _flashTrickWinnerSeat(ClientGameState state) {
+    if (state.trumpSuit == null) return;
+    if (state.currentTrickPlays.length != 4) return;
+
+    // Build TrickPlay list using absolute seat indices
+    final plays = state.currentTrickPlays.map((p) {
+      final absoluteSeat = state.playerUids.indexOf(p.playerUid);
+      return TrickPlay(playerIndex: absoluteSeat, card: p.card);
+    }).toList();
+
+    // Need the lead player index (first play)
+    final leadSeat = state.playerUids.indexOf(
+      state.currentTrickPlays.first.playerUid,
+    );
+    if (plays.any((p) => p.playerIndex < 0) || leadSeat < 0) return;
+
+    final trick = Trick(leadPlayerIndex: leadSeat, plays: plays);
+    final winnerAbsoluteSeat = TrickResolver.resolve(
+      trick,
+      trumpSuit: state.trumpSuit!,
+    );
+
+    final relativeSeat = layout.toRelativeSeat(
+      winnerAbsoluteSeat,
+      state.mySeatIndex,
+    );
+    if (relativeSeat >= 0 && relativeSeat < _seats.length) {
+      _seats[relativeSeat].flashTrickWin();
+    }
+  }
+
+  static String _suitSymbol(Suit suit) {
+    const symbols = {
+      Suit.spades: '♠',
+      Suit.hearts: '♥',
+      Suit.clubs: '♣',
+      Suit.diamonds: '♦',
+    };
+    return symbols[suit] ?? '?';
+  }
 
   String _shortUid(String uid) {
     if (uid.length <= 6) return uid;
@@ -223,6 +468,7 @@ class KoutGame extends FlameGame {
   @override
   void onRemove() {
     _stateSub?.cancel();
+    soundManager?.dispose();
     super.onRemove();
   }
 }

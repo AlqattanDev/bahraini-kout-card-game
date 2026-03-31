@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../game/theme/kout_theme.dart';
+import 'overlay_animation_wrapper.dart';
 
 /// Flutter overlay shown during TRUMP_SELECTION phase for the winning bidder.
 ///
@@ -12,16 +13,16 @@ class TrumpSelectorOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
+    return OverlayAnimationWrapper(
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
         decoration: BoxDecoration(
-          color: const Color(0xFF5C1A1B).withOpacity(0.97),
+          color: KoutTheme.primary.withValues(alpha: 0.97),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: KoutTheme.accent, width: 2),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.6),
+              color: Colors.black.withValues(alpha: 0.6),
               blurRadius: 24,
               offset: const Offset(0, 8),
             ),
@@ -70,6 +71,13 @@ class TrumpSelectorOverlay extends StatelessWidget {
           borderRadius: BorderRadius.circular(10),
         ),
         elevation: 4,
+      ).copyWith(
+        splashFactory: InkRipple.splashFactory,
+        overlayColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.pressed)
+              ? KoutTheme.accent.withValues(alpha: 0.4)
+              : null,
+        ),
       ),
       child: Text(
         symbol,

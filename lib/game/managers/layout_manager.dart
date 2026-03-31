@@ -14,8 +14,11 @@ class LayoutManager {
   /// Center of the player's hand at the bottom of the screen.
   Vector2 get handCenter => Vector2(width / 2, height - 80);
 
-  /// Center of the partner seat (top).
-  Vector2 get partnerSeat => Vector2(width / 2, 80);
+  /// Position for the human player's avatar (bottom-right, beside the hand).
+  Vector2 get mySeat => Vector2(width - 60, height - 80);
+
+  /// Center of the partner seat (top) — just under the 52px banner.
+  Vector2 get partnerSeat => Vector2(width / 2, 100);
 
   /// Center of the left opponent seat.
   Vector2 get leftSeat => Vector2(80, height / 2);
@@ -25,6 +28,9 @@ class LayoutManager {
 
   /// Center of the trick area.
   Vector2 get trickCenter => Vector2(width / 2, height / 2);
+
+  /// Center of the trick tracker (8 circles between trick area and hand).
+  Vector2 get trickTrackerCenter => Vector2(width / 2, trickCenter.y + 130);
 
   /// Position for a trick card played by relative seat index.
   /// relativeSeat: 0=bottom, 1=left, 2=top, 3=right
@@ -49,8 +55,8 @@ class LayoutManager {
   List<({Vector2 position, double angle})> handCardPositions(int cardCount) {
     if (cardCount == 0) return [];
 
-    const maxFanAngle = 0.35; // radians total spread
-    const cardSpacing = 42.0;
+    const maxFanAngle = 0.30; // radians total spread (slightly tighter for scaled cards)
+    const cardSpacing = 56.0; // wider spacing to accommodate 1.4x scaled cards
 
     final totalWidth = (cardCount - 1) * cardSpacing;
     final startX = handCenter.x - totalWidth / 2;
@@ -59,8 +65,8 @@ class LayoutManager {
     for (int i = 0; i < cardCount; i++) {
       final t = cardCount == 1 ? 0.0 : (i / (cardCount - 1)) - 0.5;
       final angle = t * maxFanAngle;
-      // Arc: cards bow upward slightly in a fan
-      final arcOffset = (t * t) * 20;
+      // Arc: cards bow upward slightly in a fan (scaled up for larger cards)
+      final arcOffset = (t * t) * 28;
       final pos = Vector2(startX + i * cardSpacing, handCenter.y - arcOffset);
       results.add((position: pos, angle: angle));
     }
@@ -73,7 +79,7 @@ class LayoutManager {
     final relative = (absoluteSeatIndex - mySeatIndex + 4) % 4;
     switch (relative) {
       case 0:
-        return handCenter;
+        return mySeat;
       case 1:
         return leftSeat;
       case 2:

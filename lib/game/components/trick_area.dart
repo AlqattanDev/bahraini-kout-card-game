@@ -24,7 +24,7 @@ class TrickAreaComponent extends Component {
   void render(Canvas canvas) {
     // Draw a subtle felt circle in the center
     final paint = Paint()
-      ..color = KoutTheme.table.withOpacity(0.6)
+      ..color = KoutTheme.table.withValues(alpha: 0.6)
       ..style = PaintingStyle.fill;
 
     canvas.drawCircle(
@@ -34,7 +34,7 @@ class TrickAreaComponent extends Component {
     );
 
     final borderPaint = Paint()
-      ..color = KoutTheme.accent.withOpacity(0.3)
+      ..color = KoutTheme.accent.withValues(alpha: 0.3)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5;
     canvas.drawCircle(
@@ -51,24 +51,33 @@ class TrickAreaComponent extends Component {
     }
     _trickCards.clear();
 
-    for (final play in state.currentTrickPlays) {
+    for (int i = 0; i < state.currentTrickPlays.length; i++) {
+      final play = state.currentTrickPlays[i];
       final absoluteSeat = state.playerUids.indexOf(play.playerUid);
       if (absoluteSeat < 0) continue;
 
       final relativeSeat =
           layout.toRelativeSeat(absoluteSeat, mySeatIndex);
-      final pos = layout.trickCardPosition(relativeSeat);
+      final basePos = layout.trickCardPosition(relativeSeat);
+
+      // Nudge later cards toward center so they visually stack/overlap,
+      // making play order obvious at a glance.
+      final center = layout.trickCenter;
+      final nudgeFactor = i * 0.06; // each successive card drifts ~6% inward
+      final pos = basePos + (center - basePos) * nudgeFactor;
 
       // Slight rotation per seat for visual variety
       final angle = _seatAngle(relativeSeat);
 
+      // Later cards get higher priority (z-order) so play order is
+      // visually obvious — the most recent card renders on top.
       final cardComp = CardComponent(
         card: play.card,
         isFaceUp: true,
         isHighlighted: false,
         position: pos,
         angle: angle,
-      );
+      )..priority = i;
 
       _trickCards.add(cardComp);
       add(cardComp);

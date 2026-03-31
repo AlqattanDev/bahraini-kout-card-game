@@ -47,8 +47,8 @@ class AmbientDecorationComponent extends PositionComponent {
     final cy = seatPos.y + 45.0;
 
     const opacity = 0.08;
-    final glassColor = KoutTheme.accent.withOpacity(opacity);
-    final liquidColor = const Color(0xFFCC6600).withOpacity(opacity * 0.8);
+    final glassColor = KoutTheme.accent.withValues(alpha: opacity);
+    final liquidColor = const Color(0xFFCC6600).withValues(alpha: opacity * 0.8);
 
     final paint = Paint()
       ..color = glassColor

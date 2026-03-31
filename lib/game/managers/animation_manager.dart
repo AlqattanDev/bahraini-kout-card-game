@@ -66,19 +66,29 @@ class AnimationManager {
   // ---------------------------------------------------------------------------
 
   /// Animates a card flying from its current position to [target] in the trick
-  /// area.
+  /// area, scaling from its current scale down to [targetScale] (default 1.0).
   ///
   /// Adds a [_CardShadowComponent] during movement: the shadow offset scales
   /// proportionally to the remaining distance, creating a sense of altitude.
-  Future<void> animateCardPlay(CardComponent card, Vector2 target) async {
+  Future<void> animateCardPlay(
+    CardComponent card,
+    Vector2 target, {
+    double targetScale = 1.0,
+  }) async {
     onCardPlay(); // audio hook
 
     final moveCompleter = Completer<void>();
     final scaleCompleter = Completer<void>();
 
+    // Use the visual size (base size * current scale) for the shadow
+    final visualSize = Vector2(
+      card.size.x * card.scale.x,
+      card.size.y * card.scale.y,
+    );
+
     // Attach a shadow component that fades out as the card lands
     final shadow = _CardShadowComponent(
-      cardSize: card.size,
+      cardSize: visualSize,
       totalDistance: card.position.distanceTo(target),
     );
     card.add(shadow);
@@ -94,14 +104,17 @@ class AnimationManager {
       ),
     );
 
+    // Scale animation: slight pop above target, then settle to target scale.
+    // This gives a satisfying "land" feel regardless of source scale.
+    final popScale = targetScale * 1.08;
     card.add(
       ScaleEffect.to(
-        Vector2.all(1.1),
+        Vector2.all(popScale),
         CurvedEffectController(0.15, Curves.easeOut),
         onComplete: () {
           card.add(
             ScaleEffect.to(
-              Vector2.all(1.0),
+              Vector2.all(targetScale),
               CurvedEffectController(0.15, Curves.easeIn),
               onComplete: scaleCompleter.complete,
             ),
@@ -278,7 +291,7 @@ class _CardShadowComponent extends PositionComponent {
       cardSize.y,
     );
     final shadowPaint = Paint()
-      ..color = const Color(0x55000000).withOpacity(0.35 * altitude)
+      ..color = const Color(0x55000000).withValues(alpha: 0.35 * altitude)
       ..maskFilter = MaskFilter.blur(BlurStyle.normal, shadowOffset * 0.6);
     canvas.drawRRect(
       RRect.fromRectAndRadius(shadowRect, const Radius.circular(6)),
@@ -326,7 +339,7 @@ class _GoldParticleComponent extends PositionComponent {
     final radius = _maxRadius * (0.3 + progress * 0.7); // grow slightly
 
     final paint = Paint()
-      ..color = KoutTheme.accent.withOpacity(opacity)
+      ..color = KoutTheme.accent.withValues(alpha: opacity)
       ..style = PaintingStyle.fill;
     canvas.drawCircle(Offset.zero, radius, paint);
   }

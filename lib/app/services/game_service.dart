@@ -1,96 +1,124 @@
 import 'dart:async';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cloud_functions/cloud_functions.dart';
+import 'dart:convert';
+import 'package:web_socket_channel/web_socket_channel.dart';
+import '../config.dart';
 import '../models/client_game_state.dart';
+import '../../offline/game_input_sink.dart';
+import '../../shared/models/card.dart';
+import '../../shared/models/bid.dart';
 
-class GameService {
-  final FirebaseFirestore _firestore;
-  final FirebaseFunctions _functions;
+class GameService implements GameInputSink {
   final String _gameId;
   final String _myUid;
+  final String _token;
 
-  StreamSubscription? _gameDocSub;
-  StreamSubscription? _handSub;
-
+  WebSocketChannel? _channel;
   final _stateController = StreamController<ClientGameState>.broadcast();
+  final _errorController = StreamController<String>.broadcast();
   Stream<ClientGameState> get stateStream => _stateController.stream;
+  Stream<String> get errorStream => _errorController.stream;
 
-  DocumentSnapshot<Map<String, dynamic>>? _lastGameDoc;
-  List<String> _myHandEncoded = [];
+  List<String> _myHand = [];
+  Map<String, dynamic>? _lastPublicState;
+  bool _disposed = false;
+  int _reconnectAttempts = 0;
+  static const int _maxReconnectAttempts = 5;
 
   GameService({
     required String gameId,
     required String myUid,
-    FirebaseFirestore? firestore,
-    FirebaseFunctions? functions,
+    required String token,
   })  : _gameId = gameId,
         _myUid = myUid,
-        _firestore = firestore ?? FirebaseFirestore.instance,
-        _functions = functions ?? FirebaseFunctions.instance;
+        _token = token;
 
   void startListening() {
-    _gameDocSub = _firestore
-        .collection('games')
-        .doc(_gameId)
-        .snapshots()
-        .listen((snapshot) {
-      _lastGameDoc = snapshot;
-      _emitState();
-    });
-
-    _handSub = _firestore
-        .collection('games')
-        .doc(_gameId)
-        .collection('private')
-        .doc(_myUid)
-        .snapshots()
-        .listen((snapshot) {
-      final data = snapshot.data();
-      if (data != null) {
-        _myHandEncoded = List<String>.from(data['cards'] as List<dynamic>);
-      }
-      _emitState();
-    });
+    _connect();
   }
 
-  void _emitState() {
-    if (_lastGameDoc == null || !_lastGameDoc!.exists) return;
-    _stateController.add(
-      ClientGameState.fromMap(
-        _lastGameDoc!.data()!,
-        _myUid,
-        _myHandEncoded,
-      ),
+  void _connect() {
+    if (_disposed) return;
+
+    _channel = WebSocketChannel.connect(
+      Uri.parse('${AppConfig.wsUrl}/ws/game/$_gameId?token=$_token'),
+    );
+
+    _channel!.stream.listen(
+      (message) {
+        _reconnectAttempts = 0; // Reset on successful message
+        final data = jsonDecode(message as String) as Map<String, dynamic>;
+        final event = data['event'] as String;
+
+        switch (event) {
+          case 'gameState':
+            _lastPublicState = data['data'] as Map<String, dynamic>;
+            _stateController.add(
+              ClientGameState.fromMap(_lastPublicState!, _myUid, _myHand),
+            );
+          case 'hand':
+            final handData = data['data'] as Map<String, dynamic>;
+            _myHand = List<String>.from(handData['hand'] as List<dynamic>);
+            // Re-emit state with updated hand
+            if (_lastPublicState != null) {
+              _stateController.add(
+                ClientGameState.fromMap(_lastPublicState!, _myUid, _myHand),
+              );
+            }
+          case 'error':
+            final errorData = data['data'] as Map<String, dynamic>;
+            _errorController.add(errorData['message'] as String);
+        }
+      },
+      onError: (error) {
+        _errorController.add('Connection error: $error');
+        _attemptReconnect();
+      },
+      onDone: () {
+        if (!_disposed) _attemptReconnect();
+      },
     );
   }
 
-  Future<void> sendBid(int bidAmount) async {
-    await _functions
-        .httpsCallable('placeBid')
-        .call({'gameId': _gameId, 'bidAmount': bidAmount});
+  void _attemptReconnect() {
+    if (_disposed || _reconnectAttempts >= _maxReconnectAttempts) return;
+    _reconnectAttempts++;
+    final delay = Duration(seconds: _reconnectAttempts * 2);
+    Future.delayed(delay, () => _connect());
   }
 
-  Future<void> sendPass() async {
-    await _functions
-        .httpsCallable('placeBid')
-        .call({'gameId': _gameId, 'bidAmount': 0});
+  void _sendAction(String action, Map<String, dynamic> data) {
+    _channel?.sink.add(jsonEncode({'action': action, 'data': data}));
   }
 
-  Future<void> sendTrumpSelection(String suit) async {
-    await _functions
-        .httpsCallable('selectTrump')
-        .call({'gameId': _gameId, 'suit': suit});
-  }
+  void sendBid(int bidAmount) =>
+      _sendAction('placeBid', {'bidAmount': bidAmount});
 
-  Future<void> sendPlayCard(String cardCode) async {
-    await _functions
-        .httpsCallable('playCard')
-        .call({'gameId': _gameId, 'card': cardCode});
-  }
+  void sendPass() =>
+      _sendAction('placeBid', {'bidAmount': 0});
+
+  void sendTrumpSelection(String suit) =>
+      _sendAction('selectTrump', {'suit': suit});
+
+  void sendPlayCard(String cardCode) =>
+      _sendAction('playCard', {'card': cardCode});
+
+  // GameInputSink implementation
+  @override
+  void playCard(GameCard card) => sendPlayCard(card.encode());
+
+  @override
+  void placeBid(BidAmount amount) => sendBid(amount.value);
+
+  @override
+  void pass() => sendPass();
+
+  @override
+  void selectTrump(Suit suit) => sendTrumpSelection(suit.name);
 
   void dispose() {
-    _gameDocSub?.cancel();
-    _handSub?.cancel();
+    _disposed = true;
+    _channel?.sink.close();
     _stateController.close();
+    _errorController.close();
   }
 }

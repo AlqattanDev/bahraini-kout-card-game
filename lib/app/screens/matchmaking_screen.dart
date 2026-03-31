@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '../services/auth_service.dart';
 import '../services/matchmaking_service.dart';
 
 class MatchmakingScreen extends StatefulWidget {
@@ -11,48 +10,72 @@ class MatchmakingScreen extends StatefulWidget {
 }
 
 class _MatchmakingScreenState extends State<MatchmakingScreen> {
-  late final MatchmakingService _matchmakingService;
-  StreamSubscription<String>? _matchSub;
+  late MatchmakingService _matchmakingService;
+  StreamSubscription? _matchSub;
+  bool _initialized = false;
 
   @override
-  void initState() {
-    super.initState();
-    final uid = AuthService().currentUser?.uid ?? '';
-    _matchmakingService = MatchmakingService(myUid: uid);
-    _joinAndListen(uid);
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_initialized) return;
+    _initialized = true;
+
+    final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+    final uid = args['uid'] as String;
+    final token = args['token'] as String;
+
+    _matchmakingService = MatchmakingService(token: token, myUid: uid);
+    _startMatchmaking(uid, token);
   }
 
-  Future<void> _joinAndListen(String uid) async {
-    await _matchmakingService.joinQueue(1000);
+  Future<void> _startMatchmaking(String uid, String token) async {
+    // Try immediate match
+    final immediateGameId = await _matchmakingService.joinQueue(1000);
+    if (immediateGameId != null) {
+      _navigateToGame(immediateGameId, uid, token);
+      return;
+    }
+
+    // Listen for async match via WebSocket
     _matchSub = _matchmakingService.listenForMatch().listen((gameId) {
-      if (mounted) {
-        Navigator.pushReplacementNamed(
-          context,
-          '/game',
-          arguments: {'gameId': gameId, 'myUid': uid},
-        );
-      }
+      _navigateToGame(gameId, uid, token);
     });
+  }
+
+  void _navigateToGame(String gameId, String uid, String token) {
+    if (!mounted) return;
+    Navigator.pushReplacementNamed(
+      context,
+      '/game',
+      arguments: {'gameId': gameId, 'myUid': uid, 'token': token},
+    );
   }
 
   @override
   void dispose() {
     _matchSub?.cancel();
-    _matchmakingService.leaveQueue();
+    _matchmakingService.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Matchmaking')),
-      body: const Center(
+      body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text('Searching for opponents...'),
-            SizedBox(height: 24),
-            CircularProgressIndicator(),
+            const CircularProgressIndicator(),
+            const SizedBox(height: 24),
+            const Text('Searching for opponents...'),
+            const SizedBox(height: 24),
+            TextButton(
+              onPressed: () {
+                _matchmakingService.leaveQueue();
+                Navigator.pop(context);
+              },
+              child: const Text('Cancel'),
+            ),
           ],
         ),
       ),

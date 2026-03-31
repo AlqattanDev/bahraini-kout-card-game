@@ -1,48 +1,22 @@
-import 'dart:async';
-import 'package:cloud_firestore/cloud_firestore.dart';
-
+/// Presence is now handled by the WebSocket connection itself.
+/// When connected → present. When WS closes → GameRoom DO starts
+/// a 90s disconnect alarm. No client-side heartbeat needed.
+///
+/// This class is kept for API compatibility but is essentially a no-op.
 class PresenceService {
-  final FirebaseFirestore _firestore;
-  final String _gameId;
-  final String _myUid;
-  Timer? _heartbeatTimer;
-
-  PresenceService({
-    required String gameId,
-    required String myUid,
-    FirebaseFirestore? firestore,
-  })  : _gameId = gameId,
-        _myUid = myUid,
-        _firestore = firestore ?? FirebaseFirestore.instance;
-
-  DocumentReference get _presenceRef => _firestore
-      .collection('games')
-      .doc(_gameId)
-      .collection('presence')
-      .doc(_myUid);
-
   void start() {
-    _writeHeartbeat();
-    _heartbeatTimer =
-        Timer.periodic(const Duration(seconds: 30), (_) => _writeHeartbeat());
-  }
-
-  Future<void> _writeHeartbeat() async {
-    await _presenceRef
-        .set({'uid': _myUid, 'lastSeen': FieldValue.serverTimestamp()});
+    // No-op: WebSocket connection IS the presence signal
   }
 
   void stop() {
-    _heartbeatTimer?.cancel();
-    _heartbeatTimer = null;
+    // No-op
   }
 
   Future<void> disconnect() async {
-    stop();
-    await _presenceRef.delete();
+    // No-op: closing the WebSocket triggers server-side disconnect handling
   }
 
   void dispose() {
-    stop();
+    // No-op
   }
 }

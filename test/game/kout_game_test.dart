@@ -1,12 +1,31 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:bahraini_kout/app/models/client_game_state.dart';
 import 'package:bahraini_kout/game/kout_game.dart';
 import 'package:bahraini_kout/shared/models/game_state.dart';
 import 'package:bahraini_kout/shared/models/bid.dart';
+import 'package:bahraini_kout/shared/models/card.dart';
 import 'package:bahraini_kout/shared/models/enums.dart';
+import 'package:bahraini_kout/offline/game_input_sink.dart';
+
+class _StubInputSink implements GameInputSink {
+  GameCard? lastPlayedCard;
+  BidAmount? lastBid;
+  bool passCalled = false;
+  Suit? lastTrumpSuit;
+
+  @override
+  void playCard(GameCard card) => lastPlayedCard = card;
+  @override
+  void placeBid(BidAmount amount) => lastBid = amount;
+  @override
+  void pass() => passCalled = true;
+  @override
+  void selectTrump(Suit suit) => lastTrumpSuit = suit;
+}
 
 /// Builds a minimal [ClientGameState] suitable for testing.
 ClientGameState _buildState({
@@ -44,12 +63,38 @@ void _registerOverlays(KoutGame game) {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  // Mock platform channels for SoundManager (SharedPreferences + audioplayers)
+  setUp(() {
+    final messenger =
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+    messenger.setMockMethodCallHandler(
+      const MethodChannel('plugins.flutter.io/shared_preferences'),
+      (MethodCall methodCall) async {
+        if (methodCall.method == 'getAll') {
+          return <String, dynamic>{};
+        }
+        return null;
+      },
+    );
+    messenger.setMockMethodCallHandler(
+      const MethodChannel('xyz.luan/audioplayers.global'),
+      (MethodCall methodCall) async => null,
+    );
+    messenger.setMockMethodCallHandler(
+      const MethodChannel('xyz.luan/audioplayers'),
+      (MethodCall methodCall) async {
+        if (methodCall.method == 'create') return null;
+        return null;
+      },
+    );
+  });
+
   group('KoutGame', () {
     test('initializes without error on empty state stream', () async {
       final controller = StreamController<ClientGameState>();
       final game = KoutGame(
         stateStream: controller.stream,
-        onAction: (_, __) {},
+        inputSink: _StubInputSink(),
       );
 
       // onLoad must complete without throwing
@@ -62,7 +107,7 @@ void main() {
       final controller = StreamController<ClientGameState>();
       final game = KoutGame(
         stateStream: controller.stream,
-        onAction: (_, __) {},
+        inputSink: _StubInputSink(),
       );
 
       await game.onLoad();
@@ -83,7 +128,7 @@ void main() {
       final controller = StreamController<ClientGameState>();
       final game = KoutGame(
         stateStream: controller.stream,
-        onAction: (_, __) {},
+        inputSink: _StubInputSink(),
       );
 
       await game.onLoad();
@@ -108,7 +153,7 @@ void main() {
       final controller = StreamController<ClientGameState>();
       final game = KoutGame(
         stateStream: controller.stream,
-        onAction: (_, __) {},
+        inputSink: _StubInputSink(),
       );
 
       await game.onLoad();
@@ -131,7 +176,7 @@ void main() {
       const myUid = 'uid-0';
       final game = KoutGame(
         stateStream: controller.stream,
-        onAction: (_, __) {},
+        inputSink: _StubInputSink(),
       );
 
       await game.onLoad();
@@ -155,7 +200,7 @@ void main() {
       final controller = StreamController<ClientGameState>();
       final game = KoutGame(
         stateStream: controller.stream,
-        onAction: (_, __) {},
+        inputSink: _StubInputSink(),
       );
 
       await game.onLoad();
@@ -179,7 +224,7 @@ void main() {
       final controller = StreamController<ClientGameState>();
       final game = KoutGame(
         stateStream: controller.stream,
-        onAction: (_, __) {},
+        inputSink: _StubInputSink(),
       );
 
       await game.onLoad();
@@ -198,7 +243,7 @@ void main() {
       final controller = StreamController<ClientGameState>();
       final game = KoutGame(
         stateStream: controller.stream,
-        onAction: (_, __) {},
+        inputSink: _StubInputSink(),
       );
 
       await game.onLoad();
@@ -217,7 +262,7 @@ void main() {
       final controller = StreamController<ClientGameState>();
       final game = KoutGame(
         stateStream: controller.stream,
-        onAction: (_, __) {},
+        inputSink: _StubInputSink(),
       );
 
       await game.onLoad();
@@ -236,25 +281,21 @@ void main() {
       await controller.close();
     });
 
-    test('onAction callback is invoked correctly', () async {
+    test('inputSink receives card plays correctly', () async {
       final controller = StreamController<ClientGameState>();
-      String? capturedAction;
-      Map<String, dynamic>? capturedData;
+      final sink = _StubInputSink();
 
       final game = KoutGame(
         stateStream: controller.stream,
-        onAction: (action, data) {
-          capturedAction = action;
-          capturedData = data;
-        },
+        inputSink: sink,
       );
 
       await game.onLoad();
 
-      game.onAction('playCard', {'card': 'SA'});
+      final card = GameCard(suit: Suit.spades, rank: Rank.ace);
+      game.inputSink.playCard(card);
 
-      expect(capturedAction, 'playCard');
-      expect(capturedData, {'card': 'SA'});
+      expect(sink.lastPlayedCard, card);
 
       await controller.close();
     });
@@ -263,7 +304,7 @@ void main() {
       final controller = StreamController<ClientGameState>();
       final game = KoutGame(
         stateStream: controller.stream,
-        onAction: (_, __) {},
+        inputSink: _StubInputSink(),
       );
 
       await game.onLoad();

@@ -18,7 +18,7 @@ void main() {
       expect(BidAmount.bab.failurePoints, 10);
       expect(BidAmount.six.failurePoints, 12);
       expect(BidAmount.seven.failurePoints, 14);
-      expect(BidAmount.kout.failurePoints, 31);
+      expect(BidAmount.kout.failurePoints, 16);
     });
   });
 }

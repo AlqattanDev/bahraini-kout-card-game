@@ -13,7 +13,17 @@ class HandComponent extends Component {
   final LayoutManager layout;
   final void Function(String cardCode) onCardTap;
 
+  /// Scale factor applied to hand cards for readability.
+  static const double handCardScale = 1.4;
+
   final List<CardComponent> _cards = [];
+
+  /// Maps encoded card codes to their screen positions in the hand.
+  /// [cardPositions] is the current frame, [previousCardPositions] preserves
+  /// the last frame so that a just-played card's origin can still be looked up
+  /// after the hand is rebuilt without it.
+  final Map<String, Vector2> cardPositions = {};
+  final Map<String, Vector2> previousCardPositions = {};
 
   HandComponent({required this.layout, required this.onCardTap});
 
@@ -25,29 +35,88 @@ class HandComponent extends Component {
     }
     _cards.clear();
 
-    final hand = state.myHand;
+    final hand = _sortHand(state.myHand, state.trumpSuit);
     if (hand.isEmpty) return;
 
     final playable = _playableCards(state);
     final positions = layout.handCardPositions(hand.length);
+
+    // Snapshot previous positions before rebuilding so a just-played card's
+    // origin is still available for the fly-to-trick animation.
+    previousCardPositions
+      ..clear()
+      ..addAll(cardPositions);
+    cardPositions.clear();
+
+    final hasPlayableCards = playable.isNotEmpty;
+    final isWaitingForOthers =
+        state.phase.name == 'playing' && !state.isMyTurn;
 
     for (int i = 0; i < hand.length; i++) {
       final gameCard = hand[i];
       final posData = positions[i];
       final highlight = playable.contains(gameCard);
 
+      cardPositions[gameCard.encode()] = posData.position.clone();
+
       final cardComp = CardComponent(
         card: gameCard,
         isFaceUp: true,
         isHighlighted: highlight,
+        isDimmed: isWaitingForOthers || (hasPlayableCards && !highlight),
+        restScale: handCardScale,
         position: posData.position,
         angle: posData.angle,
         onTap: (c) => onCardTap(c.encode()),
-      );
+      )..scale = Vector2.all(handCardScale);
 
       _cards.add(cardComp);
       add(cardComp);
     }
+  }
+
+  /// Sorts the hand with alternating black-red suit colors.
+  /// Each suit group sorted by rank descending (Ace high). Joker goes last.
+  List<GameCard> _sortHand(List<GameCard> hand, Suit? trumpSuit) {
+    // Separate joker(s) from suited cards
+    final jokers = hand.where((c) => c.isJoker).toList();
+    final suited = hand.where((c) => !c.isJoker).toList();
+
+    // Find which suits are present
+    final presentSuits = suited.map((c) => c.suit!).toSet();
+
+    // Build alternating black-red order from the suits actually in hand
+    const blackSuits = [Suit.clubs, Suit.spades];
+    const redSuits = [Suit.diamonds, Suit.hearts];
+    final blacks = blackSuits.where(presentSuits.contains).toList();
+    final reds = redSuits.where(presentSuits.contains).toList();
+
+    // Interleave: start with the larger color group to maximize alternation.
+    // Equal counts → start with black (preferred base order).
+    final suitOrder = <Suit>[];
+    final List<Suit> first;
+    final List<Suit> second;
+    if (reds.length > blacks.length) {
+      first = reds;
+      second = blacks;
+    } else {
+      first = blacks;
+      second = reds;
+    }
+    final maxLen = first.length > second.length ? first.length : second.length;
+    for (int i = 0; i < maxLen; i++) {
+      if (i < first.length) suitOrder.add(first[i]);
+      if (i < second.length) suitOrder.add(second[i]);
+    }
+
+    // Sort suited cards by the interleaved suit order, then rank descending
+    suited.sort((a, b) {
+      final suitCmp = suitOrder.indexOf(a.suit!).compareTo(suitOrder.indexOf(b.suit!));
+      if (suitCmp != 0) return suitCmp;
+      return b.rank!.value.compareTo(a.rank!.value);
+    });
+
+    return [...suited, ...jokers];
   }
 
   /// Determines which cards are playable in the current state.
@@ -66,7 +135,11 @@ class HandComponent extends Component {
 
     final followSuitCards =
         state.myHand.where((c) => c.suit == ledSuit).toSet();
-    if (followSuitCards.isNotEmpty) return followSuitCards;
+    if (followSuitCards.isNotEmpty) {
+      // Joker is always playable
+      final jokers = state.myHand.where((c) => c.isJoker).toSet();
+      return followSuitCards.union(jokers);
+    }
 
     // Can't follow suit — any card is playable
     return state.myHand.toSet();

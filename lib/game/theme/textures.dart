@@ -9,9 +9,9 @@ class TextureGenerator {
         center: Alignment.center,
         radius: 1.2,
         colors: [
-          Color(0xFF4A2A1A),
-          Color(0xFF3B2314),
-          Color(0xFF2A1808),
+          Color(0xFF3A4F4D),
+          Color(0xFF2F403E),
+          Color(0xFF1F2D2B),
         ],
         stops: [0.0, 0.5, 1.0],
       ).createShader(bounds);

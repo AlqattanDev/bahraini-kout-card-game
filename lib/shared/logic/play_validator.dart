@@ -15,10 +15,10 @@ class PlayValidator {
     required bool isLeadPlay,
   }) {
     if (!hand.contains(card)) return const PlayValidationResult.invalid('card-not-in-hand');
-    if (isLeadPlay && card.isJoker) return const PlayValidationResult.invalid('cannot-lead-joker');
+    // Joker CAN be led — but triggers immediate round loss (handled by game controller).
     if (!isLeadPlay && ledSuit != null) {
       final hasLedSuit = hand.any((c) => !c.isJoker && c.suit == ledSuit);
-      if (hasLedSuit && (card.isJoker || card.suit != ledSuit)) {
+      if (hasLedSuit && !card.isJoker && card.suit != ledSuit) {
         return const PlayValidationResult.invalid('must-follow-suit');
       }
     }
@@ -27,5 +27,12 @@ class PlayValidator {
 
   static bool detectPoisonJoker(List<GameCard> hand) {
     return hand.length == 1 && hand.first.isJoker;
+  }
+
+  /// Returns true when a Joker is played as the lead card of a trick.
+  /// This is a legal play but triggers an immediate round loss for the
+  /// leading player's team (+10 to opponent, same as poison joker).
+  static bool detectJokerLead(GameCard card, bool isLeadPlay) {
+    return isLeadPlay && card.isJoker;
   }
 }

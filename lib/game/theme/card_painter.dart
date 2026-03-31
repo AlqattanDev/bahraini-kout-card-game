@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:ui';
 import '../theme/geometric_patterns.dart';
 import '../theme/kout_theme.dart';
@@ -76,11 +77,11 @@ class CardPainter {
     final facePaint = Paint()..color = KoutTheme.cardFace;
     canvas.drawRRect(rrect, facePaint);
 
-    // Outer border
+    // Outer border — theme accent color
     final borderPaint = Paint()
       ..color = KoutTheme.cardBorder
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
+      ..strokeWidth = 2.5;
     canvas.drawRRect(rrect, borderPaint);
 
     // Top-left: rank
@@ -93,7 +94,7 @@ class CardPainter {
     // Bottom-right (rotated 180°)
     canvas.save();
     canvas.translate(KoutTheme.cardWidth, KoutTheme.cardHeight);
-    canvas.rotate(3.14159);
+    canvas.rotate(math.pi);
     _drawCardText(canvas, rankStr, suitColor, const Offset(8, 8), 11,
         align: TextAlign.left, width: KoutTheme.cardWidth);
     _drawCardText(canvas, suitSymbol, suitColor, const Offset(8, 20), 10,

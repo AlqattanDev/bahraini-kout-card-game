@@ -6,8 +6,8 @@ import 'dart:ui';
 /// Draws a repeating 8-point star tessellation using rotational symmetry.
 /// Colors: burgundy primary with gold accent at low opacity.
 class GeometricPatterns {
-  static const Color _burgundy = Color(0xFF5C1A1B);
-  static const Color _gold = Color(0xFFC9A84C);
+  static const Color _burgundy = Color(0xFF425944);
+  static const Color _gold = Color(0xFF738C5A);
 
   /// Draws a repeating 8-point star pattern tiled across [bounds].
   ///
@@ -75,13 +75,13 @@ class GeometricPatterns {
 
     // Fill with burgundy
     final fillPaint = Paint()
-      ..color = _burgundy.withOpacity(opacity * 0.6)
+      ..color = _burgundy.withValues(alpha: opacity * 0.6)
       ..style = PaintingStyle.fill;
     canvas.drawPath(path, fillPaint);
 
     // Stroke with gold
     final strokePaint = Paint()
-      ..color = _gold.withOpacity(opacity * 0.5)
+      ..color = _gold.withValues(alpha: opacity * 0.5)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 0.8;
     canvas.drawPath(path, strokePaint);

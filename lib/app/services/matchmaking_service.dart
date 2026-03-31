@@ -1,37 +1,78 @@
 import 'dart:async';
-import 'package:cloud_functions/cloud_functions.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:web_socket_channel/web_socket_channel.dart';
+import '../config.dart';
 
 class MatchmakingService {
-  final FirebaseFunctions _functions;
-  final FirebaseFirestore _firestore;
-  final String _myUid;
+  final String _token;
+  WebSocketChannel? _lobbyChannel;
 
-  MatchmakingService({
-    required String myUid,
-    FirebaseFunctions? functions,
-    FirebaseFirestore? firestore,
-  })  : _myUid = myUid,
-        _functions = functions ?? FirebaseFunctions.instance,
-        _firestore = firestore ?? FirebaseFirestore.instance;
+  MatchmakingService({required String token, required String myUid})
+      : _token = token;
 
-  Future<void> joinQueue(int eloRating) async {
-    await _functions.httpsCallable('joinQueue').call({'eloRating': eloRating});
-  }
+  Future<String?> joinQueue(int eloRating) async {
+    final response = await http.post(
+      Uri.parse('${AppConfig.workerUrl}/api/matchmaking/join'),
+      headers: {
+        'Authorization': 'Bearer $_token',
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({'eloRating': eloRating}),
+    );
 
-  Future<void> leaveQueue() async {
-    await _functions.httpsCallable('leaveQueue').call();
+    if (response.statusCode != 200) {
+      throw Exception('Failed to join queue: ${response.statusCode}');
+    }
+
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    if (body['status'] == 'matched') {
+      return body['gameId'] as String;
+    }
+
+    return null; // Queued, wait for WS notification
   }
 
   Stream<String> listenForMatch() {
-    return _firestore
-        .collection('games')
-        .where('players', arrayContains: _myUid)
-        .where('phase', isEqualTo: 'WAITING')
-        .orderBy('metadata.createdAt', descending: true)
-        .limit(1)
-        .snapshots()
-        .where((snapshot) => snapshot.docs.isNotEmpty)
-        .map((snapshot) => snapshot.docs.first.id);
+    final controller = StreamController<String>();
+
+    _lobbyChannel = WebSocketChannel.connect(
+      Uri.parse('${AppConfig.wsUrl}/ws/matchmaking?token=$_token'),
+    );
+
+    _lobbyChannel!.stream.listen(
+      (message) {
+        final data = jsonDecode(message as String) as Map<String, dynamic>;
+        if (data['event'] == 'matched') {
+          final gameId = (data['data'] as Map<String, dynamic>)['gameId'] as String;
+          controller.add(gameId);
+          controller.close();
+        }
+      },
+      onError: (error) {
+        controller.addError(error as Object);
+        controller.close();
+      },
+      onDone: () {
+        if (!controller.isClosed) controller.close();
+      },
+    );
+
+    return controller.stream;
+  }
+
+  Future<void> leaveQueue() async {
+    _lobbyChannel?.sink.close();
+    _lobbyChannel = null;
+
+    await http.post(
+      Uri.parse('${AppConfig.workerUrl}/api/matchmaking/leave'),
+      headers: {'Authorization': 'Bearer $_token'},
+    );
+  }
+
+  void dispose() {
+    _lobbyChannel?.sink.close();
+    _lobbyChannel = null;
   }
 }

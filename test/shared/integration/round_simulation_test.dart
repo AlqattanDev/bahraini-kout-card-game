@@ -155,7 +155,6 @@ void main() {
     });
 
     test('Kout success gives instant win', () {
-      var scores = {Team.a: 5, Team.b: 10};
       const bid = BidAmount.kout;
       const biddingTeam = Team.a;
       const tricksWon = {Team.a: 8, Team.b: 0};
@@ -169,19 +168,15 @@ void main() {
       expect(roundResult.winningTeam, equals(Team.a));
       expect(roundResult.pointsAwarded, equals(31));
 
-      scores = Scorer.applyScore(
-        scores: scores,
-        winningTeam: roundResult.winningTeam,
-        points: roundResult.pointsAwarded,
-      );
+      // Kout is instant win — bypasses tug-of-war math
+      final scores = Scorer.applyKout(winningTeam: roundResult.winningTeam);
 
-      // Team.a: 5 + 31 = 36, which is >= 31 → game over
+      expect(scores[Team.a], 31);
       final winner = Scorer.checkGameOver(scores);
       expect(winner, equals(Team.a));
     });
 
-    test('Kout failure gives instant loss', () {
-      var scores = {Team.a: 20, Team.b: 5};
+    test('Kout failure gives 16 penalty to opponent', () {
       const bid = BidAmount.kout;
       const biddingTeam = Team.a;
       // Team A only wins 7 tricks, needs 8 for kout → failure
@@ -193,39 +188,53 @@ void main() {
         tricksWon: tricksWon,
       );
 
-      // Failure: opponent (Team.b) wins the points
+      // Failure: opponent (Team.b) wins 16 points (not instant loss)
       expect(roundResult.winningTeam, equals(Team.b));
-      expect(roundResult.pointsAwarded, equals(31));
+      expect(roundResult.pointsAwarded, equals(16));
 
-      scores = Scorer.applyScore(
-        scores: scores,
+      // Regular tug-of-war scoring applies
+      final scores = Scorer.applyScore(
+        scores: {Team.a: 0, Team.b: 0},
         winningTeam: roundResult.winningTeam,
         points: roundResult.pointsAwarded,
       );
 
-      // Team.b: 5 + 31 = 36, which is >= 31 → game over
+      expect(scores[Team.b], 16);
       final winner = Scorer.checkGameOver(scores);
-      expect(winner, equals(Team.b));
+      expect(winner, isNull); // 16 < 31, game continues
     });
 
-    test('Malzoom flow: all 4 pass, reshuffleCount=0 → reshuffle', () {
-      final passedPlayers = [0, 1, 2, 3];
+    test('Forced bid: last player cannot pass when no bid exists', () {
+      final passedPlayers = [0, 1, 2];
 
-      final outcome = BidValidator.checkMalzoom(
-        passedPlayers: passedPlayers,
-        reshuffleCount: 0,
+      // Player 3 is the last remaining — must bid
+      expect(
+        BidValidator.isLastBidder(
+          passedPlayers: passedPlayers,
+          playerIndex: 3,
+        ),
+        isTrue,
       );
-      expect(outcome, equals(MalzoomOutcome.reshuffle));
+
+      final result = BidValidator.validatePass(
+        passedPlayers: passedPlayers,
+        playerIndex: 3,
+        currentHighest: null,
+      );
+      expect(result.isValid, isFalse);
+      expect(result.error, equals('must-bid'));
     });
 
-    test('Malzoom flow: all 4 pass, reshuffleCount=1 → forcedBid', () {
-      final passedPlayers = [0, 1, 2, 3];
+    test('Forced bid: last player can pass when a bid already exists', () {
+      final passedPlayers = [0, 1, 2];
 
-      final outcome = BidValidator.checkMalzoom(
+      // Player 3 is last remaining but someone already bid
+      final result = BidValidator.validatePass(
         passedPlayers: passedPlayers,
-        reshuffleCount: 1,
+        playerIndex: 3,
+        currentHighest: BidAmount.bab,
       );
-      expect(outcome, equals(MalzoomOutcome.forcedBid));
+      expect(result.isValid, isTrue);
     });
   });
 }
