@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:bahraini_kout/game/components/card_component.dart';
-import 'package:bahraini_kout/shared/models/card.dart';
-import 'package:bahraini_kout/shared/models/enums.dart';
+import 'package:koutbh/game/components/card_component.dart';
+import 'package:koutbh/shared/models/card.dart';
+import 'package:koutbh/shared/models/enums.dart';
 
 void main() {
   test('CardComponent has showShadow property defaulting to true', () {

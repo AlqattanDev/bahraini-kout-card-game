@@ -1,14 +1,14 @@
 import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:bahraini_kout/app/models/client_game_state.dart';
-import 'package:bahraini_kout/app/models/seat_config.dart';
-import 'package:bahraini_kout/shared/models/game_state.dart';
-import 'package:bahraini_kout/offline/local_game_controller.dart';
-import 'package:bahraini_kout/offline/bot_player_controller.dart';
-import 'package:bahraini_kout/offline/player_controller.dart';
-import 'package:bahraini_kout/offline/bot/bid_strategy.dart';
-import 'package:bahraini_kout/offline/bot/trump_strategy.dart';
-import 'package:bahraini_kout/offline/bot/play_strategy.dart';
+import 'package:koutbh/app/models/client_game_state.dart';
+import 'package:koutbh/app/models/seat_config.dart';
+import 'package:koutbh/shared/models/game_state.dart';
+import 'package:koutbh/offline/local_game_controller.dart';
+import 'package:koutbh/offline/bot_player_controller.dart';
+import 'package:koutbh/offline/player_controller.dart';
+import 'package:koutbh/offline/bot/bid_strategy.dart';
+import 'package:koutbh/offline/bot/trump_strategy.dart';
+import 'package:koutbh/offline/bot/play_strategy.dart';
 
 /// A PlayerController that auto-responds with bot logic but can be used
 /// in seat 0 (the "human" seat) to test the full game loop and state stream

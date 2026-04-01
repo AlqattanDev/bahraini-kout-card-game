@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:bahraini_kout/shared/models/card.dart';
-import 'package:bahraini_kout/shared/models/trick.dart';
-import 'package:bahraini_kout/shared/logic/trick_resolver.dart';
+import 'package:koutbh/shared/models/card.dart';
+import 'package:koutbh/shared/models/trick.dart';
+import 'package:koutbh/shared/logic/trick_resolver.dart';
 
 void main() {
   group('TrickResolver', () {

@@ -1,5 +1,5 @@
-import 'package:bahraini_kout/shared/models/card.dart';
-import 'package:bahraini_kout/shared/models/bid.dart';
+import 'package:koutbh/shared/models/card.dart';
+import 'package:koutbh/shared/models/bid.dart';
 
 abstract class GameInputSink {
   void playCard(GameCard card);

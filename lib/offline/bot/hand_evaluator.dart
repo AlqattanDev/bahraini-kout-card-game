@@ -1,4 +1,4 @@
-import 'package:bahraini_kout/shared/models/card.dart';
+import 'package:koutbh/shared/models/card.dart';
 
 class HandStrength {
   final double expectedWinners;

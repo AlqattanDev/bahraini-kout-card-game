@@ -1,10 +1,10 @@
 // ignore_for_file: avoid_print
 import 'dart:io';
-import 'package:bahraini_kout/app/models/seat_config.dart';
-import 'package:bahraini_kout/shared/models/game_state.dart';
-import 'package:bahraini_kout/offline/local_game_controller.dart';
-import 'package:bahraini_kout/offline/bot_player_controller.dart';
-import 'package:bahraini_kout/offline/player_controller.dart';
+import 'package:koutbh/app/models/seat_config.dart';
+import 'package:koutbh/shared/models/game_state.dart';
+import 'package:koutbh/offline/local_game_controller.dart';
+import 'package:koutbh/offline/bot_player_controller.dart';
+import 'package:koutbh/offline/player_controller.dart';
 
 /// Headless bot-vs-bot game simulator.
 ///

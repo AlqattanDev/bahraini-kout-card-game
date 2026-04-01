@@ -1,4 +1,4 @@
-import 'package:bahraini_kout/shared/models/card.dart';
+import 'package:koutbh/shared/models/card.dart';
 
 class TrumpStrategy {
   static Suit selectTrump(List<GameCard> hand) {

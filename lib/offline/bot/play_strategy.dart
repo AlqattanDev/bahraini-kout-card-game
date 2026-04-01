@@ -1,5 +1,5 @@
-import 'package:bahraini_kout/shared/models/card.dart';
-import 'package:bahraini_kout/offline/player_controller.dart';
+import 'package:koutbh/shared/models/card.dart';
+import 'package:koutbh/offline/player_controller.dart';
 
 class PlayStrategy {
   static PlayCardAction selectCard({

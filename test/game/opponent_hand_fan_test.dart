@@ -1,6 +1,6 @@
 import 'package:flame/components.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:bahraini_kout/game/components/opponent_hand_fan.dart';
+import 'package:koutbh/game/components/opponent_hand_fan.dart';
 
 void main() {
   test('OpponentHandFan stores initial card count', () {

@@ -1,4 +1,4 @@
-import 'package:bahraini_kout/shared/models/enums.dart';
+import 'package:koutbh/shared/models/enums.dart';
 
 const Map<Suit, String> suitInitial = {
   Suit.spades: 'S',

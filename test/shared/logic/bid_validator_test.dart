@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:bahraini_kout/shared/models/bid.dart';
-import 'package:bahraini_kout/shared/logic/bid_validator.dart';
+import 'package:koutbh/shared/models/bid.dart';
+import 'package:koutbh/shared/logic/bid_validator.dart';
 
 void main() {
   group('BidValidator', () {

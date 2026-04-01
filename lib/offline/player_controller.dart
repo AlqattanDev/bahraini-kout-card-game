@@ -1,6 +1,6 @@
-import 'package:bahraini_kout/shared/models/card.dart';
-import 'package:bahraini_kout/shared/models/bid.dart';
-import 'package:bahraini_kout/app/models/client_game_state.dart';
+import 'package:koutbh/shared/models/card.dart';
+import 'package:koutbh/shared/models/bid.dart';
+import 'package:koutbh/app/models/client_game_state.dart';
 
 sealed class GameAction {}
 

@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:bahraini_kout/shared/models/card.dart';
-import 'package:bahraini_kout/shared/constants.dart';
+import 'package:koutbh/shared/models/card.dart';
+import 'package:koutbh/shared/constants.dart';
 
 void main() {
   group('Suit', () {

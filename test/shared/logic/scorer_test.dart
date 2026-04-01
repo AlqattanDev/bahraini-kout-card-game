@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:bahraini_kout/shared/logic/scorer.dart';
-import 'package:bahraini_kout/shared/models/bid.dart';
-import 'package:bahraini_kout/shared/models/game_state.dart';
+import 'package:koutbh/shared/logic/scorer.dart';
+import 'package:koutbh/shared/models/bid.dart';
+import 'package:koutbh/shared/models/game_state.dart';
 
 void main() {
   group('Scorer.calculateRoundResult', () {

@@ -1,4 +1,4 @@
-import 'package:bahraini_kout/app/models/seat_config.dart';
+import 'package:koutbh/app/models/seat_config.dart';
 
 sealed class GameMode {}
 

@@ -1,21 +1,21 @@
 import 'dart:async';
 import 'dart:math';
 
-import 'package:bahraini_kout/app/models/client_game_state.dart';
-import 'package:bahraini_kout/app/models/seat_config.dart';
-import 'package:bahraini_kout/shared/models/card.dart';
-import 'package:bahraini_kout/shared/models/bid.dart';
-import 'package:bahraini_kout/shared/models/deck.dart';
-import 'package:bahraini_kout/shared/models/trick.dart';
-import 'package:bahraini_kout/shared/models/game_state.dart';
-import 'package:bahraini_kout/shared/logic/bid_validator.dart';
-import 'package:bahraini_kout/shared/logic/play_validator.dart';
-import 'package:bahraini_kout/shared/logic/trick_resolver.dart';
-import 'package:bahraini_kout/shared/logic/scorer.dart';
-import 'package:bahraini_kout/shared/constants/timing.dart';
-import 'package:bahraini_kout/offline/full_game_state.dart';
-import 'package:bahraini_kout/offline/player_controller.dart';
-import 'package:bahraini_kout/offline/human_player_controller.dart';
+import 'package:koutbh/app/models/client_game_state.dart';
+import 'package:koutbh/app/models/seat_config.dart';
+import 'package:koutbh/shared/models/card.dart';
+import 'package:koutbh/shared/models/bid.dart';
+import 'package:koutbh/shared/models/deck.dart';
+import 'package:koutbh/shared/models/trick.dart';
+import 'package:koutbh/shared/models/game_state.dart';
+import 'package:koutbh/shared/logic/bid_validator.dart';
+import 'package:koutbh/shared/logic/play_validator.dart';
+import 'package:koutbh/shared/logic/trick_resolver.dart';
+import 'package:koutbh/shared/logic/scorer.dart';
+import 'package:koutbh/shared/constants/timing.dart';
+import 'package:koutbh/offline/full_game_state.dart';
+import 'package:koutbh/offline/player_controller.dart';
+import 'package:koutbh/offline/human_player_controller.dart';
 
 class LocalGameController {
   final List<SeatConfig> seats;

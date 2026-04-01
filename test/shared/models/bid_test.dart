@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:bahraini_kout/shared/models/bid.dart';
+import 'package:koutbh/shared/models/bid.dart';
 
 void main() {
   group('BidAmount', () {

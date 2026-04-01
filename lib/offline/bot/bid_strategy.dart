@@ -1,6 +1,6 @@
-import 'package:bahraini_kout/shared/models/card.dart';
-import 'package:bahraini_kout/shared/models/bid.dart';
-import 'package:bahraini_kout/offline/player_controller.dart';
+import 'package:koutbh/shared/models/card.dart';
+import 'package:koutbh/shared/models/bid.dart';
+import 'package:koutbh/offline/player_controller.dart';
 import 'hand_evaluator.dart';
 
 class BidStrategy {

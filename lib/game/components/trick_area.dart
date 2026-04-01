@@ -17,6 +17,8 @@ class TrickAreaComponent extends Component {
   final Random _random = Random();
 
   final List<CardComponent> _trickCards = [];
+  /// Cached jitter angles keyed by playerUid so cards don't wiggle on each update.
+  final Map<String, double> _cachedJitter = {};
 
   TrickAreaComponent({
     required this.layout,
@@ -54,6 +56,10 @@ class TrickAreaComponent extends Component {
     }
     _trickCards.clear();
 
+    // Remove cached jitter for players no longer in the trick
+    final activeUids = state.currentTrickPlays.map((p) => p.playerUid).toSet();
+    _cachedJitter.removeWhere((uid, _) => !activeUids.contains(uid));
+
     for (int i = 0; i < state.currentTrickPlays.length; i++) {
       final play = state.currentTrickPlays[i];
       final absoluteSeat = state.playerUids.indexOf(play.playerUid);
@@ -69,9 +75,13 @@ class TrickAreaComponent extends Component {
       final nudgeFactor = i * 0.06; // each successive card drifts ~6% inward
       final pos = basePos + (center - basePos) * nudgeFactor;
 
-      // Base angle per seat + random jitter ±0.08 rad (≈ ±4.6°) for natural toss feel
-      final angle = _seatBaseAngle(relativeSeat) +
-          (_random.nextDouble() - 0.5) * 0.16;
+      // Base angle per seat + random jitter ±0.08 rad (≈ ±4.6°) for natural toss feel.
+      // Jitter is cached per player so cards don't wiggle when new cards arrive.
+      final jitter = _cachedJitter.putIfAbsent(
+        play.playerUid,
+        () => (_random.nextDouble() - 0.5) * 0.16,
+      );
+      final angle = _seatBaseAngle(relativeSeat) + jitter;
 
       // Later cards get higher priority (z-order) so play order is
       // visually obvious — the most recent card renders on top.

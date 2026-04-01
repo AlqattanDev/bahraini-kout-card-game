@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:bahraini_kout/shared/models/card.dart';
-import 'package:bahraini_kout/offline/bot/trump_strategy.dart';
+import 'package:koutbh/shared/models/card.dart';
+import 'package:koutbh/offline/bot/trump_strategy.dart';
 
 void main() {
   group('TrumpStrategy', () {

@@ -245,7 +245,7 @@ class CardPainter {
 
     double dx = offset.dx;
     if (align == TextAlign.center) {
-      dx = offset.dx - paragraph.maxIntrinsicWidth / 2;
+      dx = offset.dx - width / 2;
     }
     canvas.drawParagraph(paragraph, Offset(dx, offset.dy));
   }

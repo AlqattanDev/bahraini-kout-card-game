@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:bahraini_kout/shared/models/card.dart';
-import 'package:bahraini_kout/offline/player_controller.dart';
-import 'package:bahraini_kout/offline/bot/play_strategy.dart';
+import 'package:koutbh/shared/models/card.dart';
+import 'package:koutbh/offline/player_controller.dart';
+import 'package:koutbh/offline/bot/play_strategy.dart';
 
 void main() {
   group('PlayStrategy', () {

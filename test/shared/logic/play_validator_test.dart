@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:bahraini_kout/shared/models/card.dart';
-import 'package:bahraini_kout/shared/logic/play_validator.dart';
+import 'package:koutbh/shared/models/card.dart';
+import 'package:koutbh/shared/logic/play_validator.dart';
 
 void main() {
   group('PlayValidator.validatePlay', () {

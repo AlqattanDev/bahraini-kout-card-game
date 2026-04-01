@@ -1,4 +1,4 @@
-import 'package:bahraini_kout/app/models/client_game_state.dart';
+import 'package:koutbh/app/models/client_game_state.dart';
 import 'player_controller.dart';
 import 'bot/bid_strategy.dart';
 import 'bot/trump_strategy.dart';

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:bahraini_kout/game/theme/kout_theme.dart';
+import 'package:koutbh/game/theme/kout_theme.dart';
 
 void main() {
   group('card presentation constants', () {

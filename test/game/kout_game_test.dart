@@ -3,13 +3,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:bahraini_kout/app/models/client_game_state.dart';
-import 'package:bahraini_kout/game/kout_game.dart';
-import 'package:bahraini_kout/shared/models/game_state.dart';
-import 'package:bahraini_kout/shared/models/bid.dart';
-import 'package:bahraini_kout/shared/models/card.dart';
-import 'package:bahraini_kout/shared/models/enums.dart';
-import 'package:bahraini_kout/offline/game_input_sink.dart';
+import 'package:koutbh/app/models/client_game_state.dart';
+import 'package:koutbh/game/kout_game.dart';
+import 'package:koutbh/shared/models/game_state.dart';
+import 'package:koutbh/shared/models/bid.dart';
+import 'package:koutbh/shared/models/card.dart';
+import 'package:koutbh/shared/models/enums.dart';
+import 'package:koutbh/offline/game_input_sink.dart';
 
 class _StubInputSink implements GameInputSink {
   GameCard? lastPlayedCard;

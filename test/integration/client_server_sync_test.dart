@@ -7,10 +7,10 @@
 // Run with:  flutter test test/integration/client_server_sync_test.dart
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:bahraini_kout/app/models/client_game_state.dart';
-import 'package:bahraini_kout/shared/models/game_state.dart';
-import 'package:bahraini_kout/shared/models/bid.dart';
-import 'package:bahraini_kout/shared/models/enums.dart';
+import 'package:koutbh/app/models/client_game_state.dart';
+import 'package:koutbh/shared/models/game_state.dart';
+import 'package:koutbh/shared/models/bid.dart';
+import 'package:koutbh/shared/models/enums.dart';
 
 // ---------------------------------------------------------------------------
 // Mock Firestore document factories

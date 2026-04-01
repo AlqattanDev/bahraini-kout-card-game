@@ -1,4 +1,4 @@
-# CLAUDE.md — Bahraini Kout Card Game
+# CLAUDE.md — koutbh
 
 ## Project Overview
 

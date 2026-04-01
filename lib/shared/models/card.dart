@@ -1,7 +1,7 @@
-import 'package:bahraini_kout/shared/models/enums.dart';
-import 'package:bahraini_kout/shared/constants.dart';
+import 'package:koutbh/shared/models/enums.dart';
+import 'package:koutbh/shared/constants.dart';
 
-export 'package:bahraini_kout/shared/models/enums.dart';
+export 'package:koutbh/shared/models/enums.dart';
 
 class GameCard {
   final Suit? suit;

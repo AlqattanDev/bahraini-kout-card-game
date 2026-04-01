@@ -1,7 +1,7 @@
 import 'dart:ui';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:bahraini_kout/game/theme/card_painter.dart';
-import 'package:bahraini_kout/game/theme/kout_theme.dart';
+import 'package:koutbh/game/theme/card_painter.dart';
+import 'package:koutbh/game/theme/kout_theme.dart';
 
 void main() {
   test('paintFace renders without error for pip card', () {

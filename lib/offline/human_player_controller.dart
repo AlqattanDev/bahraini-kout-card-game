@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'dart:math';
 
-import 'package:bahraini_kout/app/models/client_game_state.dart';
-import 'package:bahraini_kout/shared/models/card.dart';
-import 'package:bahraini_kout/shared/models/bid.dart';
-import 'package:bahraini_kout/offline/player_controller.dart';
-import 'package:bahraini_kout/shared/constants/timing.dart';
-import 'package:bahraini_kout/offline/game_input_sink.dart';
+import 'package:koutbh/app/models/client_game_state.dart';
+import 'package:koutbh/shared/models/card.dart';
+import 'package:koutbh/shared/models/bid.dart';
+import 'package:koutbh/offline/player_controller.dart';
+import 'package:koutbh/shared/constants/timing.dart';
+import 'package:koutbh/offline/game_input_sink.dart';
 
 class HumanPlayerController implements PlayerController, GameInputSink {
   static Duration get timeout => GameTiming.humanTurnTimeout;
