@@ -15,6 +15,9 @@ abstract final class GameTiming {
   /// Pause before scoring overlay transitions.
   static const Duration scoringDelay = Duration(seconds: 2);
 
+  /// Pause for the bid/trump announcement overlay before trick play begins.
+  static const Duration bidAnnouncementDelay = Duration(seconds: 3);
+
   /// Bot thinking range: [botThinkingMinMs, botThinkingMinMs + botThinkingRangeMs).
   static const int botThinkingMinMs = 3000;
   static const int botThinkingRangeMs = 2000;

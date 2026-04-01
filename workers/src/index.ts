@@ -44,7 +44,14 @@ app.post("/api/matchmaking/join", async (c) => {
   const uid = c.get("uid" as never) as string;
   const { eloRating } = await c.req.json<{ eloRating: number }>();
 
-  await joinQueue(c.env.DB, uid, eloRating ?? 1000);
+  try {
+    await joinQueue(c.env.DB, uid, eloRating ?? 1000);
+  } catch (e: any) {
+    if (e?.message === "Already in queue") {
+      return c.json({ status: "error", message: "Already in queue" }, 409);
+    }
+    throw e;
+  }
 
   // Check for a match
   const allPlayers = await getQueuedPlayers(c.env.DB);

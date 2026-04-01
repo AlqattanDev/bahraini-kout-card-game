@@ -9,9 +9,12 @@ class PlayStrategy {
     required Suit? ledSuit,
     required int mySeat,
     String? partnerUid,
+    bool isKout = false,
+    bool isFirstTrick = false,
   }) {
     // Determine which cards are legal to play
-    final legalCards = _legalPlays(hand, ledSuit, trickPlays.isEmpty);
+    final legalCards = _legalPlays(hand, ledSuit, trickPlays.isEmpty,
+        trumpSuit: trumpSuit, isKout: isKout, isFirstTrick: isFirstTrick);
 
     if (legalCards.length == 1) {
       return PlayCardAction(legalCards.first);
@@ -34,8 +37,15 @@ class PlayStrategy {
   }
 
   static List<GameCard> _legalPlays(
-      List<GameCard> hand, Suit? ledSuit, bool isLead) {
+      List<GameCard> hand, Suit? ledSuit, bool isLead,
+      {Suit? trumpSuit, bool isKout = false, bool isFirstTrick = false}) {
     if (isLead) {
+      // Kout rule: first trick lead must be trump if holding trump
+      if (isKout && isFirstTrick && trumpSuit != null) {
+        final trumpCards =
+            hand.where((c) => !c.isJoker && c.suit == trumpSuit).toList();
+        if (trumpCards.isNotEmpty) return trumpCards;
+      }
       // Can't lead with joker
       final nonJoker = hand.where((c) => !c.isJoker).toList();
       return nonJoker.isEmpty ? hand.toList() : nonJoker;

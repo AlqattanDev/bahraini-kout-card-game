@@ -70,15 +70,15 @@ class CardComponent extends PositionComponent with TapCallbacks, HoverCallbacks 
 
     if (c.isJoker) {
       CardPainter.paintJoker(canvas, rect);
-      return;
+    } else {
+      final isRed = c.suit == Suit.hearts || c.suit == Suit.diamonds;
+      final suitColor =
+          isRed ? const Color(0xFFCC0000) : const Color(0xFF111111);
+      final rankLabel = _rankLabel(c.rank!);
+      final suitSymbol = _suitSymbol(c.suit!);
+
+      CardPainter.paintFace(canvas, rect, rankLabel, suitSymbol, suitColor);
     }
-
-    final isRed = c.suit == Suit.hearts || c.suit == Suit.diamonds;
-    final suitColor = isRed ? const Color(0xFFCC0000) : const Color(0xFF111111);
-    final rankLabel = _rankLabel(c.rank!);
-    final suitSymbol = _suitSymbol(c.suit!);
-
-    CardPainter.paintFace(canvas, rect, rankLabel, suitSymbol, suitColor);
 
     // Highlight border overlay (gold when highlighted)
     if (isHighlighted) {

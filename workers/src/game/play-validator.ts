@@ -10,13 +10,27 @@ export function validatePlay(
   card: string,
   hand: string[],
   ledSuit: SuitName | null,
-  isLeadPlay: boolean
+  isLeadPlay: boolean,
+  trumpSuit?: SuitName | null,
+  isKout: boolean = false,
+  isFirstTrick: boolean = false
 ): PlayValidationResult {
   if (!hand.includes(card)) {
     return { valid: false, error: 'card-not-in-hand' };
   }
 
   const cardObj = decodeCard(card);
+
+  // Kout rule: first trick leader must play trump if they have it.
+  if (isKout && isLeadPlay && isFirstTrick && trumpSuit) {
+    const hasTrump = hand.some((c) => {
+      const decoded = decodeCard(c);
+      return !decoded.isJoker && decoded.suit === trumpSuit;
+    });
+    if (hasTrump && !cardObj.isJoker && cardObj.suit !== trumpSuit) {
+      return { valid: false, error: 'must-lead-trump' };
+    }
+  }
 
   // Joker CAN be led — but triggers immediate round loss (handled by game room).
 

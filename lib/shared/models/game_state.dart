@@ -3,6 +3,7 @@ enum GamePhase {
   dealing,
   bidding,
   trumpSelection,
+  bidAnnouncement,
   playing,
   roundScoring,
   gameOver,

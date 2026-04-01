@@ -22,7 +22,12 @@ class MatchmakingService {
     );
 
     if (response.statusCode != 200) {
-      throw Exception('Failed to join queue: ${response.statusCode}');
+      String message = 'Failed to join queue';
+      try {
+        final errorBody = jsonDecode(response.body) as Map<String, dynamic>;
+        message = errorBody['message'] as String? ?? message;
+      } catch (_) {}
+      throw Exception(message);
     }
 
     final body = jsonDecode(response.body) as Map<String, dynamic>;
@@ -32,6 +37,8 @@ class MatchmakingService {
 
     return null; // Queued, wait for WS notification
   }
+
+  static const Duration matchTimeout = Duration(seconds: 60);
 
   Stream<String> listenForMatch() {
     final controller = StreamController<String>();
@@ -57,6 +64,14 @@ class MatchmakingService {
         if (!controller.isClosed) controller.close();
       },
     );
+
+    // Auto-close after timeout if no match found
+    Timer(matchTimeout, () {
+      if (!controller.isClosed) {
+        _lobbyChannel?.sink.close();
+        controller.close();
+      }
+    });
 
     return controller.stream;
   }

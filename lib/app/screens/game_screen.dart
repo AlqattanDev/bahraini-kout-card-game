@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import '../models/game_mode.dart';
@@ -7,6 +8,8 @@ import '../../game/kout_game.dart';
 import '../../game/overlays/bid_overlay.dart';
 import '../../game/overlays/trump_selector.dart';
 import '../../game/overlays/round_result_overlay.dart';
+import '../../game/overlays/bid_announcement_overlay.dart';
+import '../../game/overlays/connection_status_overlay.dart';
 import '../../game/overlays/game_over_overlay.dart';
 import '../../offline/local_game_controller.dart';
 import '../../offline/human_player_controller.dart';
@@ -28,6 +31,7 @@ class _GameScreenState extends State<GameScreen> {
   LocalGameController? _localController;
   KoutGame? _koutGame;
   GameMode? _gameMode;
+  StreamSubscription<String>? _errorSub;
   bool _initialized = false;
 
   @override
@@ -60,10 +64,23 @@ class _GameScreenState extends State<GameScreen> {
         _koutGame = KoutGame(
           stateStream: _gameService!.stateStream,
           inputSink: _gameService!,
+          connectionStream: _gameService!.connectionStream,
         );
 
         _gameService!.startListening();
         _presenceService!.start();
+
+        _errorSub = _gameService!.errorStream.listen((error) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(error),
+                backgroundColor: const Color(0xFF5C1A1B),
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
+        });
 
       case OfflineGameMode(:final seats):
         final humanController = HumanPlayerController();
@@ -89,6 +106,7 @@ class _GameScreenState extends State<GameScreen> {
 
   @override
   void dispose() {
+    _errorSub?.cancel();
     _presenceService?.dispose();
     _gameService?.dispose();
     _localController?.dispose();
@@ -142,6 +160,12 @@ class _GameScreenState extends State<GameScreen> {
               },
             );
           },
+          'bidAnnouncement': (context, game) {
+            final koutGame = game as KoutGame;
+            final state = koutGame.currentState;
+            if (state == null) return const SizedBox.shrink();
+            return BidAnnouncementOverlay(state: state);
+          },
           'roundResult': (context, game) {
             final koutGame = game as KoutGame;
             final state = koutGame.currentState;
@@ -179,6 +203,20 @@ class _GameScreenState extends State<GameScreen> {
               },
               onVictoryAnimationReady: () {
                 koutGame.spawnVictoryParticles();
+              },
+            );
+          },
+          'connectionStatus': (context, game) {
+            final koutGame = game as KoutGame;
+            return ConnectionStatusOverlay(
+              status: koutGame.connectionStatus,
+              reconnectAttempt: koutGame.reconnectAttempt,
+              onReturnToMenu: () {
+                koutGame.overlays.remove('connectionStatus');
+                Navigator.of(context).pushNamedAndRemoveUntil(
+                  '/',
+                  (route) => false,
+                );
               },
             );
           },

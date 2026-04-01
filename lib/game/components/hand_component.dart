@@ -130,7 +130,16 @@ class HandComponent extends Component {
 
     // If a suit was led, player must follow suit if possible
     if (state.currentTrickPlays.isEmpty) {
-      // Leading — all cards are playable
+      // Leading — Kout rule: must lead trump if holding trump
+      if (state.currentBid?.isKout == true && state.trumpSuit != null && state.trickWinners.isEmpty) {
+        final trumpCards = state.myHand
+            .where((c) => !c.isJoker && c.suit == state.trumpSuit)
+            .toSet();
+        if (trumpCards.isNotEmpty) {
+          final jokers = state.myHand.where((c) => c.isJoker).toSet();
+          return trumpCards.union(jokers);
+        }
+      }
       return state.myHand.toSet();
     }
 

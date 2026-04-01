@@ -23,6 +23,8 @@ class BotPlayerController implements PlayerController {
           ledSuit: ledSuit,
           mySeat: seatIndex,
           partnerUid: state.playerUids[(seatIndex + 2) % 4],
+          isKout: state.currentBid?.isKout ?? false,
+          isFirstTrick: state.trickWinners.isEmpty,
         ),
     };
   }

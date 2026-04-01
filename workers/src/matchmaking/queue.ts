@@ -1,4 +1,5 @@
 import type { QueuedPlayer } from "./matcher";
+import { expectedScore, newElo, teamAverageElo } from "./elo";
 
 export async function joinQueue(
   db: D1Database,
@@ -125,23 +126,46 @@ export async function completeGame(
     .bind(winnerTeam, JSON.stringify(finalScores), gameId)
     .run();
 
-  // Update ELO ratings
+  // Update ELO ratings using proper formula
   const teamAUids = [players[0], players[2]];
   const teamBUids = [players[1], players[3]];
-  const winners = winnerTeam === "teamA" ? teamAUids : teamBUids;
-  const losers = winnerTeam === "teamA" ? teamBUids : teamAUids;
+  const allUids = [...teamAUids, ...teamBUids];
 
-  // Simple ELO: winners +16, losers -16 (K=32, expected=0.5 for equal teams)
-  for (const uid of winners) {
+  // Fetch current ELOs from DB
+  const eloRows = await db
+    .prepare(`SELECT uid, elo_rating FROM users WHERE uid IN (${allUids.map(() => "?").join(",")})`)
+    .bind(...allUids)
+    .all<{ uid: string; elo_rating: number }>();
+
+  const eloMap = new Map<string, number>();
+  for (const row of eloRows.results) {
+    eloMap.set(row.uid, row.elo_rating);
+  }
+
+  const teamAElos = teamAUids.map((uid) => eloMap.get(uid) ?? 1000);
+  const teamBElos = teamBUids.map((uid) => eloMap.get(uid) ?? 1000);
+  const teamAAvg = teamAverageElo(teamAElos);
+  const teamBAvg = teamAverageElo(teamBElos);
+
+  const teamAExpected = expectedScore(teamAAvg, teamBAvg);
+  const teamBExpected = expectedScore(teamBAvg, teamAAvg);
+  const teamAActual = winnerTeam === "teamA" ? 1 : 0;
+  const teamBActual = winnerTeam === "teamB" ? 1 : 0;
+
+  for (const uid of teamAUids) {
+    const oldElo = eloMap.get(uid) ?? 1000;
+    const updated = Math.max(0, newElo(oldElo, teamAExpected, teamAActual));
     await db
-      .prepare("UPDATE users SET elo_rating = elo_rating + 16, updated_at = datetime('now') WHERE uid = ?")
-      .bind(uid)
+      .prepare("UPDATE users SET elo_rating = ?, updated_at = datetime('now') WHERE uid = ?")
+      .bind(updated, uid)
       .run();
   }
-  for (const uid of losers) {
+  for (const uid of teamBUids) {
+    const oldElo = eloMap.get(uid) ?? 1000;
+    const updated = Math.max(0, newElo(oldElo, teamBExpected, teamBActual));
     await db
-      .prepare("UPDATE users SET elo_rating = MAX(0, elo_rating - 16), updated_at = datetime('now') WHERE uid = ?")
-      .bind(uid)
+      .prepare("UPDATE users SET elo_rating = ?, updated_at = datetime('now') WHERE uid = ?")
+      .bind(updated, uid)
       .run();
   }
 }

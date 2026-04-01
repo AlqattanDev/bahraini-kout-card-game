@@ -47,6 +47,90 @@ void main() {
       expect(result.isValid, true);
     });
 
+    test('kout lead: rejects non-trump when player has trump', () {
+      final hand = [GameCard(suit: Suit.hearts, rank: Rank.ace), GameCard(suit: Suit.spades, rank: Rank.king)];
+      final result = PlayValidator.validatePlay(
+        card: GameCard(suit: Suit.spades, rank: Rank.king),
+        hand: hand,
+        ledSuit: null,
+        isLeadPlay: true,
+        trumpSuit: Suit.hearts,
+        isKout: true,
+        isFirstTrick: true,
+      );
+      expect(result.isValid, false);
+      expect(result.error, 'must-lead-trump');
+    });
+
+    test('kout lead: allows trump card', () {
+      final hand = [GameCard(suit: Suit.hearts, rank: Rank.ace), GameCard(suit: Suit.spades, rank: Rank.king)];
+      final result = PlayValidator.validatePlay(
+        card: GameCard(suit: Suit.hearts, rank: Rank.ace),
+        hand: hand,
+        ledSuit: null,
+        isLeadPlay: true,
+        trumpSuit: Suit.hearts,
+        isKout: true,
+        isFirstTrick: true,
+      );
+      expect(result.isValid, true);
+    });
+
+    test('kout lead: allows any card when void in trump', () {
+      final hand = [GameCard(suit: Suit.spades, rank: Rank.king), GameCard(suit: Suit.clubs, rank: Rank.queen)];
+      final result = PlayValidator.validatePlay(
+        card: GameCard(suit: Suit.spades, rank: Rank.king),
+        hand: hand,
+        ledSuit: null,
+        isLeadPlay: true,
+        trumpSuit: Suit.hearts,
+        isKout: true,
+        isFirstTrick: true,
+      );
+      expect(result.isValid, true);
+    });
+
+    test('kout lead: allows joker even when holding trump', () {
+      final hand = [GameCard.joker(), GameCard(suit: Suit.hearts, rank: Rank.ace)];
+      final result = PlayValidator.validatePlay(
+        card: GameCard.joker(),
+        hand: hand,
+        ledSuit: null,
+        isLeadPlay: true,
+        trumpSuit: Suit.hearts,
+        isKout: true,
+        isFirstTrick: true,
+      );
+      expect(result.isValid, true);
+    });
+
+    test('kout lead on non-first trick: allows any card', () {
+      final hand = [GameCard(suit: Suit.hearts, rank: Rank.ace), GameCard(suit: Suit.spades, rank: Rank.king)];
+      final result = PlayValidator.validatePlay(
+        card: GameCard(suit: Suit.spades, rank: Rank.king),
+        hand: hand,
+        ledSuit: null,
+        isLeadPlay: true,
+        trumpSuit: Suit.hearts,
+        isKout: true,
+        isFirstTrick: false,
+      );
+      expect(result.isValid, true);
+    });
+
+    test('non-kout lead: no trump restriction', () {
+      final hand = [GameCard(suit: Suit.hearts, rank: Rank.ace), GameCard(suit: Suit.spades, rank: Rank.king)];
+      final result = PlayValidator.validatePlay(
+        card: GameCard(suit: Suit.spades, rank: Rank.king),
+        hand: hand,
+        ledSuit: null,
+        isLeadPlay: true,
+        trumpSuit: Suit.hearts,
+        isKout: false,
+      );
+      expect(result.isValid, true);
+    });
+
     test('rejects card not in hand', () {
       final hand = [GameCard(suit: Suit.hearts, rank: Rank.ace)];
       final result = PlayValidator.validatePlay(card: GameCard(suit: Suit.spades, rank: Rank.king), hand: hand, ledSuit: null, isLeadPlay: true);

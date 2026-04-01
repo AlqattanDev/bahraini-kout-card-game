@@ -13,8 +13,18 @@ class PlayValidator {
     required List<GameCard> hand,
     required Suit? ledSuit,
     required bool isLeadPlay,
+    Suit? trumpSuit,
+    bool isKout = false,
+    bool isFirstTrick = false,
   }) {
     if (!hand.contains(card)) return const PlayValidationResult.invalid('card-not-in-hand');
+    // Kout rule: first trick leader must play trump if they have it.
+    if (isKout && isLeadPlay && isFirstTrick && trumpSuit != null) {
+      final hasTrump = hand.any((c) => !c.isJoker && c.suit == trumpSuit);
+      if (hasTrump && !card.isJoker && card.suit != trumpSuit) {
+        return const PlayValidationResult.invalid('must-lead-trump');
+      }
+    }
     // Joker CAN be led — but triggers immediate round loss (handled by game controller).
     if (!isLeadPlay && ledSuit != null) {
       final hasLedSuit = hand.any((c) => !c.isJoker && c.suit == ledSuit);

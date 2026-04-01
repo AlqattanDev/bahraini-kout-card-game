@@ -77,6 +77,10 @@ class LocalGameController {
     await _trumpSelection();
     if (_disposed) return;
 
+    // BID ANNOUNCEMENT (brief pause showing bid + trump)
+    await _bidAnnouncement();
+    if (_disposed) return;
+
     // PLAYING (8 tricks)
     final poisonJoker = await _playTricks();
     if (_disposed) return;
@@ -213,6 +217,12 @@ class LocalGameController {
     }
   }
 
+  Future<void> _bidAnnouncement() async {
+    _state.phase = GamePhase.bidAnnouncement;
+    _emitState();
+    if (enableDelays) await Future.delayed(GameTiming.bidAnnouncementDelay);
+  }
+
   Future<bool> _playTricks() async {
     _state.phase = GamePhase.playing;
 
@@ -311,6 +321,9 @@ class LocalGameController {
         hand: hand,
         ledSuit: ledSuit,
         isLeadPlay: isLead,
+        trumpSuit: _state.trumpSuit,
+        isKout: _state.bid?.isKout ?? false,
+        isFirstTrick: _state.trickNumber == 1,
       );
       if (!validation.isValid) continue;
 

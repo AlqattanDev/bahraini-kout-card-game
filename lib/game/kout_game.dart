@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flame/components.dart';
 import 'package:flame/game.dart';
 import '../app/models/client_game_state.dart';
+import '../app/services/game_service.dart';
 import '../shared/models/game_state.dart';
 import 'components/ambient_decoration.dart';
 import 'components/card_component.dart';
@@ -56,6 +57,12 @@ class KoutGame extends FlameGame {
   int _lastScoreA = 0;
   int _lastScoreB = 0;
 
+  // Connection status for online games
+  ConnectionStatus connectionStatus = ConnectionStatus.connected;
+  int reconnectAttempt = 0;
+  final Stream<ConnectionStatus>? _connectionStream;
+  StreamSubscription<ConnectionStatus>? _connectionSub;
+
   // Turn timer tracking
   String? _lastCurrentPlayer;
   GamePhase? _lastTimerPhase;
@@ -64,7 +71,11 @@ class KoutGame extends FlameGame {
       GameTiming.humanTurnTimeout.inMilliseconds / 1000.0;
   static const double _botTimeout = 4.0; // average of 3-5s
 
-  KoutGame({required this.stateStream, required this.inputSink});
+  KoutGame({
+    required this.stateStream,
+    required this.inputSink,
+    Stream<ConnectionStatus>? connectionStream,
+  }) : _connectionStream = connectionStream;
 
   /// Whether the human player is forced to bid (last player, no existing bid).
   bool get isHumanForced {
@@ -91,6 +102,17 @@ class KoutGame extends FlameGame {
     _stateSub = stateStream.listen((state) {
       currentState = state;
       _onStateUpdate(state);
+    });
+
+    // Listen for connection status changes (online games only)
+    _connectionSub = _connectionStream?.listen((status) {
+      connectionStatus = status;
+      if (status == ConnectionStatus.reconnecting) {
+        reconnectAttempt++;
+      } else if (status == ConnectionStatus.connected) {
+        reconnectAttempt = 0;
+      }
+      _updateConnectionOverlay(status);
     });
   }
 
@@ -375,7 +397,7 @@ class KoutGame extends FlameGame {
     }
     _prevPhase = state.phase;
 
-    const allOverlays = ['bid', 'trump', 'roundResult', 'gameOver'];
+    const allOverlays = ['bid', 'trump', 'bidAnnouncement', 'roundResult', 'gameOver'];
 
     // Determine which single overlay (if any) should be shown
     String? targetOverlay;
@@ -386,6 +408,9 @@ class KoutGame extends FlameGame {
         break;
       case GamePhase.trumpSelection:
         if (state.bidderUid == state.myUid) targetOverlay = 'trump';
+        break;
+      case GamePhase.bidAnnouncement:
+        targetOverlay = 'bidAnnouncement';
         break;
       case GamePhase.roundScoring:
         targetOverlay = 'roundResult';
@@ -510,9 +535,21 @@ class KoutGame extends FlameGame {
     return uid.substring(0, 6);
   }
 
-  @override
+  void _updateConnectionOverlay(ConnectionStatus status) {
+    if (status == ConnectionStatus.connected) {
+      if (overlays.isActive('connectionStatus')) {
+        overlays.remove('connectionStatus');
+      }
+    } else {
+      if (!overlays.isActive('connectionStatus')) {
+        overlays.add('connectionStatus');
+      }
+    }
+  }
+
   void onRemove() {
     _stateSub?.cancel();
+    _connectionSub?.cancel();
     soundManager?.dispose();
     super.onRemove();
   }

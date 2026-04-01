@@ -129,9 +129,18 @@ export class GameRoom extends DurableObject<Env> {
         }));
       }
 
-      // Cancel any disconnect alarm for this player
+      // Cancel any disconnect alarm for this player (and detect reconnect)
       const alarmKey = `disconnect:${uid}`;
-      await this.ctx.storage.delete(alarmKey);
+      const disconnectTime = await this.ctx.storage.get<number>(alarmKey);
+      if (disconnectTime) {
+        await this.ctx.storage.delete(alarmKey);
+        const elapsed = Math.floor((Date.now() - disconnectTime) / 1000);
+        const remaining = Math.max(0, 90 - elapsed);
+        server.send(JSON.stringify({
+          event: "reconnected",
+          data: { gracePeriodRemaining: remaining },
+        }));
+      }
 
       return new Response(null, { status: 101, webSocket: client });
     }
@@ -382,7 +391,7 @@ export class GameRoom extends DurableObject<Env> {
       return leadCard.isJoker ? null : leadCard.suit;
     })();
 
-    const validation = validatePlay(card, hand, ledSuit, isLeadPlay);
+    const validation = validatePlay(card, hand, ledSuit, isLeadPlay, game.trumpSuit, game.currentBid === 8, (game.trickWinners ?? []).length === 0);
     if (!validation.valid) throw new Error(validation.error!);
 
     const newHand = hand.filter((c) => c !== card);
