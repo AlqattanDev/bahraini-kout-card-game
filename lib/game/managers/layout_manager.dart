@@ -65,8 +65,9 @@ class LayoutManager {
     for (int i = 0; i < cardCount; i++) {
       final t = cardCount == 1 ? 0.0 : (i / (cardCount - 1)) - 0.5;
       final angle = t * maxFanAngle;
-      // Arc: cards bow upward slightly in a fan (scaled up for larger cards)
-      final arcOffset = (t * t) * 28;
+      // Arc: center cards rise, edge cards drop — natural hand-held fan shape.
+      // (0.25 - t²) is max at center (t=0) and zero at edges (t=±0.5).
+      final arcOffset = (0.25 - t * t) * 28;
       final pos = Vector2(startX + i * cardSpacing, handCenter.y - arcOffset);
       results.add((position: pos, angle: angle));
     }

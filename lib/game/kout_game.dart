@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:flame/components.dart';
 import 'package:flame/game.dart';
 import '../app/models/client_game_state.dart';
@@ -197,24 +198,30 @@ class KoutGame extends FlameGame {
       );
       add(_ambientDecoration!);
 
-      // Create opponent card-back fans for non-player seats
+      // Create opponent card-back fans for non-player seats.
+      // Each fan is a horizontal arc in local space, rotated via baseRotation
+      // to point from the seat toward the table center.
+      // Offset fans far enough from seat circles to avoid overlap.
+      // Seat circle visual radius ~48px (36 + glow); fan extends ~99px
+      // from its anchor, so 90px clears the circle edge comfortably.
+      const fanOffset = 90.0;
       for (int i = 0; i < 4; i++) {
         if (i == state.mySeatIndex) continue;
         final relativeSeat = layout.toRelativeSeat(i, state.mySeatIndex);
         final seatPos = layout.seatPosition(i, state.mySeatIndex);
 
-        final FanDirection dir;
+        final double rotation;
         final Vector2 offset;
         switch (relativeSeat) {
-          case 1: // left opponent
-            dir = FanDirection.right;
-            offset = Vector2(50, -10);
-          case 2: // top (partner)
-            dir = FanDirection.above;
-            offset = Vector2(0, -50);
-          case 3: // right opponent
-            dir = FanDirection.left;
-            offset = Vector2(-50, -10);
+          case 1: // left opponent — fan rotated 90° CW, extends rightward
+            rotation = math.pi / 2;
+            offset = Vector2(fanOffset, -10);
+          case 2: // top partner — fan rotated 180°, extends downward
+            rotation = math.pi;
+            offset = Vector2(0, fanOffset);
+          case 3: // right opponent — fan rotated 90° CCW, extends leftward
+            rotation = -math.pi / 2;
+            offset = Vector2(-fanOffset, -10);
           default:
             continue;
         }
@@ -222,7 +229,7 @@ class KoutGame extends FlameGame {
         final fan = OpponentHandFan(
           cardCount: 8,
           position: seatPos + offset,
-          fanDirection: dir,
+          baseRotation: rotation,
         );
         _opponentFans[i] = fan;
         add(fan);
