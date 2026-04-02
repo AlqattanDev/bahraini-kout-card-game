@@ -19,11 +19,11 @@ class KoutTheme {
   static const Color jokerColor = Color(0xFF1A1A1A);
   static const double cardCornerRankSize = 16.0;
   static const double cardCornerSuitSize = 14.0;
-  static const double cardCenterSuitSize = 32.0;
-  static const double cardShadowBlur = 4.0;
-  static const double cardShadowOffsetX = 2.0;
-  static const double cardShadowOffsetY = 3.0;
-  static const Color cardShadowColor = Color(0x66000000);
+  static const double cardCenterSuitSize = 40.0;
+  static const double cardShadowBlur = 6.0;
+  static const double cardShadowOffsetX = 3.0;
+  static const double cardShadowOffsetY = 4.0;
+  static const Color cardShadowColor = Color(0x88000000);
 
   // Enhanced Diwaniya palette (delegates to DiwaniyaColors)
   static const Color activeTurnRing = DiwaniyaColors.activeTurnRing;

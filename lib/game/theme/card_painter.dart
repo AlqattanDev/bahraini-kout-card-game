@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'dart:ui';
+import 'diwaniya_colors.dart';
 import 'geometric_patterns.dart';
 import 'kout_theme.dart';
 
@@ -66,6 +67,19 @@ class CardPainter {
 
     // Pure white face fill
     canvas.drawRRect(rrect, Paint()..color = KoutTheme.cardFace);
+
+    // Face card warm gradient overlay (K, Q, J only)
+    if (rankStr == 'K' || rankStr == 'Q' || rankStr == 'J') {
+      final gradientShader = const LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          DiwaniyaColors.faceCardGradientTop,
+          DiwaniyaColors.faceCardGradientBottom,
+        ],
+      ).createShader(rect);
+      canvas.drawRRect(rrect, Paint()..shader = gradientShader);
+    }
 
     // Thin dark border (was thick green/gold)
     canvas.drawRRect(

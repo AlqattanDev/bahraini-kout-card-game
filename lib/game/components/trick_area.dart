@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flame/components.dart';
 import '../../app/models/client_game_state.dart';
 import '../managers/layout_manager.dart';
+import '../theme/diwaniya_colors.dart';
 import '../theme/kout_theme.dart';
 import 'card_component.dart';
 
@@ -27,25 +28,15 @@ class TrickAreaComponent extends Component {
 
   @override
   void render(Canvas canvas) {
-    // Draw a subtle felt circle in the center
-    final paint = Paint()
-      ..color = KoutTheme.table.withValues(alpha: 0.6)
-      ..style = PaintingStyle.fill;
-
-    canvas.drawCircle(
-      Offset(layout.trickCenter.x, layout.trickCenter.y),
-      70,
-      paint,
-    );
-
-    final borderPaint = Paint()
-      ..color = KoutTheme.accent.withValues(alpha: 0.3)
+    // Subtle center marker on the table (thin gold ring, barely visible)
+    final markerPaint = Paint()
+      ..color = DiwaniyaColors.goldAccent.withValues(alpha: 0.12)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
+      ..strokeWidth = 1.0;
     canvas.drawCircle(
       Offset(layout.trickCenter.x, layout.trickCenter.y),
-      70,
-      borderPaint,
+      60,
+      markerPaint,
     );
   }
 

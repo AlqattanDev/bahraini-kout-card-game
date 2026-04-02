@@ -84,12 +84,13 @@ class LayoutManager {
   }
 
   /// Returns card positions for fanning [cardCount] cards in the player's hand.
-  /// Returns list of (position, angle) tuples.
+  /// Spacing adapts: fewer cards = wider spacing, more cards = tighter.
   List<({Vector2 position, double angle})> handCardPositions(int cardCount) {
     if (cardCount == 0) return [];
 
-    const maxFanAngle = 0.30; // radians total spread (slightly tighter for scaled cards)
-    const cardSpacing = 56.0; // wider spacing to accommodate 1.4x scaled cards
+    const maxFanAngle = 0.30;
+    // Adaptive spacing: 70px for 4 cards, down to 48px for 8 cards
+    final cardSpacing = (80 - cardCount * 4.0).clamp(44.0, 72.0);
 
     final totalWidth = (cardCount - 1) * cardSpacing;
     final startX = handCenter.x - totalWidth / 2;
@@ -98,9 +99,7 @@ class LayoutManager {
     for (int i = 0; i < cardCount; i++) {
       final t = cardCount == 1 ? 0.0 : (i / (cardCount - 1)) - 0.5;
       final angle = t * maxFanAngle;
-      // Arc: center cards rise, edge cards drop — natural hand-held fan shape.
-      // (0.25 - t²) is max at center (t=0) and zero at edges (t=±0.5).
-      final arcOffset = (0.25 - t * t) * 28;
+      final arcOffset = (0.25 - t * t) * 32; // slightly more arc than before
       final pos = Vector2(startX + i * cardSpacing, handCenter.y - arcOffset);
       results.add((position: pos, angle: angle));
     }

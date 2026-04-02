@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flame/components.dart';
 import '../managers/layout_manager.dart';
 import '../theme/diwaniya_colors.dart';
+import '../theme/geometric_patterns.dart';
 
 /// Renders a 3D perspective table surface as a trapezoid.
 class PerspectiveTableComponent extends PositionComponent {
@@ -69,6 +70,14 @@ class PerspectiveTableComponent extends PositionComponent {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5;
     canvas.drawPath(insetPath, accentPaint);
+
+    // Decorative geometric motif along the top edge of the table
+    GeometricPatterns.drawStarTessellation(
+      canvas,
+      Rect.fromLTWH(verts[0].dx, verts[0].dy - 2, verts[1].dx - verts[0].dx, 12),
+      opacity: 0.15,
+      cellSize: 24.0,
+    );
   }
 
   List<Offset> _insetVertices(List<Offset> verts, double amount) {

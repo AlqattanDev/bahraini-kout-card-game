@@ -24,11 +24,11 @@ class AmbientDecorationComponent extends PositionComponent {
 
   @override
   void render(Canvas canvas) {
-    // 1. Geometric overlay at 5% opacity
+    // 1. Geometric overlay at 8% opacity
     GeometricPatterns.drawStarTessellation(
       canvas,
       Rect.fromLTWH(0, 0, size.x, size.y),
-      opacity: 0.05,
+      opacity: 0.08,
       cellSize: 48.0,
     );
 
@@ -46,7 +46,7 @@ class AmbientDecorationComponent extends PositionComponent {
     final cx = seatPos.x + 50.0;
     final cy = seatPos.y + 45.0;
 
-    const opacity = 0.08;
+    const opacity = 0.25;
     final glassColor = KoutTheme.accent.withValues(alpha: opacity);
     final liquidColor = const Color(0xFFCC6600).withValues(alpha: opacity * 0.8);
 

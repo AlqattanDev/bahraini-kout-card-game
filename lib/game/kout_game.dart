@@ -16,9 +16,13 @@ import '../shared/models/enums.dart';
 import '../shared/models/trick.dart';
 import '../shared/logic/trick_resolver.dart';
 import 'components/player_seat.dart';
+import 'components/action_badge.dart';
+import 'components/game_hud.dart';
 import 'components/score_display.dart';
+import 'components/score_hud.dart';
 import 'components/table_background.dart';
 import 'components/trick_area.dart';
+import 'theme/diwaniya_colors.dart';
 import 'managers/layout_manager.dart';
 import 'managers/animation_manager.dart';
 import 'managers/sound_manager.dart';
@@ -40,6 +44,9 @@ class KoutGame extends FlameGame {
   final List<PlayerSeatComponent> _seats = [];
   final Map<int, OpponentHandFan> _opponentFans = {};
   PerspectiveTableComponent? _perspectiveTable;
+  ScoreHudComponent? _scoreHud;
+  GameHudComponent? _gameHud;
+  final Map<int, ActionBadgeComponent> _actionBadges = {};
 
   // Animation manager
   late AnimationManager _animationManager;
@@ -127,7 +134,7 @@ class KoutGame extends FlameGame {
   void onGameResize(Vector2 newSize) {
     super.onGameResize(newSize);
     layout = LayoutManager(newSize);
-    _scoreDisplay?.updateWidth(newSize.x);
+    _scoreHud?.updateWidth(newSize.x);
     _perspectiveTable?.updateLayout(layout);
   }
 
@@ -182,16 +189,27 @@ class KoutGame extends FlameGame {
     _updateSeats(state);
     _updateHand(state);
     _updateTrickArea(state);
+    _updateGameHud(state);
     _updateOverlays(state);
   }
 
   void _updateScoreDisplay(ClientGameState state) {
+    // New compact Score HUD (top-right)
+    if (_scoreHud == null) {
+      final w = hasLayout ? size.x : 375.0;
+      _scoreHud = ScoreHudComponent(screenWidth: w);
+      add(_scoreHud!);
+    }
+    _scoreHud!.updateState(state);
+
+    // Legacy ScoreDisplay — keep for backward compat, remove later
     if (_scoreDisplay == null) {
       final w = hasLayout ? size.x : 375.0;
       _scoreDisplay = ScoreDisplayComponent(screenWidth: w);
-      add(_scoreDisplay!);
+      // Don't add the old display — ScoreHud replaces it
+      // add(_scoreDisplay!);
     }
-    _scoreDisplay!.updateState(state);
+    // _scoreDisplay!.updateState(state);
 
     // Track scores — only update when NOT in roundScoring so that when
     // roundScoring arrives the _last values still hold pre-round scores.
@@ -212,6 +230,7 @@ class KoutGame extends FlameGame {
           isActive: false,
           isTeamA: i.isEven,
           isDealer: state.playerUids[i] == state.dealerUid,
+          avatarSeed: i,
           position: pos,
         );
         _seats.add(seat);
@@ -233,8 +252,8 @@ class KoutGame extends FlameGame {
       // to point from the seat toward the table center.
       // Offset fans far enough from seat circles to avoid overlap.
       // Seat circle visual radius ~48px (36 + glow); fan extends ~99px
-      // from its anchor, so 90px clears the circle edge comfortably.
-      const fanOffset = 90.0;
+      // from its anchor, so 70px clears the circle edge comfortably.
+      const fanOffset = 70.0;
       for (int i = 0; i < 4; i++) {
         if (i == state.mySeatIndex) continue;
         final relativeSeat = layout.toRelativeSeat(i, state.mySeatIndex);
@@ -388,6 +407,16 @@ class KoutGame extends FlameGame {
     }
 
     _prevTrickPlayCount = newCount;
+  }
+
+  void _updateGameHud(ClientGameState state) {
+    if (_gameHud == null) {
+      _gameHud = GameHudComponent();
+      add(_gameHud!);
+    }
+    final roundNumber = (state.trickWinners.length ~/ 8) + 1;
+    final trickInRound = state.trickWinners.length % 8;
+    _gameHud!.updateRound(roundNumber, trick: trickInRound);
   }
 
   // ---------------------------------------------------------------------------

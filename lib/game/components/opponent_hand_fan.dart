@@ -29,9 +29,9 @@ class OpponentHandFan extends PositionComponent {
   // Layout constants
   // ---------------------------------------------------------------------------
 
-  /// Miniature card dimensions (55% of full card size).
-  static const double _miniWidth = KoutTheme.cardWidth * 0.55; // ~38.5
-  static const double _miniHeight = KoutTheme.cardHeight * 0.55; // ~55
+  /// Miniature card dimensions (60% of full card size).
+  static const double _miniWidth = KoutTheme.cardWidth * 0.60; // ~42
+  static const double _miniHeight = KoutTheme.cardHeight * 0.60; // ~60
 
   /// Horizontal overlap between adjacent cards in the fan.
   static const double _cardOverlap = 14.0;
@@ -131,5 +131,20 @@ class OpponentHandFan extends PositionComponent {
     }
 
     canvas.restore(); // undo baseRotation
+
+    // Card count badge
+    if (cardCount > 0) {
+      final badgePaint = Paint()..color = const Color(0xCC222222);
+      final badgeCenter = Offset(size.x / 2, size.y / 2 + _miniHeight * 0.6);
+      canvas.drawCircle(badgeCenter, 10, badgePaint);
+      final pb = ParagraphBuilder(
+        ParagraphStyle(textAlign: TextAlign.center, fontSize: 10),
+      )
+        ..pushStyle(TextStyle(color: const Color(0xFFFFFFFF), fontWeight: FontWeight.bold))
+        ..addText('$cardCount');
+      final paragraph = pb.build();
+      paragraph.layout(const ParagraphConstraints(width: 20));
+      canvas.drawParagraph(paragraph, Offset(badgeCenter.dx - 10, badgeCenter.dy - 6));
+    }
   }
 }
