@@ -16,7 +16,6 @@ class PlayerSeatComponent extends PositionComponent {
   bool isDealer;
   final int avatarSeed;
   String? bidAction;
-  String? bidLabel;
   bool isBidder = false;
   Color? bidderGlowColor;
   double timerProgress;
@@ -139,11 +138,6 @@ class PlayerSeatComponent extends PositionComponent {
         Offset(center.dx, center.dy + _radius + 36), 9);
     }
 
-    // Bid/trump info label (above bidder's seat)
-    if (bidLabel != null) {
-      TextRenderer.drawCentered(canvas, bidLabel!, DiwaniyaColors.goldAccent,
-        Offset(center.dx, center.dy - _radius - 28), 12);
-    }
   }
 
   void _drawRopeBorder(Canvas canvas, Offset center) {
@@ -185,7 +179,6 @@ class PlayerSeatComponent extends PositionComponent {
     required bool teamA,
     bool dealer = false,
     String? bidAction,
-    String? bidLabel,
   }) {
     final wasActive = isActive;
     playerName = name;
@@ -194,7 +187,6 @@ class PlayerSeatComponent extends PositionComponent {
     isTeamA = teamA;
     isDealer = dealer;
     this.bidAction = bidAction;
-    this.bidLabel = bidLabel;
 
     if (wasActive != active && isMounted) {
       _updateGlowPulse();

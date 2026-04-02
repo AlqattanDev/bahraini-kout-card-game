@@ -319,19 +319,6 @@ void _updateScoreDisplay(ClientGameState state) {
       }
     }
 
-    // Build bid/trump label for the bidder's seat
-    String? bidLabel;
-    if (state.currentBid != null && state.bidderUid != null) {
-      final bidText = state.currentBid!.isKout
-          ? 'KOUT'
-          : 'Bid: ${state.currentBid!.value}';
-      if (state.trumpSuit != null) {
-        bidLabel = '$bidText | ${_suitSymbol(state.trumpSuit!)}';
-      } else {
-        bidLabel = bidText;
-      }
-    }
-
     for (int i = 0; i < state.playerUids.length && i < _seats.length; i++) {
       final uid = state.playerUids[i];
 
@@ -352,7 +339,6 @@ void _updateScoreDisplay(ClientGameState state) {
         teamA: i.isEven,
         dealer: uid == state.dealerUid,
         bidAction: bidAction,
-        bidLabel: uid == state.bidderUid ? bidLabel : null,
       );
       _seats[i].position = layout.seatPosition(i, state.mySeatIndex);
 

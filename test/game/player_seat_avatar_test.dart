@@ -18,7 +18,6 @@ void main() {
         teamA: false,
         dealer: true,
         bidAction: 'pass',
-        bidLabel: 'Bid: 5 | ♠',
       );
       expect(seat.playerName, 'Changed');
       expect(seat.cardCount, 3);
@@ -26,7 +25,6 @@ void main() {
       expect(seat.isTeamA, false);
       expect(seat.isDealer, true);
       expect(seat.bidAction, 'pass');
-      expect(seat.bidLabel, 'Bid: 5 | ♠');
     });
 
     test('avatarSeed is immutable after construction', () {
