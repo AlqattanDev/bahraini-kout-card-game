@@ -60,12 +60,13 @@ class PlayerSeatComponent extends PositionComponent {
     // Character avatar
     AvatarPainter.paint(canvas, center, _radius - 3, AvatarTraits.fromSeed(avatarSeed));
 
-    // Active turn ring — bright green, 5px
+    // Active turn ring — team-colored, 5px
     if (isActive) {
+      final activeColor = isTeamA ? KoutTheme.teamAColor : KoutTheme.teamBColor;
       if (timerProgress > 0.0) {
         // Dim background ring
         final bgRingPaint = Paint()
-          ..color = DiwaniyaColors.activeTurnRing.withValues(alpha: 0.2)
+          ..color = activeColor.withValues(alpha: 0.2)
           ..style = PaintingStyle.stroke
           ..strokeWidth = 5.0;
         canvas.drawCircle(center, _radius, bgRingPaint);
@@ -73,7 +74,7 @@ class PlayerSeatComponent extends PositionComponent {
         // Timer arc
         final sweepAngle = timerProgress * math.pi * 2;
         final timerPaint = Paint()
-          ..color = DiwaniyaColors.activeTurnRing
+          ..color = activeColor
           ..style = PaintingStyle.stroke
           ..strokeWidth = 5.0
           ..strokeCap = StrokeCap.round;
@@ -86,7 +87,7 @@ class PlayerSeatComponent extends PositionComponent {
         );
       } else {
         final activePaint = Paint()
-          ..color = DiwaniyaColors.activeTurnRing
+          ..color = activeColor
           ..style = PaintingStyle.stroke
           ..strokeWidth = 5.0;
         canvas.drawCircle(center, _radius, activePaint);
@@ -260,8 +261,10 @@ class _GlowPulseComponent extends PositionComponent {
   @override
   void render(Canvas canvas) {
     final center = Offset(size.x / 2, size.y / 2);
+    final parentSeat = parent as PlayerSeatComponent;
+    final teamColor = parentSeat.isTeamA ? KoutTheme.teamAColor : KoutTheme.teamBColor;
     final glowPaint = Paint()
-      ..color = DiwaniyaColors.activeTurnRing.withValues(alpha: _opacity)
+      ..color = teamColor.withValues(alpha: _opacity)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 20);
     canvas.drawCircle(center, radius + 8, glowPaint);
   }
