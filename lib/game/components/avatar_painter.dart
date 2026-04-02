@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'dart:ui';
+import '../theme/diwaniya_colors.dart';
 
 /// Traits that define a procedural character avatar's appearance.
 class AvatarTraits {
@@ -76,7 +77,7 @@ class AvatarPainter {
     canvas.save();
     canvas.clipPath(Path()..addOval(Rect.fromCircle(center: center, radius: radius)));
 
-    canvas.drawCircle(center, radius, Paint()..color = const Color(0xFF8FBFE0));
+    canvas.drawCircle(center, radius, Paint()..color = DiwaniyaColors.avatarSkyBg);
 
     final headRadius = radius * 0.65;
     final headCenter = Offset(center.dx, center.dy + radius * 0.1);
@@ -107,8 +108,8 @@ class AvatarPainter {
   }
 
   static void _drawEyes(Canvas canvas, double eyeY, double cx, double spacing, double headR, int style) {
-    final eyePaint = Paint()..color = const Color(0xFF1A1A1A);
-    final whitePaint = Paint()..color = const Color(0xFFFFFFFF);
+    final eyePaint = Paint()..color = DiwaniyaColors.avatarEyeBlack;
+    final whitePaint = Paint()..color = DiwaniyaColors.pureWhite;
     final eyeR = headR * (style == 2 ? 0.12 : style == 1 ? 0.08 : 0.10);
     final whiteR = eyeR * 1.6;
 
@@ -121,16 +122,16 @@ class AvatarPainter {
       canvas.drawCircle(
         Offset(cx + dx + eyeR * 0.3, eyeY - eyeR * 0.3),
         eyeR * 0.35,
-        Paint()..color = const Color(0xFFFFFFFF),
+        Paint()..color = DiwaniyaColors.pureWhite,
       );
     }
   }
 
   static void _drawSunglasses(Canvas canvas, Offset headCenter, double headR, double eyeY, double spacing) {
     final lensR = headR * 0.22;
-    final glassesPaint = Paint()..color = const Color(0xFF111111);
+    final glassesPaint = Paint()..color = DiwaniyaColors.avatarSunglassLens;
     final framePaint = Paint()
-      ..color = const Color(0xFF222222)
+      ..color = DiwaniyaColors.avatarSunglassFrame
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.0;
 
@@ -153,7 +154,7 @@ class AvatarPainter {
   static void _drawMouth(Canvas canvas, Offset headCenter, double headR, int style) {
     final mouthY = headCenter.dy + headR * 0.35;
     final mouthPaint = Paint()
-      ..color = const Color(0xFF8B4513)
+      ..color = DiwaniyaColors.avatarMouthBrown
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5
       ..strokeCap = StrokeCap.round;
@@ -215,7 +216,7 @@ class AvatarPainter {
 
     final agalY = headCenter.dy - headR * 0.55;
     final agalPaint = Paint()
-      ..color = const Color(0xFF111111)
+      ..color = DiwaniyaColors.avatarSunglassLens // agal cord is black
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3.0;
     canvas.drawLine(
@@ -231,7 +232,7 @@ class AvatarPainter {
 
     if (color.red > 150 && color.green < 100) {
       final checkPaint = Paint()
-        ..color = const Color(0xFFFFFFFF).withValues(alpha: 0.3)
+        ..color = DiwaniyaColors.pureWhite.withValues(alpha: 0.3)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.0;
       for (double dy = topY; dy < headCenter.dy + headR * 0.5; dy += 6) {

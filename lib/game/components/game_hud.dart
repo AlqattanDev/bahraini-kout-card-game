@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flame/components.dart';
 import '../theme/diwaniya_colors.dart';
+import '../theme/text_renderer.dart';
 
 /// Compact top-left HUD showing round and trick counters.
 class GameHudComponent extends PositionComponent {
@@ -42,20 +43,14 @@ class GameHudComponent extends PositionComponent {
     );
 
     final text = 'R$roundNumber  T$trickNumber';
-    final pb = ParagraphBuilder(
-      ParagraphStyle(
-        textAlign: TextAlign.center,
-        fontSize: 13,
-        fontFamily: 'IBMPlexMono',
-      ),
-    )
-      ..pushStyle(TextStyle(
-        color: DiwaniyaColors.cream.withValues(alpha: 0.8),
-        fontWeight: FontWeight.bold,
-      ))
-      ..addText(text);
-    final paragraph = pb.build();
-    paragraph.layout(ParagraphConstraints(width: _hudWidth));
-    canvas.drawParagraph(paragraph, Offset(0, (_hudHeight - 13) / 2));
+    TextRenderer.draw(
+      canvas,
+      text,
+      DiwaniyaColors.cream.withValues(alpha: 0.8),
+      Offset(_hudWidth / 2, (_hudHeight - 13) / 2),
+      13,
+      align: TextAlign.center,
+      width: _hudWidth,
+    );
   }
 }

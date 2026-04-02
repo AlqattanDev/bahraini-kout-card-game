@@ -4,6 +4,7 @@ import '../../app/models/client_game_state.dart';
 import '../../shared/models/game_state.dart';
 import '../theme/diwaniya_colors.dart';
 import '../theme/kout_theme.dart';
+import '../theme/text_renderer.dart';
 
 /// Compact score display positioned top-right.
 class ScoreHudComponent extends PositionComponent {
@@ -29,8 +30,13 @@ class ScoreHudComponent extends PositionComponent {
     position = Vector2(newWidth - _hudWidth - 12, 10);
   }
 
-  static int computePips({required int bidValue, required int tricksTaken}) {
-    return tricksTaken.clamp(0, 8);
+  /// Computes filled pip count: tricks taken, clamped to [0, target].
+  ///
+  /// [target] is the number of tricks the team needs (bid value for bidder,
+  /// `8 - bidValue + 1` for opponents). Clamping to target prevents
+  /// rendering more pips than the row has slots.
+  static int computePips({required int target, required int tricksTaken}) {
+    return tricksTaken.clamp(0, target);
   }
 
   @override
@@ -65,8 +71,8 @@ class ScoreHudComponent extends PositionComponent {
             ? KoutTheme.teamBColor
             : DiwaniyaColors.cream;
 
-    _drawText(canvas, '$tugScore', scoreColor, Offset(_hudWidth / 2 - 10, 8), 28);
-    _drawText(canvas, '/ 31', DiwaniyaColors.cream.withValues(alpha: 0.5), Offset(_hudWidth / 2 + 25, 18), 11);
+    TextRenderer.draw(canvas, '$tugScore', scoreColor, Offset(_hudWidth / 2 - 10, 8), 28, align: TextAlign.left, width: 60);
+    TextRenderer.draw(canvas, '/ 31', DiwaniyaColors.cream.withValues(alpha: 0.5), Offset(_hudWidth / 2 + 25, 18), 11, align: TextAlign.left, width: 40);
 
     final showPips = s.phase == GamePhase.playing || s.phase == GamePhase.roundScoring;
     if (showPips && s.bidderUid != null) {
@@ -107,14 +113,4 @@ class ScoreHudComponent extends PositionComponent {
     }
   }
 
-  void _drawText(Canvas canvas, String text, Color color, Offset offset, double fontSize) {
-    final pb = ParagraphBuilder(
-      ParagraphStyle(fontSize: fontSize, fontFamily: 'IBMPlexMono'),
-    )
-      ..pushStyle(TextStyle(color: color, fontWeight: FontWeight.bold))
-      ..addText(text);
-    final paragraph = pb.build();
-    paragraph.layout(const ParagraphConstraints(width: 100));
-    canvas.drawParagraph(paragraph, offset);
-  }
 }

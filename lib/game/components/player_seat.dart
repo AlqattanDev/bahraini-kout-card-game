@@ -4,6 +4,7 @@ import 'package:flame/components.dart';
 import '../../shared/models/enums.dart';
 import '../theme/kout_theme.dart';
 import '../theme/diwaniya_colors.dart';
+import '../theme/text_renderer.dart';
 import 'avatar_painter.dart';
 
 /// Displays a player seat: avatar, name pill, gold rope border,
@@ -105,7 +106,7 @@ class PlayerSeatComponent extends PositionComponent {
           ..style = PaintingStyle.stroke
           ..strokeWidth = 1.5,
       );
-      _drawText(canvas, 'D', const Color(0xFF1A1A1A), dealerCenter, 10);
+      TextRenderer.drawCentered(canvas, 'D', DiwaniyaColors.nearBlack, dealerCenter, 10);
     }
 
     // Name pill below avatar
@@ -116,21 +117,21 @@ class PlayerSeatComponent extends PositionComponent {
       const Radius.circular(11),
     );
     canvas.drawRRect(pillRect, Paint()..color = pillColor);
-    _drawText(canvas, _truncateName(playerName), const Color(0xFFFFFFFF),
+    TextRenderer.drawCentered(canvas, _truncateName(playerName), DiwaniyaColors.pureWhite,
       Offset(center.dx, pillY), 11);
 
     // Bid action label (during bidding)
     if (bidAction != null) {
       final isPass = bidAction == 'pass';
       final label = isPass ? 'PASS' : 'BID $bidAction';
-      final labelColor = isPass ? const Color(0xFFCC4444) : DiwaniyaColors.goldAccent;
-      _drawText(canvas, label, labelColor,
+      final labelColor = isPass ? DiwaniyaColors.passRed : DiwaniyaColors.goldAccent;
+      TextRenderer.drawCentered(canvas, label, labelColor,
         Offset(center.dx, center.dy + _radius + 36), 9);
     }
 
     // Bid/trump info label (above bidder's seat)
     if (bidLabel != null) {
-      _drawText(canvas, bidLabel!, DiwaniyaColors.goldAccent,
+      TextRenderer.drawCentered(canvas, bidLabel!, DiwaniyaColors.goldAccent,
         Offset(center.dx, center.dy - _radius - 28), 12);
     }
   }
@@ -161,18 +162,8 @@ class PlayerSeatComponent extends PositionComponent {
     }
   }
 
-  void _drawText(Canvas canvas, String text, Color color, Offset center, double fontSize) {
-    final paragraphBuilder = ParagraphBuilder(
-      ParagraphStyle(textAlign: TextAlign.center, fontSize: fontSize),
-    )
-      ..pushStyle(TextStyle(color: color, fontWeight: FontWeight.bold))
-      ..addText(text);
-    final paragraph = paragraphBuilder.build();
-    paragraph.layout(const ParagraphConstraints(width: 80));
-    canvas.drawParagraph(paragraph, Offset(center.dx - 40, center.dy - fontSize / 2));
-  }
-
-  String _truncateName(String name) {
+  /// Truncates names longer than 8 characters with an ellipsis.
+  static String _truncateName(String name) {
     if (name.length <= 8) return name;
     return '${name.substring(0, 7)}…';
   }

@@ -1,13 +1,13 @@
 import 'dart:math' as math;
 import 'dart:ui';
+import 'kout_theme.dart';
 
 /// Procedural Islamic geometric pattern renderer.
 ///
 /// Draws a repeating 8-point star tessellation using rotational symmetry.
-/// Colors: burgundy primary with gold accent at low opacity.
+/// Uses [KoutTheme.cardBack] as fill and [KoutTheme.accent] as stroke
+/// to stay consistent with card-back art.
 class GeometricPatterns {
-  static const Color _burgundy = Color(0xFF425944);
-  static const Color _gold = Color(0xFF738C5A);
 
   /// Draws a repeating 8-point star pattern tiled across [bounds].
   ///
@@ -75,13 +75,13 @@ class GeometricPatterns {
 
     // Fill with burgundy
     final fillPaint = Paint()
-      ..color = _burgundy.withValues(alpha: opacity * 0.6)
+      ..color = KoutTheme.cardBack.withValues(alpha: opacity * 0.6)
       ..style = PaintingStyle.fill;
     canvas.drawPath(path, fillPaint);
 
     // Stroke with gold
     final strokePaint = Paint()
-      ..color = _gold.withValues(alpha: opacity * 0.5)
+      ..color = KoutTheme.accent.withValues(alpha: opacity * 0.5)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 0.8;
     canvas.drawPath(path, strokePaint);

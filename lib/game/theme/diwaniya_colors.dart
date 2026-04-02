@@ -38,4 +38,17 @@ class DiwaniyaColors {
   // Card enhancements
   static const Color faceCardGradientTop = Color(0xFFFFFDF8);
   static const Color faceCardGradientBottom = Color(0xFFF5F0E8);
+
+  // Avatar palette
+  static const Color avatarSkyBg = Color(0xFF8FBFE0);
+  static const Color avatarEyeBlack = Color(0xFF1A1A1A);
+  static const Color avatarMouthBrown = Color(0xFF8B4513);
+  static const Color avatarSunglassLens = Color(0xFF111111);
+  static const Color avatarSunglassFrame = Color(0xFF222222);
+
+  // General UI
+  static const Color passRed = Color(0xFFCC4444);
+  static const Color pureWhite = Color(0xFFFFFFFF);
+  static const Color nearBlack = Color(0xFF1A1A1A);
+  static const Color tileHighlight = Color(0x05FFFFFF);
 }
