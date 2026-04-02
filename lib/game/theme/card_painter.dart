@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'diwaniya_colors.dart';
 import 'geometric_patterns.dart';
 import 'kout_theme.dart';
+import 'text_renderer.dart';
 
 /// High-contrast card rendering with bold corner indices and custom joker.
 ///
@@ -25,7 +26,7 @@ class CardPainter {
     );
 
     final outerBorderPaint = Paint()
-      ..color = const Color(0xFFFFFFFF)
+      ..color = DiwaniyaColors.pureWhite
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.0;
     canvas.drawRRect(rrect, outerBorderPaint);
@@ -70,14 +71,11 @@ class CardPainter {
 
     // Face card warm gradient overlay (K, Q, J only)
     if (rankStr == 'K' || rankStr == 'Q' || rankStr == 'J') {
-      final gradientShader = const LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [
-          DiwaniyaColors.faceCardGradientTop,
-          DiwaniyaColors.faceCardGradientBottom,
-        ],
-      ).createShader(rect);
+      final gradientShader = Gradient.linear(
+        Offset(rect.left, rect.top),
+        Offset(rect.left, rect.bottom),
+        [DiwaniyaColors.faceCardGradientTop, DiwaniyaColors.faceCardGradientBottom],
+      );
       canvas.drawRRect(rrect, Paint()..shader = gradientShader);
     }
 
@@ -91,14 +89,14 @@ class CardPainter {
     );
 
     // Top-left corner: rank (large, bold)
-    _drawCardText(
+    TextRenderer.draw(
       canvas, rankStr, suitColor,
       Offset(rect.left + 6, rect.top + 5),
       KoutTheme.cardCornerRankSize,
       align: TextAlign.left, width: 30,
     );
     // Top-left corner: suit below rank
-    _drawCardText(
+    TextRenderer.draw(
       canvas, suitSymbol, suitColor,
       Offset(rect.left + 6, rect.top + 5 + KoutTheme.cardCornerRankSize),
       KoutTheme.cardCornerSuitSize,
@@ -109,13 +107,13 @@ class CardPainter {
     canvas.save();
     canvas.translate(rect.right, rect.bottom);
     canvas.rotate(math.pi);
-    _drawCardText(
+    TextRenderer.draw(
       canvas, rankStr, suitColor,
       const Offset(6, 5),
       KoutTheme.cardCornerRankSize,
       align: TextAlign.left, width: 30,
     );
-    _drawCardText(
+    TextRenderer.draw(
       canvas, suitSymbol, suitColor,
       Offset(6, 5 + KoutTheme.cardCornerRankSize),
       KoutTheme.cardCornerSuitSize,
@@ -124,7 +122,7 @@ class CardPainter {
     canvas.restore();
 
     // Large center suit symbol
-    _drawCardText(
+    TextRenderer.draw(
       canvas, suitSymbol, suitColor,
       Offset(rect.left + rect.width / 2, rect.top + rect.height / 2 - 4),
       KoutTheme.cardCenterSuitSize,
@@ -149,13 +147,13 @@ class CardPainter {
     canvas.drawRRect(
       innerRRect,
       Paint()
-        ..color = suitColor.withOpacity(0.10)
+        ..color = suitColor.withValues(alpha: 0.10)
         ..style = PaintingStyle.fill,
     );
     canvas.drawRRect(
       innerRRect,
       Paint()
-        ..color = suitColor.withOpacity(0.22)
+        ..color = suitColor.withValues(alpha: 0.22)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.0,
     );
@@ -215,7 +213,7 @@ class CardPainter {
     );
 
     // "JOKER" text above starburst
-    _drawCardText(
+    TextRenderer.draw(
       canvas, 'JOKER', KoutTheme.jokerColor,
       Offset(cx, rect.top + 10),
       8,
@@ -223,7 +221,7 @@ class CardPainter {
     );
 
     // "خلو" text below starburst (Khallou)
-    _drawCardText(
+    TextRenderer.draw(
       canvas, 'خلو', KoutTheme.jokerColor,
       Offset(cx, rect.bottom - 22),
       10,
@@ -231,36 +229,4 @@ class CardPainter {
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // Internal helpers
-  // ---------------------------------------------------------------------------
-
-  static void _drawCardText(
-    Canvas canvas,
-    String text,
-    Color color,
-    Offset offset,
-    double fontSize, {
-    required TextAlign align,
-    required double width,
-  }) {
-    final builder = ParagraphBuilder(
-      ParagraphStyle(
-        textAlign: align,
-        fontSize: fontSize,
-        fontFamily: 'IBMPlexMono',
-      ),
-    )
-      ..pushStyle(TextStyle(color: color, fontWeight: FontWeight.bold))
-      ..addText(text);
-
-    final paragraph = builder.build();
-    paragraph.layout(ParagraphConstraints(width: width));
-
-    double dx = offset.dx;
-    if (align == TextAlign.center) {
-      dx = offset.dx - width / 2;
-    }
-    canvas.drawParagraph(paragraph, Offset(dx, offset.dy));
-  }
 }

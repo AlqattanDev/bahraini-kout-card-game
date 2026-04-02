@@ -8,16 +8,12 @@ class TextureGenerator {
   /// Kept for backward compatibility.
   static Paint woodGrainPaint(Rect bounds) {
     return Paint()
-      ..shader = const RadialGradient(
-        center: Alignment.center,
-        radius: 1.2,
-        colors: [
-          Color(0xFF3A4F4D),
-          Color(0xFF2F403E),
-          Color(0xFF1F2D2B),
-        ],
-        stops: [0.0, 0.5, 1.0],
-      ).createShader(bounds);
+      ..shader = Gradient.radial(
+        bounds.center,
+        bounds.longestSide * 0.6,
+        [const Color(0xFF3A4F4D), const Color(0xFF2F403E), const Color(0xFF1F2D2B)],
+        [0.0, 0.5, 1.0],
+      );
   }
 
   /// Draws a repeating tile/brick texture pattern across [bounds].
@@ -47,9 +43,7 @@ class TextureGenerator {
         canvas.drawRect(tileRect, tilePaint);
 
         if ((row + col) % 3 == 0) {
-          final highlightPaint = Paint()
-            ..color = const Color(0xFFFFFFFF).withValues(alpha: 0.02);
-          canvas.drawRect(tileRect.deflate(2), highlightPaint);
+          canvas.drawRect(tileRect.deflate(2), Paint()..color = DiwaniyaColors.tileHighlight);
         }
       }
     }
@@ -60,18 +54,16 @@ class TextureGenerator {
     final center = bounds.center;
     final radius = math.max(bounds.width, bounds.height) * 0.7;
 
-    final vignetteShader = RadialGradient(
-      center: Alignment.center,
-      radius: 1.0,
-      colors: [
+    final vignetteShader = Gradient.radial(
+      center,
+      radius,
+      [
         const Color(0x00000000),
         const Color(0x00000000),
         DiwaniyaColors.vignette.withValues(alpha: 0.5),
         DiwaniyaColors.vignette.withValues(alpha: 0.8),
       ],
-      stops: const [0.0, 0.5, 0.8, 1.0],
-    ).createShader(
-      Rect.fromCircle(center: center, radius: radius),
+      [0.0, 0.5, 0.8, 1.0],
     );
 
     canvas.drawRect(bounds, Paint()..shader = vignetteShader);

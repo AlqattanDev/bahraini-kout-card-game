@@ -16,13 +16,10 @@ import '../shared/models/enums.dart';
 import '../shared/models/trick.dart';
 import '../shared/logic/trick_resolver.dart';
 import 'components/player_seat.dart';
-import 'components/action_badge.dart';
 import 'components/game_hud.dart';
-import 'components/score_display.dart';
 import 'components/score_hud.dart';
 import 'components/table_background.dart';
 import 'components/trick_area.dart';
-import 'theme/diwaniya_colors.dart';
 import 'managers/layout_manager.dart';
 import 'managers/animation_manager.dart';
 import 'managers/sound_manager.dart';
@@ -39,14 +36,12 @@ class KoutGame extends FlameGame {
   // Managed components
   HandComponent? _hand;
   TrickAreaComponent? _trickArea;
-  ScoreDisplayComponent? _scoreDisplay;
   AmbientDecorationComponent? _ambientDecoration;
   final List<PlayerSeatComponent> _seats = [];
   final Map<int, OpponentHandFan> _opponentFans = {};
   PerspectiveTableComponent? _perspectiveTable;
   ScoreHudComponent? _scoreHud;
   GameHudComponent? _gameHud;
-  final Map<int, ActionBadgeComponent> _actionBadges = {};
 
   // Animation manager
   late AnimationManager _animationManager;
@@ -201,15 +196,6 @@ class KoutGame extends FlameGame {
       add(_scoreHud!);
     }
     _scoreHud!.updateState(state);
-
-    // Legacy ScoreDisplay — keep for backward compat, remove later
-    if (_scoreDisplay == null) {
-      final w = hasLayout ? size.x : 375.0;
-      _scoreDisplay = ScoreDisplayComponent(screenWidth: w);
-      // Don't add the old display — ScoreHud replaces it
-      // add(_scoreDisplay!);
-    }
-    // _scoreDisplay!.updateState(state);
 
     // Track scores — only update when NOT in roundScoring so that when
     // roundScoring arrives the _last values still hold pre-round scores.

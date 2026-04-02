@@ -4,7 +4,6 @@ import 'package:flame/components.dart';
 import '../../app/models/client_game_state.dart';
 import '../managers/layout_manager.dart';
 import '../theme/diwaniya_colors.dart';
-import '../theme/kout_theme.dart';
 import 'card_component.dart';
 
 /// Displays the 0–4 cards currently played in the center trick area.

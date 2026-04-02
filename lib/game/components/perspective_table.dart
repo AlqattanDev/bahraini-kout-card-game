@@ -36,16 +36,11 @@ class PerspectiveTableComponent extends PositionComponent {
     final tableRect = Rect.fromPoints(verts[0], verts[3]);
     final radius = tableRect.longestSide * 0.6;
 
-    final feltShader = RadialGradient(
-      center: Alignment.center,
-      radius: 1.0,
-      colors: const [
-        DiwaniyaColors.tableSurfaceCenter,
-        DiwaniyaColors.tableSurfaceEdge,
-      ],
-      stops: const [0.0, 1.0],
-    ).createShader(
-      Rect.fromCircle(center: center, radius: radius),
+    final feltShader = Gradient.radial(
+      center,
+      radius,
+      [DiwaniyaColors.tableSurfaceCenter, DiwaniyaColors.tableSurfaceEdge],
+      [0.0, 1.0],
     );
 
     canvas.drawPath(bodyPath, Paint()..shader = feltShader);
