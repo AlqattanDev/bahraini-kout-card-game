@@ -13,7 +13,7 @@ import 'text_renderer.dart';
 /// - Center suit: 32pt (was 28pt)
 /// - Card face: pure white (was ivory), border: dark gray (was green/gold)
 /// - Face cards (K/Q/J): decorative inner frame accent
-/// - Joker: black starburst with "JOKER" / "خلو" text
+/// - Joker: black starburst with "JOKER" text
 class CardPainter {
   // ---------------------------------------------------------------------------
   // Card back — unchanged
@@ -220,13 +220,6 @@ class CardPainter {
       align: TextAlign.center, width: rect.width,
     );
 
-    // "خلو" text below starburst (Khallou)
-    TextRenderer.draw(
-      canvas, 'خلو', KoutTheme.jokerColor,
-      Offset(cx, rect.bottom - 22),
-      10,
-      align: TextAlign.center, width: rect.width,
-    );
   }
 
 }
