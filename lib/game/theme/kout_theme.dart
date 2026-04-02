@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart' show TextStyle, FontWeight;
+import 'diwaniya_colors.dart';
 
 class KoutTheme {
   static const Color primary = Color(0xFF425944);
@@ -23,6 +24,17 @@ class KoutTheme {
   static const double cardShadowOffsetX = 2.0;
   static const double cardShadowOffsetY = 3.0;
   static const Color cardShadowColor = Color(0x66000000);
+
+  // Enhanced Diwaniya palette (delegates to DiwaniyaColors)
+  static const Color activeTurnRing = DiwaniyaColors.activeTurnRing;
+  static const Color goldAccent = DiwaniyaColors.goldAccent;
+  static const Color goldHighlight = DiwaniyaColors.goldHighlight;
+  static const Color cream = DiwaniyaColors.cream;
+
+  // Increased card dimensions for better readability
+  static const double cardWidthLarge = 80;
+  static const double cardHeightLarge = 114;
+  static const double cardCenterSuitSizeLarge = 42.0;
 
   // ---------------------------------------------------------------------------
   // Semantic colors
