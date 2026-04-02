@@ -356,7 +356,7 @@ void main() {
       expect(result.card, GameCard.decode('SA'));
     });
 
-    test('10. no Ace → leads highest from longest non-trump suit', () {
+    test('10. no Ace → leads LOW from longest non-trump suit (P5.5 probing)', () {
       final result = select(
         hand: [
           GameCard.decode('SK'),
@@ -371,8 +371,8 @@ void main() {
         trickPlays: [],
         trumpSuit: Suit.diamonds,
       );
-      // Spades is longest non-trump (3), leads highest = SK
-      expect(result.card, GameCard.decode('SK'));
+      // Spades is longest non-trump (3), leads LOW = S10 (probe cheaply)
+      expect(result.card, GameCard.decode('S10'));
     });
   });
 }

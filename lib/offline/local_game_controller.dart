@@ -16,6 +16,7 @@ import 'package:koutbh/shared/constants/timing.dart';
 import 'package:koutbh/offline/full_game_state.dart';
 import 'package:koutbh/offline/player_controller.dart';
 import 'package:koutbh/offline/human_player_controller.dart';
+import 'package:koutbh/offline/bot/card_tracker.dart';
 
 class LocalGameController {
   final List<SeatConfig> seats;
@@ -109,12 +110,27 @@ class LocalGameController {
     if (enableDelays) await Future.delayed(GameTiming.dealDelay);
   }
 
-  /// Waits a random 3-5s if [seat] is a bot and delays are enabled.
-  Future<void> _botThinkingDelay(int seat) async {
+  /// Context-aware bot delay for bidding / trump selection phases.
+  Future<void> _botBidDelay(int seat, {bool isPassing = false, bool isForced = false, BidAmount? amount}) async {
     if (controllers[seat] is! HumanPlayerController && enableDelays) {
-      final delay = Random().nextInt(GameTiming.botThinkingRangeMs) +
-          GameTiming.botThinkingMinMs;
-      await Future.delayed(Duration(milliseconds: delay));
+      await Future.delayed(GameTiming.botThinkingDelay(
+        legalMoves: 1,
+        trickNumber: 0,
+        isBidding: true,
+        isPassing: isPassing,
+        isForcedBid: isForced,
+        bidAmount: amount,
+      ));
+    }
+  }
+
+  /// Context-aware bot delay for card play phase.
+  Future<void> _botPlayDelay(int seat, {required int legalMoves}) async {
+    if (controllers[seat] is! HumanPlayerController && enableDelays) {
+      await Future.delayed(GameTiming.botThinkingDelay(
+        legalMoves: legalMoves,
+        trickNumber: _state.trickNumber,
+      ));
     }
   }
 
@@ -137,7 +153,7 @@ class LocalGameController {
 
       _emitState();
 
-      await _botThinkingDelay(_state.currentSeat);
+      await _botBidDelay(_state.currentSeat, isForced: isForced);
 
       final clientState = _toClientState(_state, _state.currentSeat);
       final context = BidContext(
@@ -204,7 +220,7 @@ class LocalGameController {
     _state.currentSeat = _state.bidderSeat!;
     _emitState();
 
-    await _botThinkingDelay(_state.bidderSeat!);
+    await _botBidDelay(_state.bidderSeat!, amount: _state.bid);
 
     final clientState = _toClientState(_state, _state.bidderSeat!);
     final action = await controllers[_state.bidderSeat!]!
@@ -225,6 +241,7 @@ class LocalGameController {
 
   Future<bool> _playTricks() async {
     _state.phase = GamePhase.playing;
+    final tracker = CardTracker();
 
     // First trick: seat after bidder leads
     int leaderSeat = nextSeat(_state.bidderSeat!);
@@ -243,6 +260,7 @@ class LocalGameController {
           isLead: play == 0,
           isLastPlay: play == 3,
           trickPlays: trickPlays,
+          tracker: tracker,
         );
         if (_disposed) return false;
         if (result == _PlayResult.poisonJoker) return true;
@@ -292,6 +310,7 @@ class LocalGameController {
     required bool isLead,
     required bool isLastPlay,
     required List<TrickPlay> trickPlays,
+    required CardTracker tracker,
   }) async {
     final hand = _state.hands[seat]!;
 
@@ -305,13 +324,18 @@ class LocalGameController {
     final ledSuit = isLead ? null : _getLedSuit();
     _emitState();
 
-    await _botThinkingDelay(seat);
+    final suitCards = ledSuit != null
+        ? hand.where((c) => !c.isJoker && c.suit == ledSuit).toList()
+        : <GameCard>[];
+    final legalMoves = suitCards.isNotEmpty ? suitCards.length : hand.length;
+    await _botPlayDelay(seat, legalMoves: legalMoves);
 
     // Retry loop: bots always play valid cards; humans might tap invalid.
     while (!_disposed) {
       final clientState = _toClientState(_state, seat);
       final context = PlayContext(ledSuit: ledSuit);
-      final action = await controllers[seat]!.decideAction(clientState, context);
+      final action = await controllers[seat]!
+          .decideAction(clientState, context, tracker: tracker);
       if (_disposed) return _PlayResult.ok;
 
       if (action is! PlayCardAction) continue;
@@ -334,6 +358,16 @@ class LocalGameController {
         (seat: seat, card: action.card),
       ];
       trickPlays.add(TrickPlay(playerIndex: seat, card: action.card));
+
+      // Track play and infer voids
+      tracker.recordPlay(seat, action.card);
+      if (!isLead &&
+          ledSuit != null &&
+          !action.card.isJoker &&
+          action.card.suit != ledSuit) {
+        tracker.inferVoid(seat, ledSuit);
+      }
+
       _emitState();
 
       // Joker led = immediate round loss

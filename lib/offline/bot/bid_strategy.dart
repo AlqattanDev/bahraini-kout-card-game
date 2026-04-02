@@ -11,21 +11,62 @@ class BidStrategy {
     bool isForced = false,
     Map<Team, int>? scores,
     Team? myTeam,
+    int? mySeat,
+    List<({int seat, String action})>? bidHistory,
+    double difficultyAdjust = 0.0,
   }) {
     final strength = HandEvaluator.evaluate(hand);
 
-    double thresholdAdjust = 0.0;
+    // Step 3.1 — Score-aware threshold adjustment
+    // Positive = more aggressive (pretend hand is stronger)
+    double thresholdAdjust = difficultyAdjust;
     if (scores != null && myTeam != null) {
-      final myScore = scores[myTeam] ?? 0;
-      final oppScore = scores[myTeam.opponent] ?? 0;
-      if (myScore >= 26) thresholdAdjust += 0.5;
-      if (oppScore >= 26) thresholdAdjust += 0.5;
-      if (oppScore >= 25 && myScore <= 5) thresholdAdjust += 0.8;
+      final my = scores[myTeam] ?? 0;
+      final opp = scores[myTeam.opponent] ?? 0;
+      if (my + 5 - opp >= 31) {
+        thresholdAdjust += 1.0; // any bid wins the game
+      } else if (my + 5 >= 31) {
+        thresholdAdjust += 0.8; // Bab alone reaches 31
+      } else if (opp >= 25 && my <= 5) {
+        thresholdAdjust += 1.0; // desperate — must bid to survive
+      } else if (my >= 26) {
+        thresholdAdjust += 0.5;
+      } else if (opp >= 26) {
+        thresholdAdjust += 0.5;
+      }
     }
 
-    final maxBid = _strengthToBid(strength.expectedWinners + thresholdAdjust);
+    // Step 3.2 — Position-aware bidding
+    if (bidHistory != null && mySeat != null) {
+      final actedBefore = bidHistory.length;
+      if (actedBefore == 0) {
+        thresholdAdjust -= 0.3; // first to bid, no info → conservative
+      } else if (actedBefore == 1) {
+        // no adjustment
+      } else if (actedBefore == 2) {
+        thresholdAdjust += 0.2; // more info
+      } else if (actedBefore >= 3) {
+        thresholdAdjust += 0.3; // last, max info → aggressive
+      }
+    }
+
+    // Step 3.3 — Partner inference from bid history
+    if (bidHistory != null && mySeat != null) {
+      final partnerSeat = (mySeat + 2) % 4;
+      final partnerEntry =
+          bidHistory.where((e) => e.seat == partnerSeat).lastOrNull;
+      if (partnerEntry != null && partnerEntry.action != 'pass') {
+        thresholdAdjust += 0.3; // partner bid → reliable
+      } else if (partnerEntry?.action == 'pass') {
+        thresholdAdjust -= 0.3; // partner passed → weak
+      }
+    }
+
+    final adjustedStrength = strength.expectedWinners + thresholdAdjust;
+    final maxBid = _strengthToBid(adjustedStrength);
 
     // Forced to bid — must return a BidAction, never PassAction
+    // Step 3.4: isForcedBid flag propagates to GameContext for play strategy (Phase 6.6)
     if (isForced) {
       final naturalBid = maxBid ?? BidAmount.bab;
       if (currentHighBid == null) return BidAction(naturalBid);
@@ -34,6 +75,28 @@ class BidStrategy {
         if (bid.value > currentHighBid.value) return BidAction(bid);
       }
       return BidAction(BidAmount.bab);
+    }
+
+    // Step 3.6 — Tactical overbidding: steal from opponent
+    if (currentHighBid != null && bidHistory != null && mySeat != null) {
+      final lastBidder = bidHistory
+          .where((e) => e.action != 'pass')
+          .lastOrNull;
+      if (lastBidder != null) {
+        final isOpponentBid = teamForSeat(lastBidder.seat) != myTeam;
+        if (isOpponentBid) {
+          final nextBidValue = currentHighBid.value + 1;
+          final nextBid = BidAmount.values
+              .where((b) => b.value == nextBidValue)
+              .firstOrNull;
+          if (nextBid != null) {
+            final nextThreshold = _bidThreshold(nextBid);
+            if (adjustedStrength > nextThreshold + 0.3) {
+              return BidAction(nextBid); // comfortable margin — overbid
+            }
+          }
+        }
+      }
     }
 
     if (maxBid == null) {
@@ -56,12 +119,22 @@ class BidStrategy {
     return PassAction();
   }
 
+  // TODO: Phase 3.5 — fuzzy thresholds for Aggressive bots (needs BotDifficulty from Phase 9)
+
   static BidAmount? _strengthToBid(double expectedWinners) {
-    // Partner contributes ~1.5 tricks, baked into thresholds
     if (expectedWinners >= 7.5) return BidAmount.kout;
     if (expectedWinners >= 6.5) return BidAmount.seven;
     if (expectedWinners >= 5.5) return BidAmount.six;
     if (expectedWinners >= 4.5) return BidAmount.bab;
     return null;
+  }
+
+  static double _bidThreshold(BidAmount bid) {
+    return switch (bid) {
+      BidAmount.bab => 4.5,
+      BidAmount.six => 5.5,
+      BidAmount.seven => 6.5,
+      BidAmount.kout => 7.5,
+    };
   }
 }

@@ -1,14 +1,22 @@
 import 'package:flutter/material.dart';
 import '../models/game_mode.dart';
 import '../models/seat_config.dart';
+import '../../offline/bot/bot_difficulty.dart';
 import '../../game/theme/kout_theme.dart';
 import '../../game/theme/geometric_patterns.dart';
 
-class OfflineLobbyScreen extends StatelessWidget {
+class OfflineLobbyScreen extends StatefulWidget {
   const OfflineLobbyScreen({super.key});
 
-  List<SeatConfig> get _defaultSeats => const [
-        SeatConfig(
+  @override
+  State<OfflineLobbyScreen> createState() => _OfflineLobbyScreenState();
+}
+
+class _OfflineLobbyScreenState extends State<OfflineLobbyScreen> {
+  BotDifficulty _difficulty = BotDifficulty.balanced;
+
+  List<SeatConfig> get _seats => [
+        const SeatConfig(
             seatIndex: 0,
             uid: 'human_0',
             displayName: 'You',
@@ -17,22 +25,25 @@ class OfflineLobbyScreen extends StatelessWidget {
             seatIndex: 1,
             uid: 'bot_1',
             displayName: 'Bot Khalid',
-            isBot: true),
+            isBot: true,
+            difficulty: _difficulty),
         SeatConfig(
             seatIndex: 2,
             uid: 'bot_2',
             displayName: 'Bot Fatima',
-            isBot: true),
+            isBot: true,
+            difficulty: _difficulty),
         SeatConfig(
             seatIndex: 3,
             uid: 'bot_3',
             displayName: 'Bot Ahmed',
-            isBot: true),
+            isBot: true,
+            difficulty: _difficulty),
       ];
 
   @override
   Widget build(BuildContext context) {
-    final seats = _defaultSeats;
+    final seats = _seats;
 
     return Scaffold(
       backgroundColor: KoutTheme.table,
@@ -128,6 +139,40 @@ class OfflineLobbyScreen extends StatelessWidget {
               ),
             ),
           ),
+          // Difficulty selector
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text('Bot Style: ',
+                    style: TextStyle(color: KoutTheme.textColor, fontSize: 14)),
+                const SizedBox(width: 8),
+                ...BotDifficulty.values.map((d) => Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: ChoiceChip(
+                        label: Text(_difficultyLabel(d)),
+                        selected: _difficulty == d,
+                        onSelected: (_) => setState(() => _difficulty = d),
+                        selectedColor: KoutTheme.accent,
+                        backgroundColor: KoutTheme.primary,
+                        labelStyle: TextStyle(
+                          color: _difficulty == d
+                              ? KoutTheme.table
+                              : KoutTheme.textColor,
+                          fontSize: 12,
+                        ),
+                        side: BorderSide(
+                          color: _difficulty == d
+                              ? KoutTheme.accent
+                              : KoutTheme.secondary,
+                        ),
+                      ),
+                    )),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
           Padding(
             padding: const EdgeInsets.all(32.0),
             child: SizedBox(
@@ -216,6 +261,12 @@ class OfflineLobbyScreen extends StatelessWidget {
       ],
     );
   }
+
+  String _difficultyLabel(BotDifficulty d) => switch (d) {
+        BotDifficulty.conservative => 'Safe',
+        BotDifficulty.balanced => 'Balanced',
+        BotDifficulty.aggressive => 'Bold',
+      };
 }
 
 /// CustomPainter that draws the 8-point star tessellation at a given opacity.

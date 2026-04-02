@@ -87,7 +87,10 @@ class _GameScreenState extends State<GameScreen> {
         final controllers = <int, PlayerController>{};
         for (final seat in seats) {
           controllers[seat.seatIndex] = seat.isBot
-              ? BotPlayerController(seatIndex: seat.seatIndex)
+              ? BotPlayerController(
+                  seatIndex: seat.seatIndex,
+                  difficulty: seat.difficulty,
+                )
               : humanController;
         }
         _localController = LocalGameController(

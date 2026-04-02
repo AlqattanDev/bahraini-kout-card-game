@@ -48,8 +48,8 @@ void main() {
       expect(result.card.suit, Suit.hearts);
     });
 
-    test('does not overtake partner when partner is winning', () {
-      // Seat 0's partner is seat 2 (uid: p2)
+    test('does not overtake partner when partner is winning (last position)', () {
+      // Seat 0's partner is seat 2 (uid: p2). Must be last to play (position 3).
       final hand = [
         const GameCard(suit: Suit.spades, rank: Rank.ace),
         const GameCard(suit: Suit.spades, rank: Rank.seven),
@@ -58,9 +58,8 @@ void main() {
       final result = PlayStrategy.selectCard(
         hand: hand,
         trickPlays: [
-          // Partner (p2) led with king
+          (playerUid: 'p1', card: const GameCard(suit: Suit.spades, rank: Rank.nine)),
           (playerUid: 'p2', card: const GameCard(suit: Suit.spades, rank: Rank.king)),
-          // Opponent played low
           (playerUid: 'p3', card: const GameCard(suit: Suit.spades, rank: Rank.eight)),
         ],
         trumpSuit: Suit.hearts,
@@ -69,7 +68,7 @@ void main() {
         partnerUid: 'p2',
       );
 
-      // Should dump low rather than overtake partner
+      // Last to play, partner winning → dump low
       expect(result.card.rank, Rank.seven);
     });
 

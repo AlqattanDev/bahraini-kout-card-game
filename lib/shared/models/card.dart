@@ -49,6 +49,25 @@ class GameCard {
     return Object.hash(suit, rank);
   }
 
+  /// The full 32-card koutbh deck as a set.
+  static Set<GameCard> fullDeck() {
+    final cards = <GameCard>{};
+    const fullSuits = [Suit.spades, Suit.hearts, Suit.clubs];
+    for (final suit in fullSuits) {
+      for (final rank in Rank.values) {
+        cards.add(GameCard(suit: suit, rank: rank));
+      }
+    }
+    // Diamonds: all ranks except 7
+    for (final rank in Rank.values) {
+      if (rank != Rank.seven) {
+        cards.add(GameCard(suit: Suit.diamonds, rank: rank));
+      }
+    }
+    cards.add(GameCard.joker());
+    return cards;
+  }
+
   @override
   String toString() => isJoker ? 'Joker' : '${rank!.name} of ${suit!.name}';
 }

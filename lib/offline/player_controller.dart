@@ -1,6 +1,7 @@
 import 'package:koutbh/shared/models/card.dart';
 import 'package:koutbh/shared/models/bid.dart';
 import 'package:koutbh/app/models/client_game_state.dart';
+import 'package:koutbh/offline/bot/card_tracker.dart';
 
 sealed class GameAction {}
 
@@ -43,5 +44,6 @@ class PlayContext extends ActionContext {
 
 abstract class PlayerController {
   Future<GameAction> decideAction(
-      ClientGameState state, ActionContext context);
+      ClientGameState state, ActionContext context,
+      {CardTracker? tracker});
 }

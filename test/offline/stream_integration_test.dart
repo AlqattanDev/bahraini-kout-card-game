@@ -6,6 +6,7 @@ import 'package:koutbh/shared/models/game_state.dart';
 import 'package:koutbh/offline/local_game_controller.dart';
 import 'package:koutbh/offline/bot_player_controller.dart';
 import 'package:koutbh/offline/player_controller.dart';
+import 'package:koutbh/offline/bot/card_tracker.dart';
 import 'package:koutbh/offline/bot/bid_strategy.dart';
 import 'package:koutbh/offline/bot/trump_strategy.dart';
 import 'package:koutbh/offline/bot/play_strategy.dart';
@@ -19,7 +20,8 @@ class AutoRespondController implements PlayerController {
 
   @override
   Future<GameAction> decideAction(
-      ClientGameState state, ActionContext context) async {
+      ClientGameState state, ActionContext context,
+      {CardTracker? tracker}) async {
     return switch (context) {
       BidContext(:final currentHighBid, :final isForced) =>
         BidStrategy.decideBid(state.myHand, currentHighBid, isForced: isForced),
