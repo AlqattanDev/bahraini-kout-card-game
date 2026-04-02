@@ -15,7 +15,9 @@ import '../shared/models/card.dart';
 import '../shared/models/enums.dart';
 import '../shared/models/trick.dart';
 import '../shared/logic/trick_resolver.dart';
+import 'components/action_badge.dart';
 import 'components/player_seat.dart';
+import 'theme/diwaniya_colors.dart';
 import 'components/game_hud.dart';
 import 'components/score_hud.dart';
 import 'components/table_background.dart';
@@ -49,8 +51,9 @@ class KoutGame extends FlameGame {
   // Sound manager
   SoundManager? soundManager;
 
-  // Track previous trick count to detect new trick plays
+  // Track previous counts to detect new actions for badges
   int _prevTrickPlayCount = 0;
+  int _prevBidHistoryLength = 0;
 
   // Track previous phase to detect transitions (e.g. poison joker roundScoring)
   GamePhase? _prevPhase;
@@ -182,6 +185,7 @@ class KoutGame extends FlameGame {
   void _onStateUpdate(ClientGameState state) {
     _updateScoreDisplay(state);
     _updateSeats(state);
+    _spawnActionBadges(state);
     _updateHand(state);
     _updateTrickArea(state);
     _updateGameHud(state);
@@ -313,6 +317,69 @@ class KoutGame extends FlameGame {
         _opponentFans[i]!.updateCardCount(state.cardCounts[i] ?? 8);
       }
     }
+  }
+
+  /// Spawns floating action badges when new bid/pass or card-play events
+  /// are detected. Badges auto-dismiss after 2.5s with a 0.5s fade.
+  void _spawnActionBadges(ClientGameState state) {
+    // Bid badges: detect new entries in bidHistory
+    if (state.bidHistory.length > _prevBidHistoryLength) {
+      for (int i = _prevBidHistoryLength; i < state.bidHistory.length; i++) {
+        final entry = state.bidHistory[i];
+        final seatIdx = state.playerUids.indexOf(entry.playerUid);
+        if (seatIdx < 0 || seatIdx >= _seats.length) continue;
+
+        final isPass = entry.action == 'pass';
+        final label = isPass ? 'PASS' : 'BID ${entry.action}';
+
+        final seatPos = layout.seatPosition(seatIdx, state.mySeatIndex);
+        add(ActionBadgeComponent(
+          text: label,
+          badgeColor: isPass
+              ? DiwaniyaColors.actionBadgePassBg
+              : DiwaniyaColors.actionBadgeBg,
+          autoDismissSeconds: 2.5,
+          position: seatPos + Vector2(0, -55),
+        )..priority = 100);
+
+        // Play sound for opponent bids (human's own bid has UI feedback)
+        if (entry.playerUid != state.myUid) {
+          soundManager?.playCardSound();
+        }
+      }
+    }
+    _prevBidHistoryLength = state.bidHistory.length;
+
+    // Reset bid history tracking when phase changes away from bidding
+    if (state.phase != GamePhase.bidding &&
+        state.phase != GamePhase.trumpSelection) {
+      _prevBidHistoryLength = 0;
+    }
+
+    // Card play badges: detect new plays in current trick
+    final newCount = state.currentTrickPlays.length;
+    if (newCount > _prevTrickPlayCount && newCount > 0) {
+      final lastPlay = state.currentTrickPlays.last;
+      final seatIdx = state.playerUids.indexOf(lastPlay.playerUid);
+      if (seatIdx >= 0 && seatIdx < _seats.length) {
+        final seatPos = layout.seatPosition(seatIdx, state.mySeatIndex);
+        final String displayLabel;
+        if (lastPlay.card.isJoker) {
+          displayLabel = 'JOKER';
+        } else {
+          final suitSymbol = _suitSymbol(lastPlay.card.suit!);
+          displayLabel = '${lastPlay.card.rank!.name.toUpperCase()}$suitSymbol';
+        }
+
+        add(ActionBadgeComponent(
+          text: displayLabel,
+          badgeColor: DiwaniyaColors.actionBadgeBg,
+          autoDismissSeconds: 1.8,
+          position: seatPos + Vector2(0, -55),
+        )..priority = 100);
+      }
+    }
+    // Note: _prevTrickPlayCount is updated in _updateTrickArea
   }
 
   void _updateHand(ClientGameState state) {

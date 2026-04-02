@@ -25,6 +25,7 @@ class DiwaniyaColors {
   // Player interaction
   static const Color activeTurnRing = Color(0xFF4ADE80);
   static const Color actionBadgeBg = Color(0xE6222222);
+  static const Color actionBadgePassBg = Color(0xE6441111);
   static const Color actionBadgeBorder = Color(0xFF555555);
 
   // Name label pill backgrounds
