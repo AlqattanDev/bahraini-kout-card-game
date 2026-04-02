@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'dart:ui';
 import 'package:flame/components.dart';
 
 /// Calculates positions and angles for all game elements based on screen size.
@@ -31,6 +32,38 @@ class LayoutManager {
 
   /// Center of the trick tracker (8 circles between trick area and hand).
   Vector2 get trickTrackerCenter => Vector2(width / 2, trickCenter.y + 130);
+
+  // ---------------------------------------------------------------------------
+  // 3D Perspective table surface geometry
+  // ---------------------------------------------------------------------------
+
+  static const double _tableTopWidthRatio = 0.55;
+  static const double _tableBottomWidthRatio = 0.85;
+
+  double get _tableTopY => 70.0;
+  double get _tableBottomY => height - 130.0;
+
+  /// The 4 vertices of the perspective table trapezoid.
+  /// Order: topLeft, topRight, bottomLeft, bottomRight.
+  List<Offset> get tableVertices {
+    final topHalf = width * _tableTopWidthRatio / 2;
+    final botHalf = width * _tableBottomWidthRatio / 2;
+    final cx = width / 2;
+    return [
+      Offset(cx - topHalf, _tableTopY),   // top-left
+      Offset(cx + topHalf, _tableTopY),   // top-right
+      Offset(cx - botHalf, _tableBottomY), // bottom-left
+      Offset(cx + botHalf, _tableBottomY), // bottom-right
+    ];
+  }
+
+  Offset get tableCenter {
+    final v = tableVertices;
+    return Offset(
+      (v[0].dx + v[1].dx + v[2].dx + v[3].dx) / 4,
+      (v[0].dy + v[1].dy + v[2].dy + v[3].dy) / 4,
+    );
+  }
 
   /// Position for a trick card played by relative seat index.
   /// relativeSeat: 0=bottom, 1=left, 2=top, 3=right

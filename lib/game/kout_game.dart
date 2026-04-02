@@ -9,6 +9,7 @@ import 'components/ambient_decoration.dart';
 import 'components/card_component.dart';
 import 'components/hand_component.dart';
 import 'components/opponent_hand_fan.dart';
+import 'components/perspective_table.dart';
 import '../offline/game_input_sink.dart';
 import '../shared/models/card.dart';
 import '../shared/models/enums.dart';
@@ -38,6 +39,7 @@ class KoutGame extends FlameGame {
   AmbientDecorationComponent? _ambientDecoration;
   final List<PlayerSeatComponent> _seats = [];
   final Map<int, OpponentHandFan> _opponentFans = {};
+  PerspectiveTableComponent? _perspectiveTable;
 
   // Animation manager
   late AnimationManager _animationManager;
@@ -99,6 +101,11 @@ class KoutGame extends FlameGame {
 
     // Wood grain table background — rendered first (behind everything else)
     add(TableBackgroundComponent());
+
+    // 3D perspective table surface
+    _perspectiveTable = PerspectiveTableComponent(layout: layout);
+    add(_perspectiveTable!);
+
     _stateSub = stateStream.listen((state) {
       currentState = state;
       _onStateUpdate(state);
@@ -121,6 +128,7 @@ class KoutGame extends FlameGame {
     super.onGameResize(newSize);
     layout = LayoutManager(newSize);
     _scoreDisplay?.updateWidth(newSize.x);
+    _perspectiveTable?.updateLayout(layout);
   }
 
   @override
