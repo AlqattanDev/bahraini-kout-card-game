@@ -12,11 +12,6 @@ void main() {
       );
     });
 
-    test('active turn ring is high-contrast for visibility', () {
-      // Must be visible against the dark table surface
-      expect(DiwaniyaColors.activeTurnRing.computeLuminance(), greaterThan(0.3));
-    });
-
     test('gold accent is perceptually warm (R+G > B)', () {
       final c = DiwaniyaColors.goldAccent;
       final r = _to255(c.r), g = _to255(c.g), b = _to255(c.b);

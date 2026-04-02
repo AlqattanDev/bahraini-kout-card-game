@@ -26,7 +26,6 @@ class KoutTheme {
   static const Color cardShadowColor = Color(0x88000000);
 
   // Enhanced Diwaniya palette (delegates to DiwaniyaColors)
-  static const Color activeTurnRing = DiwaniyaColors.activeTurnRing;
   static const Color goldAccent = DiwaniyaColors.goldAccent;
   static const Color goldHighlight = DiwaniyaColors.goldHighlight;
   static const Color cream = DiwaniyaColors.cream;

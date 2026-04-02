@@ -37,10 +37,6 @@ void main() {
   });
 
   group('KoutTheme DiwaniyaColors delegates', () {
-    test('activeTurnRing delegates to DiwaniyaColors', () {
-      expect(identical(KoutTheme.activeTurnRing, DiwaniyaColors.activeTurnRing), isTrue);
-    });
-
     test('goldAccent delegates to DiwaniyaColors', () {
       expect(identical(KoutTheme.goldAccent, DiwaniyaColors.goldAccent), isTrue);
     });

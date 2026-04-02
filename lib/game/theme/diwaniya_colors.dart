@@ -22,12 +22,6 @@ class DiwaniyaColors {
   static const Color cream = Color(0xFFF5ECD7);
   static const Color darkWood = Color(0xFF3B2314);
 
-  // Player interaction
-  static const Color activeTurnRing = Color(0xFF4ADE80);
-  static const Color actionBadgeBg = Color(0xE6222222);
-  static const Color actionBadgePassBg = Color(0xE6441111);
-  static const Color actionBadgeBorder = Color(0xFF555555);
-
   // Name label pill backgrounds
   static const Color nameLabelTeamA = Color(0xCC2A5FAA);
   static const Color nameLabelTeamB = Color(0xCCAA2A2A);

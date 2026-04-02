@@ -7,7 +7,7 @@ import '../theme/text_renderer.dart';
 import 'avatar_painter.dart';
 
 /// Displays a player seat: avatar, name pill, gold rope border,
-/// and an active-turn bright green ring.
+/// and an active-turn team-colored ring.
 class PlayerSeatComponent extends PositionComponent {
   String playerName;
   int cardCount;
