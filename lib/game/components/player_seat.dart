@@ -57,6 +57,11 @@ class PlayerSeatComponent extends PositionComponent {
       canvas.drawCircle(center, _radius + 6, glowPaint);
     }
 
+    // Crown above bidder's avatar
+    if (isBidder) {
+      _drawCrown(canvas, Offset(center.dx, center.dy - _radius - 20));
+    }
+
     // Character avatar
     AvatarPainter.paint(canvas, center, _radius - 3, AvatarTraits.fromSeed(avatarSeed));
 
@@ -124,6 +129,45 @@ class PlayerSeatComponent extends PositionComponent {
         Offset(center.dx, center.dy + _radius + 36), 9);
     }
 
+  }
+
+  /// Draws a small geometric crown at [crownCenter].
+  static void _drawCrown(Canvas canvas, Offset crownCenter) {
+    const double w = 18.0;  // total width
+    const double h = 12.0;  // total height
+    final left = crownCenter.dx - w / 2;
+    final top = crownCenter.dy - h / 2;
+
+    final path = Path()
+      // Base
+      ..moveTo(left, top + h)
+      ..lineTo(left + w, top + h)
+      // Right side up to right peak
+      ..lineTo(left + w, top + h * 0.4)
+      // Right peak
+      ..lineTo(left + w * 0.82, top)
+      // Valley between right and center
+      ..lineTo(left + w * 0.65, top + h * 0.35)
+      // Center peak
+      ..lineTo(left + w * 0.5, top)
+      // Valley between center and left
+      ..lineTo(left + w * 0.35, top + h * 0.35)
+      // Left peak
+      ..lineTo(left + w * 0.18, top)
+      // Left side
+      ..lineTo(left, top + h * 0.4)
+      ..close();
+
+    // Gold fill
+    canvas.drawPath(path, Paint()..color = DiwaniyaColors.goldAccent);
+    // Darker stroke
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = DiwaniyaColors.darkWood
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.0,
+    );
   }
 
   void _drawRopeBorder(Canvas canvas, Offset center) {
