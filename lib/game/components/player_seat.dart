@@ -110,8 +110,10 @@ class PlayerSeatComponent extends PositionComponent {
       const Radius.circular(11),
     );
     canvas.drawRRect(pillRect, Paint()..color = pillColor);
-    TextRenderer.drawCentered(canvas, _truncateName(playerName), DiwaniyaColors.pureWhite,
-      Offset(center.dx, pillY), 11);
+    final teamLetter = isTeamA ? 'A' : 'B';
+    final displayName = '$teamLetter  ${_truncateName(playerName)}';
+    TextRenderer.drawCentered(canvas, displayName, DiwaniyaColors.pureWhite,
+      Offset(center.dx, pillY), 10);
 
     // Bid action label (during bidding)
     if (bidAction != null) {
@@ -150,10 +152,10 @@ class PlayerSeatComponent extends PositionComponent {
     }
   }
 
-  /// Truncates names longer than 8 characters with an ellipsis.
+  /// Truncates names longer than 6 characters with an ellipsis.
   static String _truncateName(String name) {
-    if (name.length <= 8) return name;
-    return '${name.substring(0, 7)}…';
+    if (name.length <= 6) return name;
+    return '${name.substring(0, 5)}…';
   }
 
   void updateState({

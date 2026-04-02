@@ -181,9 +181,18 @@ class UnifiedHudComponent extends PositionComponent {
       final oppTeamColor = bidderTeam == Team.a
           ? KoutTheme.teamBColor
           : KoutTheme.teamAColor;
+      final bidTeamLabel = bidderTeam == Team.a ? 'A' : 'B';
+      final oppTeamLabel = bidderTeam == Team.a ? 'B' : 'A';
 
+      // Bidder pip row with team label
+      TextRenderer.draw(canvas, bidTeamLabel, bidTeamColor,
+          Offset(_padding, y + 1), 10, align: TextAlign.left, width: 12);
       _drawPipRow(canvas, y + 4, bidValue!, bidderTricks, bidTeamColor);
       y += 16;
+
+      // Opponent pip row with team label
+      TextRenderer.draw(canvas, oppTeamLabel, oppTeamColor,
+          Offset(_padding, y + 1), 10, align: TextAlign.left, width: 12);
       _drawPipRow(canvas, y + 4, opponentTarget, opponentTricks, oppTeamColor);
       y += 16 + _rowGap;
 
@@ -204,7 +213,7 @@ class UnifiedHudComponent extends PositionComponent {
   void _drawPipRow(Canvas canvas, double y, int total, int filled, Color color) {
     final clamped = filled.clamp(0, total);
     final totalWidth = (total - 1) * _pipSpacing;
-    final startX = (_hudWidth - totalWidth) / 2;
+    final startX = (_hudWidth - totalWidth) / 2 + 8; // shifted right for team label
 
     for (int i = 0; i < total; i++) {
       final cx = startX + i * _pipSpacing;
