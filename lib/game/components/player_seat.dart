@@ -17,6 +17,8 @@ class PlayerSeatComponent extends PositionComponent {
   final int avatarSeed;
   String? bidAction;
   String? bidLabel;
+  bool isBidder = false;
+  Color? bidderGlowColor;
   double timerProgress;
 
   static const double _radius = 36.0;
@@ -48,6 +50,15 @@ class PlayerSeatComponent extends PositionComponent {
 
     // Gold rope border
     _drawRopeBorder(canvas, center);
+
+    // Bidder glow ring — static, behind everything else
+    if (isBidder && bidderGlowColor != null) {
+      final glowPaint = Paint()
+        ..color = bidderGlowColor!.withValues(alpha: 0.5)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3.0;
+      canvas.drawCircle(center, _radius + 6, glowPaint);
+    }
 
     // Character avatar
     AvatarPainter.paint(canvas, center, _radius - 3, AvatarTraits.fromSeed(avatarSeed));
@@ -204,6 +215,11 @@ class PlayerSeatComponent extends PositionComponent {
 
   void flashTrickWin() {
     add(_TrickWinFlashComponent(radius: _radius));
+  }
+
+  void setBidderGlow(bool bidder, Color? color) {
+    isBidder = bidder;
+    bidderGlowColor = color;
   }
 }
 

@@ -17,8 +17,8 @@ import '../shared/logic/trick_resolver.dart';
 import 'components/action_badge.dart';
 import 'components/player_seat.dart';
 import 'theme/diwaniya_colors.dart';
-import 'components/game_hud.dart';
-import 'components/score_hud.dart';
+import 'theme/kout_theme.dart';
+import 'components/unified_hud.dart';
 import 'components/table_background.dart';
 import 'components/trick_area.dart';
 import 'managers/layout_manager.dart';
@@ -41,8 +41,9 @@ class KoutGame extends FlameGame {
   final List<PlayerSeatComponent> _seats = [];
   final Map<int, OpponentHandFan> _opponentFans = {};
   PerspectiveTableComponent? _perspectiveTable;
-  ScoreHudComponent? _scoreHud;
-  GameHudComponent? _gameHud;
+  UnifiedHudComponent? _unifiedHud;
+  Stopwatch? _gameTimer;
+  double _hudTickAccum = 0.0;
 
   // Animation manager
   late AnimationManager _animationManager;
@@ -131,7 +132,7 @@ class KoutGame extends FlameGame {
   void onGameResize(Vector2 size) {
     super.onGameResize(size);
     layout = LayoutManager(size);
-    _scoreHud?.updateWidth(size.x);
+    _unifiedHud?.updateWidth(size.x);
     _perspectiveTable?.updateLayout(layout);
   }
 
@@ -175,38 +176,82 @@ class KoutGame extends FlameGame {
         seat.timerProgress = 0.0;
       }
     }
+
+    // Tick game timer on HUD every second
+    if (_gameTimer != null && _unifiedHud != null) {
+      _hudTickAccum += dt;
+      if (_hudTickAccum >= 1.0) {
+        _hudTickAccum = 0.0;
+        _unifiedHud!.updateTimer(_gameTimer!.elapsed);
+      }
+    }
   }
 
   // ---------------------------------------------------------------------------
   // State update — wires all components and overlays to [ClientGameState]
   // ---------------------------------------------------------------------------
 
-  void _onStateUpdate(ClientGameState state) {
-    _updateScoreDisplay(state);
-    _updateSeats(state);
-    _spawnActionBadges(state);
-    _updateHand(state);
-    _updateTrickArea(state);
-    _updateGameHud(state);
-    _updateOverlays(state);
+void _onStateUpdate(ClientGameState state) {
+  _updateScoreDisplay(state);
+  _updateSeats(state);
+  _updateBidderGlow(state);
+  _spawnActionBadges(state);
+  _updateHand(state);
+  _updateTrickArea(state);
+  _updateOverlays(state);
+}
+
+void _updateScoreDisplay(ClientGameState state) {
+  _gameTimer ??= Stopwatch()..start();
+
+  if (_unifiedHud == null) {
+    final w = hasLayout ? size.x : 375.0;
+    _unifiedHud = UnifiedHudComponent(screenWidth: w);
+    add(_unifiedHud!);
   }
 
-  void _updateScoreDisplay(ClientGameState state) {
-    // New compact Score HUD (top-right)
-    if (_scoreHud == null) {
-      final w = hasLayout ? size.x : 375.0;
-      _scoreHud = ScoreHudComponent(screenWidth: w);
-      add(_scoreHud!);
-    }
-    _scoreHud!.updateState(state);
+  final teamAScore = state.scores[Team.a] ?? 0;
+  final teamBScore = state.scores[Team.b] ?? 0;
+  final roundNumber = (state.trickWinners.length ~/ 8) + 1;
 
-    // Track scores — only update when NOT in roundScoring so that when
-    // roundScoring arrives the _last values still hold pre-round scores.
-    if (state.phase != GamePhase.roundScoring) {
-      _lastScoreA = state.scores[Team.a] ?? 0;
-      _lastScoreB = state.scores[Team.b] ?? 0;
+  int? bidValue;
+  Team? bidderTeam;
+  int bidderTricks = 0;
+  int opponentTricks = 0;
+  int opponentTarget = 0;
+
+  if (state.bidderUid != null && state.currentBid != null) {
+    bidValue = state.currentBid!.value;
+    final bidderSeat = state.playerUids.indexOf(state.bidderUid!);
+    if (bidderSeat >= 0) {
+      bidderTeam = teamForSeat(bidderSeat);
+      bidderTricks = state.tricks[bidderTeam] ?? 0;
+      opponentTricks = state.tricks[bidderTeam.opponent] ?? 0;
+      opponentTarget = 9 - bidValue;
     }
   }
+
+  _unifiedHud!.updateState(
+    phase: state.phase,
+    teamAScore: teamAScore,
+    teamBScore: teamBScore,
+    roundNumber: roundNumber,
+    bidValue: bidValue,
+    bidderTeam: bidderTeam,
+    trumpSuit: state.trumpSuit,
+    bidderTricks: bidderTricks,
+    opponentTricks: opponentTricks,
+    opponentTarget: opponentTarget,
+  );
+
+  _unifiedHud!.updateTimer(_gameTimer!.elapsed);
+
+  // Track scores for round result overlay
+  if (state.phase != GamePhase.roundScoring) {
+    _lastScoreA = state.scores[Team.a] ?? 0;
+    _lastScoreB = state.scores[Team.b] ?? 0;
+  }
+}
 
   void _updateSeats(ClientGameState state) {
     // Create seat components on first call; update thereafter
@@ -318,6 +363,22 @@ class KoutGame extends FlameGame {
     }
   }
 
+  void _updateBidderGlow(ClientGameState state) {
+    final showGlow = state.phase != GamePhase.bidding &&
+        state.phase != GamePhase.waiting &&
+        state.phase != GamePhase.dealing;
+
+    for (int i = 0; i < _seats.length; i++) {
+      final uid = state.playerUids[i];
+      if (showGlow && uid == state.bidderUid) {
+        final teamColor = i.isEven ? KoutTheme.teamAColor : KoutTheme.teamBColor;
+        _seats[i].setBidderGlow(true, teamColor);
+      } else {
+        _seats[i].setBidderGlow(false, null);
+      }
+    }
+  }
+
   /// Spawns floating action badges when new bid/pass or card-play events
   /// are detected. Badges auto-dismiss after 2.5s with a 0.5s fade.
   void _spawnActionBadges(ClientGameState state) {
@@ -349,9 +410,10 @@ class KoutGame extends FlameGame {
     }
     _prevBidHistoryLength = state.bidHistory.length;
 
-    // Reset bid history tracking when phase changes away from bidding
-    if (state.phase != GamePhase.bidding &&
-        state.phase != GamePhase.trumpSelection) {
+    // Reset bid history tracking only at start of a new round (bidding phase
+    // with empty history), not when transitioning to play — otherwise the
+    // entire bid history re-spawns as badges every state update.
+    if (state.phase == GamePhase.bidding && state.bidHistory.isEmpty) {
       _prevBidHistoryLength = 0;
     }
 
@@ -461,15 +523,6 @@ class KoutGame extends FlameGame {
     _prevTrickPlayCount = newCount;
   }
 
-  void _updateGameHud(ClientGameState state) {
-    if (_gameHud == null) {
-      _gameHud = GameHudComponent();
-      add(_gameHud!);
-    }
-    final roundNumber = (state.trickWinners.length ~/ 8) + 1;
-    final trickInRound = state.trickWinners.length % 8;
-    _gameHud!.updateRound(roundNumber, trick: trickInRound);
-  }
 
   // ---------------------------------------------------------------------------
   // Overlay management

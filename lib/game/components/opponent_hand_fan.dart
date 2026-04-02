@@ -1,9 +1,7 @@
 import 'dart:ui';
 import 'package:flame/components.dart';
 import '../theme/card_painter.dart';
-import '../theme/diwaniya_colors.dart';
 import '../theme/kout_theme.dart';
-import '../theme/text_renderer.dart';
 
 /// Renders miniature face-down card backs near an opponent seat,
 /// visually indicating how many cards they hold.
@@ -132,15 +130,5 @@ class OpponentHandFan extends PositionComponent {
     }
 
     canvas.restore(); // undo baseRotation
-
-    // Card count badge
-    if (cardCount > 0) {
-      final badgeCenter = Offset(size.x / 2, size.y / 2 + _miniHeight * 0.6);
-      canvas.drawCircle(badgeCenter, 10, Paint()..color = DiwaniyaColors.actionBadgeBg);
-      TextRenderer.drawCentered(
-        canvas, '$cardCount', DiwaniyaColors.pureWhite, badgeCenter, 10,
-        width: 20,
-      );
-    }
   }
 }

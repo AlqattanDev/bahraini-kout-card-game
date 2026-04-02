@@ -222,23 +222,6 @@ class _GameScreenState extends State<GameScreen> {
           },
         },
           ),
-          Positioned(
-            top: 8,
-            right: 8,
-            child: IconButton(
-              icon: Icon(
-                _koutGame?.soundManager?.muted == true
-                    ? Icons.volume_off
-                    : Icons.volume_up,
-                color: const Color(0xFF738C5A),
-                size: 24,
-              ),
-              onPressed: () async {
-                await _koutGame?.soundManager?.toggleMute();
-                if (mounted) setState(() {});
-              },
-            ),
-          ),
         ],
       ),
     );

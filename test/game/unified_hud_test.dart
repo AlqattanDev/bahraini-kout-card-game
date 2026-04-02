@@ -1,7 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koutbh/game/components/unified_hud.dart';
 import 'package:koutbh/shared/models/game_state.dart';
-import 'package:koutbh/shared/models/bid.dart';
 import 'package:koutbh/shared/models/card.dart';
 
 void main() {
