@@ -107,43 +107,39 @@ class PlayStrategy {
     required Suit? ledSuit,
     String? partnerUid,
   }) {
-    // Check if partner is currently winning
     final winningPlay = _winningPlay(trickPlays, trumpSuit, ledSuit);
     final partnerWinning =
         partnerUid != null && winningPlay?.playerUid == partnerUid;
+    final trickNumber = 9 - hand.length; // 8 cards at trick 1, 1 at trick 8
+    final hasJoker = legalCards.any((c) => c.isJoker);
 
-    // Check for Joker play opportunity: if holding Joker with <=2 other cards
-    final joker = legalCards.where((c) => c.isJoker).toList();
-    final nonJokerInHand = hand.where((c) => !c.isJoker).length;
-    if (joker.isNotEmpty && nonJokerInHand <= 2 && !partnerWinning) {
-      return joker.first;
-    }
-
-    // Following suit
+    // Following suit (Joker not in legalCards when we have the led suit)
     final followingSuit = ledSuit != null &&
         legalCards.every((c) => !c.isJoker && c.suit == ledSuit);
 
     if (followingSuit) {
-      if (partnerWinning) {
-        // Dump lowest
-        return _lowest(legalCards);
-      }
-
-      // Can we win?
+      if (partnerWinning) return _lowest(legalCards);
       final winningCards =
           _cardsBeating(legalCards, trickPlays, trumpSuit, ledSuit);
-      if (winningCards.isNotEmpty) {
-        // Play lowest winning card
-        return _lowest(winningCards);
+      return _lowest(winningCards.isNotEmpty ? winningCards : legalCards);
+    }
+
+    // Void in led suit — partner winning: dump low, but dump Joker if poison imminent
+    if (partnerWinning) {
+      if (hasJoker && trickNumber >= 7) {
+        return legalCards.firstWhere((c) => c.isJoker);
       }
-      // Can't win, dump lowest
       return _lowest(legalCards);
     }
 
-    // Void in led suit
-    if (partnerWinning) {
-      // Dump lowest from weakest suit
-      return _dumpLowest(legalCards);
+    // Void in led suit — try to win the trick
+    if (hasJoker) {
+      final mustAvoidPoison = trickNumber >= 7;
+      final opponentTrumped = trumpSuit != null &&
+          trickPlays.any((p) => !p.card.isJoker && p.card.suit == trumpSuit);
+      if (mustAvoidPoison || opponentTrumped || trickNumber >= 5) {
+        return legalCards.firstWhere((c) => c.isJoker);
+      }
     }
 
     // Try to trump in
@@ -151,7 +147,6 @@ class PlayStrategy {
       final trumpCards =
           legalCards.where((c) => !c.isJoker && c.suit == trumpSuit).toList();
       if (trumpCards.isNotEmpty) {
-        // Play lowest trump that wins
         final winningTrumps =
             _cardsBeating(trumpCards, trickPlays, trumpSuit, ledSuit);
         if (winningTrumps.isNotEmpty) return _lowest(winningTrumps);
@@ -159,18 +154,14 @@ class PlayStrategy {
       }
     }
 
-    // Can't trump, dump lowest
-    return _dumpLowest(legalCards);
+    // Fallback: dump Joker if late enough to avoid poison, else dump lowest
+    if (hasJoker && trickNumber >= 6) {
+      return legalCards.firstWhere((c) => c.isJoker);
+    }
+    return _lowest(legalCards);
   }
 
   static GameCard _lowest(List<GameCard> cards) {
-    final nonJoker = cards.where((c) => !c.isJoker).toList();
-    if (nonJoker.isEmpty) return cards.first;
-    nonJoker.sort((a, b) => a.rank!.value.compareTo(b.rank!.value));
-    return nonJoker.first;
-  }
-
-  static GameCard _dumpLowest(List<GameCard> cards) {
     final nonJoker = cards.where((c) => !c.isJoker).toList();
     if (nonJoker.isEmpty) return cards.first;
     nonJoker.sort((a, b) => a.rank!.value.compareTo(b.rank!.value));

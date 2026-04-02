@@ -110,8 +110,8 @@ void main() {
       expect(result.card.isJoker, isFalse);
     });
 
-    test('plays Joker before it becomes last card', () {
-      // Hand with Joker and only 2 other cards
+    test('plays Joker late to avoid poison (trick 6, void in suit)', () {
+      // 3 cards = trick 6 (9-3), void in clubs → plays Joker
       final hand = [
         GameCard.joker(),
         const GameCard(suit: Suit.spades, rank: Rank.seven),
@@ -128,8 +128,57 @@ void main() {
         mySeat: 2,
       );
 
-      // Should play Joker since ≤2 non-joker cards remain
       expect(result.card.isJoker, isTrue);
+    });
+
+    test('plays Joker to steal when opponent trumps in', () {
+      // 5 cards = trick 4, void in spades, opponent trumped with hearts
+      final hand = [
+        GameCard.joker(),
+        const GameCard(suit: Suit.clubs, rank: Rank.seven),
+        const GameCard(suit: Suit.clubs, rank: Rank.eight),
+        const GameCard(suit: Suit.diamonds, rank: Rank.nine),
+        const GameCard(suit: Suit.diamonds, rank: Rank.jack),
+      ];
+
+      final result = PlayStrategy.selectCard(
+        hand: hand,
+        trickPlays: [
+          (playerUid: 'p1', card: const GameCard(suit: Suit.spades, rank: Rank.king)),
+          (playerUid: 'p3', card: const GameCard(suit: Suit.hearts, rank: Rank.ace)),
+        ],
+        trumpSuit: Suit.hearts,
+        ledSuit: Suit.spades,
+        mySeat: 2,
+      );
+
+      // Opponent trumped → Joker steals the contested trick
+      expect(result.card.isJoker, isTrue);
+    });
+
+    test('does not play Joker early when trick is low-value', () {
+      // 6 cards = trick 3, void in spades, no trump played
+      final hand = [
+        GameCard.joker(),
+        const GameCard(suit: Suit.clubs, rank: Rank.seven),
+        const GameCard(suit: Suit.clubs, rank: Rank.eight),
+        const GameCard(suit: Suit.hearts, rank: Rank.nine),
+        const GameCard(suit: Suit.diamonds, rank: Rank.nine),
+        const GameCard(suit: Suit.diamonds, rank: Rank.jack),
+      ];
+
+      final result = PlayStrategy.selectCard(
+        hand: hand,
+        trickPlays: [
+          (playerUid: 'p1', card: const GameCard(suit: Suit.spades, rank: Rank.seven)),
+        ],
+        trumpSuit: Suit.hearts,
+        ledSuit: Suit.spades,
+        mySeat: 2,
+      );
+
+      // Trick 3, no trump in play → save Joker, trump in or dump instead
+      expect(result.card.isJoker, isFalse);
     });
 
     test('returns a valid PlayCardAction', () {
