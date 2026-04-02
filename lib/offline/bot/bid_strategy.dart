@@ -1,5 +1,6 @@
 import 'package:koutbh/shared/models/card.dart';
 import 'package:koutbh/shared/models/bid.dart';
+import 'package:koutbh/shared/models/game_state.dart';
 import 'package:koutbh/offline/player_controller.dart';
 import 'hand_evaluator.dart';
 
@@ -8,9 +9,21 @@ class BidStrategy {
     List<GameCard> hand,
     BidAmount? currentHighBid, {
     bool isForced = false,
+    Map<Team, int>? scores,
+    Team? myTeam,
   }) {
     final strength = HandEvaluator.evaluate(hand);
-    final maxBid = _strengthToBid(strength.expectedWinners);
+
+    double thresholdAdjust = 0.0;
+    if (scores != null && myTeam != null) {
+      final myScore = scores[myTeam] ?? 0;
+      final oppScore = scores[myTeam.opponent] ?? 0;
+      if (myScore >= 26) thresholdAdjust += 0.5;
+      if (oppScore >= 26) thresholdAdjust += 0.5;
+      if (oppScore >= 25 && myScore <= 5) thresholdAdjust += 0.8;
+    }
+
+    final maxBid = _strengthToBid(strength.expectedWinners + thresholdAdjust);
 
     // Forced to bid — must return a BidAction, never PassAction
     if (isForced) {

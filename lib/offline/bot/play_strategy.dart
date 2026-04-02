@@ -61,7 +61,30 @@ class PlayStrategy {
   }
 
   static GameCard _selectLead(List<GameCard> legalCards, Suit? trumpSuit) {
-    // Lead from longest non-trump suit with highest card
+    // Ace-first: lead an Ace if we have one (non-trump)
+    final aces = legalCards
+        .where((c) =>
+            !c.isJoker &&
+            c.rank == Rank.ace &&
+            (trumpSuit == null || c.suit != trumpSuit))
+        .toList();
+
+    if (aces.isNotEmpty) {
+      // Prefer Ace where we also hold King of same suit
+      final aceWithKing = aces.where((a) => legalCards.any(
+          (c) => !c.isJoker && c.suit == a.suit && c.rank == Rank.king));
+      if (aceWithKing.isNotEmpty) return aceWithKing.first;
+
+      // Prefer singleton Ace (only card in that suit → creates void)
+      final singletonAce = aces.where((a) =>
+          legalCards.where((c) => !c.isJoker && c.suit == a.suit).length == 1);
+      if (singletonAce.isNotEmpty) return singletonAce.first;
+
+      // Any Ace
+      return aces.first;
+    }
+
+    // Fallback: lead from longest non-trump suit with highest card
     final nonTrump = trumpSuit != null
         ? legalCards.where((c) => !c.isJoker && c.suit != trumpSuit).toList()
         : legalCards.where((c) => !c.isJoker).toList();
@@ -110,36 +133,59 @@ class PlayStrategy {
     final winningPlay = _winningPlay(trickPlays, trumpSuit, ledSuit);
     final partnerWinning =
         partnerUid != null && winningPlay?.playerUid == partnerUid;
-    final trickNumber = 9 - hand.length; // 8 cards at trick 1, 1 at trick 8
     final hasJoker = legalCards.any((c) => c.isJoker);
+    final myPosition = trickPlays.length; // 0=lead, 1=2nd, 2=3rd, 3=4th/last
 
     // Following suit (Joker not in legalCards when we have the led suit)
     final followingSuit = ledSuit != null &&
         legalCards.every((c) => !c.isJoker && c.suit == ledSuit);
 
     if (followingSuit) {
-      if (partnerWinning) return _lowest(legalCards);
-      final winningCards =
-          _cardsBeating(legalCards, trickPlays, trumpSuit, ledSuit);
-      return _lowest(winningCards.isNotEmpty ? winningCards : legalCards);
+      if (myPosition == 3) {
+        // Last to play: perfect info. Win cheaply or dump.
+        if (partnerWinning) return _lowest(legalCards);
+        final winners =
+            _cardsBeating(legalCards, trickPlays, trumpSuit, ledSuit);
+        return _lowest(winners.isNotEmpty ? winners : legalCards);
+      } else {
+        // Not last: play to win (can't assume partner covers)
+        final winners =
+            _cardsBeating(legalCards, trickPlays, trumpSuit, ledSuit);
+        if (winners.isNotEmpty) return _lowest(winners);
+        return _lowest(legalCards);
+      }
     }
 
     // Void in led suit — partner winning: dump low, but dump Joker if poison imminent
     if (partnerWinning) {
-      if (hasJoker && trickNumber >= 7) {
-        return legalCards.firstWhere((c) => c.isJoker);
+      if (hasJoker && hand.length <= 2) {
+        return legalCards.firstWhere((c) => c.isJoker); // poison risk
       }
-      return _lowest(legalCards);
+      return _lowest(legalCards); // don't trump partner
     }
 
-    // Void in led suit — try to win the trick
+    // Void in led suit, NOT partner winning — Joker decision
     if (hasJoker) {
-      final mustAvoidPoison = trickNumber >= 7;
+      final nonJoker = legalCards.where((c) => !c.isJoker).toList();
+
+      // POISON CHECK: if only 1 non-Joker card left, Joker WILL be last card next trick
+      if (nonJoker.length <= 1) {
+        return legalCards.firstWhere((c) => c.isJoker); // dump now
+      }
+
+      // Use Joker to steal: opponent trumped or played high card
       final opponentTrumped = trumpSuit != null &&
           trickPlays.any((p) => !p.card.isJoker && p.card.suit == trumpSuit);
-      if (mustAvoidPoison || opponentTrumped || trickNumber >= 5) {
+      if (opponentTrumped) {
         return legalCards.firstWhere((c) => c.isJoker);
       }
+
+      // Late game (<=3 cards) and void: use Joker rather than risk poison
+      if (hand.length <= 3) {
+        return legalCards.firstWhere((c) => c.isJoker);
+      }
+
+      // Otherwise hold Joker
     }
 
     // Try to trump in
@@ -154,10 +200,6 @@ class PlayStrategy {
       }
     }
 
-    // Fallback: dump Joker if late enough to avoid poison, else dump lowest
-    if (hasJoker && trickNumber >= 6) {
-      return legalCards.firstWhere((c) => c.isJoker);
-    }
     return _lowest(legalCards);
   }
 

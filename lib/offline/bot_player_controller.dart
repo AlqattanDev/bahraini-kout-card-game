@@ -1,4 +1,5 @@
 import 'package:koutbh/app/models/client_game_state.dart';
+import 'package:koutbh/shared/models/game_state.dart';
 import 'player_controller.dart';
 import 'bot/bid_strategy.dart';
 import 'bot/trump_strategy.dart';
@@ -14,7 +15,13 @@ class BotPlayerController implements PlayerController {
       ClientGameState state, ActionContext context) async {
     return switch (context) {
       BidContext(:final currentHighBid, :final isForced) =>
-        BidStrategy.decideBid(state.myHand, currentHighBid, isForced: isForced),
+        BidStrategy.decideBid(
+          state.myHand,
+          currentHighBid,
+          isForced: isForced,
+          scores: state.scores,
+          myTeam: teamForSeat(seatIndex),
+        ),
       TrumpContext() => TrumpAction(TrumpStrategy.selectTrump(state.myHand)),
       PlayContext(:final ledSuit) => PlayStrategy.selectCard(
           hand: state.myHand,
