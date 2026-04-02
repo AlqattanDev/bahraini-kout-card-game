@@ -147,7 +147,7 @@ class UnifiedHudComponent extends PositionComponent {
     canvas.drawLine(
       Offset(_padding, y),
       Offset(_hudWidth - _padding, y),
-      Paint()..color = DiwaniyaColors.scoreHudBorder,
+      Paint()..color = DiwaniyaColors.goldAccent.withValues(alpha: 0.35),
     );
     y += _dividerHeight + _rowGap;
 
@@ -166,10 +166,10 @@ class UnifiedHudComponent extends PositionComponent {
         final suitSymbol = _suitSymbol(trumpSuit!);
         final suitColor = (trumpSuit == Suit.hearts || trumpSuit == Suit.diamonds)
             ? const Color(0xFFCC3333)
-            : DiwaniyaColors.cream;
+            : DiwaniyaColors.pureWhite;
         TextRenderer.draw(canvas, suitSymbol, suitColor,
-            Offset(_hudWidth - _padding - 16, y), 14,
-            align: TextAlign.right, width: 16);
+            Offset(_hudWidth - _padding - 20, y - 2), 18,
+            align: TextAlign.right, width: 20);
       }
       y += 18 + _rowGap;
     }
@@ -199,7 +199,7 @@ class UnifiedHudComponent extends PositionComponent {
       canvas.drawLine(
         Offset(_padding, y),
         Offset(_hudWidth - _padding, y),
-        Paint()..color = DiwaniyaColors.scoreHudBorder,
+        Paint()..color = DiwaniyaColors.goldAccent.withValues(alpha: 0.35),
       );
       y += _dividerHeight + _rowGap;
     }

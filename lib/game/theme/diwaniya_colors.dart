@@ -33,8 +33,8 @@ class DiwaniyaColors {
   static const Color nameLabelTeamB = Color(0xCCAA2A2A);
 
   // Score HUD
-  static const Color scoreHudBg = Color(0xE61A1A2E);
-  static const Color scoreHudBorder = Color(0xFF444466);
+  static const Color scoreHudBg = Color(0xE62A1A14);      // dark wood-brown
+  static const Color scoreHudBorder = Color(0xFF6B5A3A);   // muted gold-brown
 
   // Card enhancements
   static const Color faceCardGradientTop = Color(0xFFFFFDF8);
