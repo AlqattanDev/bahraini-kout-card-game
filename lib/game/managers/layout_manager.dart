@@ -17,8 +17,8 @@ class LayoutManager {
   /// Position for the human player's avatar (bottom-right, beside the hand).
   Vector2 get mySeat => Vector2(width - 60, height - 80);
 
-  /// Center of the partner seat (top) — just under the 52px banner.
-  Vector2 get partnerSeat => Vector2(width / 2, 100);
+  /// Center of the partner seat (top) — below status bar with room for crown.
+  Vector2 get partnerSeat => Vector2(width / 2, 120);
 
   /// Center of the left opponent seat.
   Vector2 get leftSeat => Vector2(80, height / 2);
