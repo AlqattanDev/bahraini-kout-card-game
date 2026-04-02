@@ -13,7 +13,6 @@ class PlayerSeatComponent extends PositionComponent {
   int cardCount;
   bool isActive;
   bool isTeamA;
-  bool isDealer;
   final int avatarSeed;
   String? bidAction;
   bool isBidder = false;
@@ -30,7 +29,6 @@ class PlayerSeatComponent extends PositionComponent {
     required this.isActive,
     required this.isTeamA,
     this.avatarSeed = 0,
-    this.isDealer = false,
     this.bidAction,
     this.timerProgress = 0.0,
     super.position,
@@ -103,21 +101,6 @@ class PlayerSeatComponent extends PositionComponent {
       canvas.drawCircle(center, _radius, ringPaint);
     }
 
-    // Dealer badge (gold circle with D)
-    if (isDealer) {
-      final dealerCenter = Offset(center.dx + _radius - 6, center.dy - _radius + 6);
-      canvas.drawCircle(dealerCenter, 9, Paint()..color = DiwaniyaColors.goldAccent);
-      canvas.drawCircle(
-        dealerCenter,
-        9,
-        Paint()
-          ..color = DiwaniyaColors.darkWood
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.5,
-      );
-      TextRenderer.drawCentered(canvas, 'D', DiwaniyaColors.nearBlack, dealerCenter, 10);
-    }
-
     // Name pill below avatar
     final pillY = center.dy + _radius + 14;
     final pillColor = isTeamA ? DiwaniyaColors.nameLabelTeamA : DiwaniyaColors.nameLabelTeamB;
@@ -177,7 +160,6 @@ class PlayerSeatComponent extends PositionComponent {
     required int cards,
     required bool active,
     required bool teamA,
-    bool dealer = false,
     String? bidAction,
   }) {
     final wasActive = isActive;
@@ -185,7 +167,6 @@ class PlayerSeatComponent extends PositionComponent {
     cardCount = cards;
     isActive = active;
     isTeamA = teamA;
-    isDealer = dealer;
     this.bidAction = bidAction;
 
     if (wasActive != active && isMounted) {

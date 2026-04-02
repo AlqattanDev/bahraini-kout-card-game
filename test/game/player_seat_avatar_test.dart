@@ -16,14 +16,12 @@ void main() {
         cards: 3,
         active: true,
         teamA: false,
-        dealer: true,
         bidAction: 'pass',
       );
       expect(seat.playerName, 'Changed');
       expect(seat.cardCount, 3);
       expect(seat.isActive, true);
       expect(seat.isTeamA, false);
-      expect(seat.isDealer, true);
       expect(seat.bidAction, 'pass');
     });
 

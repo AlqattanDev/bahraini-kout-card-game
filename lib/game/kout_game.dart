@@ -259,7 +259,6 @@ void _updateScoreDisplay(ClientGameState state) {
           cardCount: 0,
           isActive: false,
           isTeamA: i.isEven,
-          isDealer: state.playerUids[i] == state.dealerUid,
           avatarSeed: i,
           position: pos,
         );
@@ -333,7 +332,6 @@ void _updateScoreDisplay(ClientGameState state) {
         cards: state.cardCounts[i] ?? (i == state.mySeatIndex ? state.myHand.length : 8),
         active: state.currentPlayerUid == uid,
         teamA: i.isEven,
-        dealer: uid == state.dealerUid,
         bidAction: bidAction,
       );
       _seats[i].position = layout.seatPosition(i, state.mySeatIndex);
