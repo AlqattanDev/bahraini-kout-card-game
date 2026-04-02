@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flame/components.dart';
 import '../theme/card_painter.dart';

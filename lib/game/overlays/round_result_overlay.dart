@@ -91,11 +91,6 @@ class _RoundResultOverlayState extends State<RoundResultOverlay>
     final prevScoreA = widget.previousScoreA;
     final prevScoreB = widget.previousScoreB;
     final prevTug = prevScoreA > 0 ? prevScoreA : prevScoreB;
-    final Team? prevLeader = prevScoreA > 0
-        ? Team.a
-        : prevScoreB > 0
-            ? Team.b
-            : null;
 
     final curScoreA = state.scores[Team.a] ?? 0;
     final curScoreB = state.scores[Team.b] ?? 0;

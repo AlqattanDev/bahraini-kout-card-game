@@ -12,7 +12,6 @@ import 'components/opponent_hand_fan.dart';
 import 'components/perspective_table.dart';
 import '../offline/game_input_sink.dart';
 import '../shared/models/card.dart';
-import '../shared/models/enums.dart';
 import '../shared/models/trick.dart';
 import '../shared/logic/trick_resolver.dart';
 import 'components/action_badge.dart';
@@ -129,10 +128,10 @@ class KoutGame extends FlameGame {
   }
 
   @override
-  void onGameResize(Vector2 newSize) {
-    super.onGameResize(newSize);
-    layout = LayoutManager(newSize);
-    _scoreHud?.updateWidth(newSize.x);
+  void onGameResize(Vector2 size) {
+    super.onGameResize(size);
+    layout = LayoutManager(size);
+    _scoreHud?.updateWidth(size.x);
     _perspectiveTable?.updateLayout(layout);
   }
 
@@ -637,6 +636,7 @@ class KoutGame extends FlameGame {
     }
   }
 
+  @override
   void onRemove() {
     _stateSub?.cancel();
     _connectionSub?.cancel();

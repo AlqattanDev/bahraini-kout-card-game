@@ -306,6 +306,7 @@ class _CardShadowComponent extends PositionComponent {
 
 /// A single expanding gold circle particle for the trick-win celebration.
 class _GoldParticleComponent extends PositionComponent {
+  @override
   final double angle;
   final double durationSeconds;
   double _elapsed = 0;

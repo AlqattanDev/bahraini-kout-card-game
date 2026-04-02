@@ -12,9 +12,9 @@ class PerspectiveTableComponent extends PositionComponent {
       : super(position: Vector2.zero());
 
   @override
-  void onGameResize(Vector2 gameSize) {
-    super.onGameResize(gameSize);
-    size = gameSize;
+  void onGameResize(Vector2 size) {
+    super.onGameResize(size);
+    this.size = size;
   }
 
   void updateLayout(LayoutManager newLayout) {

@@ -1,7 +1,6 @@
 import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flame/components.dart';
-import '../../shared/models/enums.dart';
 import '../theme/kout_theme.dart';
 import '../theme/diwaniya_colors.dart';
 import '../theme/text_renderer.dart';

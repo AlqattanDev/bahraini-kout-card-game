@@ -230,7 +230,7 @@ class AvatarPainter {
       agalPaint..strokeWidth = 2.0,
     );
 
-    if (color.red > 150 && color.green < 100) {
+    if ((color.r * 255).round() > 150 && (color.g * 255).round() < 100) {
       final checkPaint = Paint()
         ..color = DiwaniyaColors.pureWhite.withValues(alpha: 0.3)
         ..style = PaintingStyle.stroke

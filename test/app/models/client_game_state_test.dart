@@ -3,7 +3,6 @@ import 'package:koutbh/app/models/client_game_state.dart';
 import 'package:koutbh/shared/models/card.dart';
 import 'package:koutbh/shared/models/game_state.dart';
 import 'package:koutbh/shared/models/bid.dart';
-import 'package:koutbh/shared/models/enums.dart';
 
 Map<String, dynamic> _baseGameData({
   String phase = 'playing',

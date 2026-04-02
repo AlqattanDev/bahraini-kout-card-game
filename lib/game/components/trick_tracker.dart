@@ -44,11 +44,6 @@ class TrickTrackerComponent extends PositionComponent {
     final bidderCount = _bidValue;
     final opponentCount = 9 - _bidValue;
 
-    final bidderColor =
-        _bidderTeam == Team.a ? KoutTheme.teamAColor : KoutTheme.teamBColor;
-    final opponentColor =
-        _bidderTeam == Team.a ? KoutTheme.teamBColor : KoutTheme.teamAColor;
-
     // Team A group on left, Team B group on right
     final bool bidderOnLeft = _bidderTeam == Team.a;
     final leftCount = bidderOnLeft ? bidderCount : opponentCount;
