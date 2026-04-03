@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import '../config.dart';
 import '../models/client_game_state.dart';
+import '../models/lobby_state.dart';
 import '../../offline/game_input_sink.dart';
 import '../../shared/models/card.dart';
 import '../../shared/models/bid.dart';
@@ -18,9 +19,11 @@ class GameService implements GameInputSink {
   final _stateController = StreamController<ClientGameState>.broadcast();
   final _errorController = StreamController<String>.broadcast();
   final _connectionController = StreamController<ConnectionStatus>.broadcast();
+  final _lobbyController = StreamController<LobbyState>.broadcast();
   Stream<ClientGameState> get stateStream => _stateController.stream;
   Stream<String> get errorStream => _errorController.stream;
   Stream<ConnectionStatus> get connectionStream => _connectionController.stream;
+  Stream<LobbyState> get lobbyStream => _lobbyController.stream;
 
   List<String> _myHand = [];
   Map<String, dynamic>? _lastPublicState;
@@ -79,6 +82,9 @@ class GameService implements GameInputSink {
           case 'reconnected':
             // Server confirms this was a reconnect (not a fresh connect)
             _connectionController.add(ConnectionStatus.connected);
+          case 'lobby_state':
+            final lobbyData = data['data'] as Map<String, dynamic>;
+            _lobbyController.add(LobbyState.fromMap(lobbyData));
           case 'error':
             final errorData = data['data'] as Map<String, dynamic>;
             _errorController.add(errorData['message'] as String);
@@ -145,5 +151,6 @@ class GameService implements GameInputSink {
     _stateController.close();
     _errorController.close();
     _connectionController.close();
+    _lobbyController.close();
   }
 }
