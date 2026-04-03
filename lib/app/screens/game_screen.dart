@@ -58,6 +58,7 @@ class _GameScreenState extends State<GameScreen> {
     _gameMode = mode;
     switch (mode) {
       case OnlineGameMode(:final gameId, :final myUid, :final token):
+      case RoomGameMode(:final gameId, :final myUid, :final token):
         _gameService = GameService(gameId: gameId, myUid: myUid, token: token);
         _presenceService = PresenceService();
 
