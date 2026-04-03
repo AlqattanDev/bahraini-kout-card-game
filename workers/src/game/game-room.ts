@@ -74,6 +74,12 @@ export class GameRoom extends DurableObject<Env> {
       trickWinners: [],
       metadata: { createdAt: new Date().toISOString(), status: "active" },
     };
+    this.game.seats = playerUids.map(uid => ({
+      uid,
+      isBot: false,
+      connected: false,
+    }));
+    this.game.isRoomGame = false;
 
     // Store hands
     for (let i = 0; i < 4; i++) {
@@ -84,6 +90,41 @@ export class GameRoom extends DurableObject<Env> {
     // Persist to storage
     await this.persistState();
 
+    return gameId;
+  }
+
+  /**
+   * Create a room-mode game in LOBBY phase with the host at seat 0 and bots at seats 1 and 3.
+   */
+  async initRoom(hostUid: string, roomCode?: string): Promise<string> {
+    const gameId = this.ctx.id.toString();
+
+    this.game = {
+      phase: 'LOBBY',
+      players: [hostUid, 'bot_1', '', 'bot_3'],
+      currentTrick: null,
+      tricks: { teamA: 0, teamB: 0 },
+      scores: { teamA: 0, teamB: 0 },
+      bid: null,
+      biddingState: null,
+      trumpSuit: null,
+      dealer: hostUid,
+      currentPlayer: '',
+      bidHistory: [],
+      roundHistory: [],
+      trickWinners: [],
+      metadata: { createdAt: new Date().toISOString(), status: 'lobby', roomCode },
+      seats: [
+        { uid: hostUid, isBot: false, connected: false },
+        { uid: 'bot_1', isBot: true, connected: true },
+        { uid: null, isBot: false, connected: false },
+        { uid: 'bot_3', isBot: true, connected: true },
+      ],
+      isRoomGame: true,
+    };
+
+    this.hands = new Map();
+    await this.persistState();
     return gameId;
   }
 
@@ -145,8 +186,13 @@ export class GameRoom extends DurableObject<Env> {
     }
 
     if (url.pathname === "/init") {
-      const body = await request.json<{ players: string[] }>();
-      const gameId = await this.initGame(body.players);
+      const body = await request.json<{ mode?: string; players?: string[]; hostUid?: string; roomCode?: string }>();
+      if (body.mode === 'room' && body.hostUid) {
+        const gameId = await this.initRoom(body.hostUid, body.roomCode);
+        return Response.json({ gameId });
+      }
+      // Default: matchmaking mode (backward compatible)
+      const gameId = await this.initGame(body.players!);
       return Response.json({ gameId });
     }
 
@@ -246,6 +292,10 @@ export class GameRoom extends DurableObject<Env> {
           break;
         case 'bot_turn':
           // Placeholder — will be implemented in Task 9
+          // Uses isBotSeat to verify the target seat before dispatching bot logic
+          if (event.meta !== undefined && this.isBotSeat(Number(event.meta))) {
+            // bot dispatch goes here
+          }
           break;
         case 'lobby_expiry':
           // Placeholder — will be implemented in Task 8
@@ -488,6 +538,10 @@ export class GameRoom extends DurableObject<Env> {
   }
 
   // ─── Helpers ─────────────────────────────────────────────────────────────
+
+  private isBotSeat(seatIndex: number): boolean {
+    return this.game?.seats?.[seatIndex]?.isBot === true;
+  }
 
   private getTeamForPlayer(uid: string): TeamName {
     const idx = this.game!.players.indexOf(uid);
