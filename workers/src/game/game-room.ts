@@ -5,6 +5,7 @@ import type {
   TeamName,
   SuitName,
   TrickPlay,
+  PendingEvent,
 } from "./types";
 import { buildFourPlayerDeck, dealHands } from "./deck";
 import { decodeCard } from "./card";
@@ -129,16 +130,14 @@ export class GameRoom extends DurableObject<Env> {
         }));
       }
 
-      // Cancel any disconnect alarm for this player (and detect reconnect)
-      const alarmKey = `disconnect:${uid}`;
-      const disconnectTime = await this.ctx.storage.get<number>(alarmKey);
-      if (disconnectTime) {
-        await this.ctx.storage.delete(alarmKey);
-        const elapsed = Math.floor((Date.now() - disconnectTime) / 1000);
-        const remaining = Math.max(0, 90 - elapsed);
+      // Cancel any pending disconnect timeout for this player (reconnect detection)
+      const events = await this.ctx.storage.get<PendingEvent[]>('pendingEvents') ?? [];
+      const hadDisconnect = events.some(e => e.type === 'disconnect_timeout' && e.meta === uid);
+      if (hadDisconnect) {
+        await this.cancelEvent('disconnect_timeout', uid);
         server.send(JSON.stringify({
           event: "reconnected",
-          data: { gracePeriodRemaining: remaining },
+          data: { gracePeriodRemaining: 90 },
         }));
       }
 
@@ -210,66 +209,53 @@ export class GameRoom extends DurableObject<Env> {
     await this.loadState();
     if (!this.game || this.game.phase === "GAME_OVER") return;
 
-    // Set a disconnect alarm for 90 seconds
-    const alarmKey = `disconnect:${uid}`;
-    await this.ctx.storage.put(alarmKey, Date.now());
-
-    // Schedule alarm if not already set
-    const currentAlarm = await this.ctx.storage.getAlarm();
-    if (!currentAlarm) {
-      await this.ctx.storage.setAlarm(Date.now() + 90_000);
-    }
+    await this.scheduleEvent({
+      type: 'disconnect_timeout',
+      fireAt: Date.now() + 90_000,
+      meta: uid,
+    });
 
     ws.close(code, reason);
   }
 
   /**
-   * Alarm handler — handles both round-advance and disconnect timers.
+   * Alarm handler — unified PendingEvent queue dispatcher.
    */
   async alarm(): Promise<void> {
     await this.loadState();
-    if (!this.game || this.game.phase === "GAME_OVER") return;
+    if (!this.game) return;
 
+    const events = await this.ctx.storage.get<PendingEvent[]>('pendingEvents') ?? [];
     const now = Date.now();
-    let nextAlarm: number | null = null;
 
-    // Check for round advance (auto-start next round after scoring)
-    const roundAdvanceAt = await this.ctx.storage.get<number>("roundAdvanceAt");
-    if (roundAdvanceAt && this.game.phase === "ROUND_SCORING") {
-      if (now >= roundAdvanceAt) {
-        await this.ctx.storage.delete("roundAdvanceAt");
-        await this.startNextRound();
-        return;
-      } else {
-        const remaining = roundAdvanceAt - now;
-        if (!nextAlarm || remaining < nextAlarm) {
-          nextAlarm = remaining;
-        }
+    const due = events.filter(e => e.fireAt <= now + 100);
+    const remaining = events.filter(e => e.fireAt > now + 100);
+
+    for (const event of due) {
+      if (!this.game || this.game.phase === 'GAME_OVER') break;
+      switch (event.type) {
+        case 'round_delay':
+          if (this.game.phase === 'ROUND_SCORING') {
+            await this.startNextRound();
+          }
+          break;
+        case 'disconnect_timeout':
+          if (event.meta) {
+            await this.handleForfeit(event.meta);
+          }
+          break;
+        case 'bot_turn':
+          // Placeholder — will be implemented in Task 9
+          break;
+        case 'lobby_expiry':
+          // Placeholder — will be implemented in Task 8
+          break;
       }
     }
 
-    // Check for expired disconnect timers
-    for (const uid of this.game.players) {
-      const alarmKey = `disconnect:${uid}`;
-      const disconnectTime = await this.ctx.storage.get<number>(alarmKey);
-      if (!disconnectTime) continue;
-
-      const elapsed = now - disconnectTime;
-      if (elapsed >= 90_000) {
-        await this.handleForfeit(uid);
-        await this.ctx.storage.delete(alarmKey);
-        if (this.game?.phase === "GAME_OVER") return;
-        continue;
-      } else {
-        const remaining = 90_000 - elapsed;
-        if (!nextAlarm || remaining < nextAlarm) {
-          nextAlarm = remaining;
-        }
-      }
-    }
-
-    if (nextAlarm) {
-      await this.ctx.storage.setAlarm(Date.now() + nextAlarm);
+    await this.ctx.storage.put('pendingEvents', remaining);
+    if (remaining.length > 0) {
+      await this.ctx.storage.setAlarm(remaining[0].fireAt);
     }
   }
 
@@ -656,11 +642,28 @@ export class GameRoom extends DurableObject<Env> {
   }
 
   private async scheduleRoundAdvance(): Promise<void> {
-    const advanceTime = Date.now() + 5000;
-    await this.ctx.storage.put("roundAdvanceAt", advanceTime);
-    const currentAlarm = await this.ctx.storage.getAlarm();
-    if (!currentAlarm) {
-      await this.ctx.storage.setAlarm(advanceTime);
+    await this.scheduleEvent({
+      type: 'round_delay',
+      fireAt: Date.now() + 5000,
+    });
+  }
+
+  private async scheduleEvent(event: PendingEvent): Promise<void> {
+    const events = await this.ctx.storage.get<PendingEvent[]>('pendingEvents') ?? [];
+    events.push(event);
+    events.sort((a, b) => a.fireAt - b.fireAt);
+    await this.ctx.storage.put('pendingEvents', events);
+    await this.ctx.storage.setAlarm(events[0].fireAt);
+  }
+
+  private async cancelEvent(type: PendingEvent['type'], meta?: string): Promise<void> {
+    const events = await this.ctx.storage.get<PendingEvent[]>('pendingEvents') ?? [];
+    const filtered = events.filter(e => !(e.type === type && (meta === undefined || e.meta === meta)));
+    await this.ctx.storage.put('pendingEvents', filtered);
+    if (filtered.length > 0) {
+      await this.ctx.storage.setAlarm(filtered[0].fireAt);
+    } else {
+      await this.ctx.storage.deleteAlarm();
     }
   }
 
