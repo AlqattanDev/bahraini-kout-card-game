@@ -4,6 +4,16 @@ import { signToken, verifyToken } from "./auth/jwt";
 import { joinQueue, leaveQueue, getQueuedPlayers, removePlayersFromQueue, recordGame, claimMatchedPlayers } from "./matchmaking/queue";
 import { findBestMatch, assignSeats } from "./matchmaking/matcher";
 
+const ROOM_CHARSET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+
+function generateRoomCode(): string {
+  let code = '';
+  for (let i = 0; i < 6; i++) {
+    code += ROOM_CHARSET[Math.floor(Math.random() * ROOM_CHARSET.length)];
+  }
+  return code;
+}
+
 // Re-export Durable Object classes
 export { GameRoom } from "./game/game-room";
 export { MatchmakingLobby } from "./matchmaking/lobby";
@@ -116,6 +126,119 @@ app.post("/api/matchmaking/leave", async (c) => {
   }));
 
   return c.json({ status: "left" });
+});
+
+// ─── Rooms ────────────────────────────────────────────────────────────────
+app.post("/api/rooms/create", async (c) => {
+  const uid = c.get("uid" as never) as string;
+
+  let code: string | null = null;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const candidate = generateRoomCode();
+    const existing = await c.env.DB.prepare(
+      "SELECT code FROM room_codes WHERE code = ?"
+    ).bind(candidate).first();
+    if (!existing) { code = candidate; break; }
+  }
+  if (!code) {
+    return c.json({ error: "Failed to generate room code" }, 500);
+  }
+
+  const gameRoomId = c.env.GAME_ROOM.newUniqueId();
+  const stub = c.env.GAME_ROOM.get(gameRoomId);
+  await stub.fetch(new Request("https://do/init", {
+    method: "POST",
+    body: JSON.stringify({ mode: "room", hostUid: uid, roomCode: code }),
+    headers: { "Content-Type": "application/json" },
+  }));
+
+  const gameId = gameRoomId.toString();
+
+  await c.env.DB.prepare(
+    "INSERT INTO room_codes (code, do_id, host_uid, created_at, status) VALUES (?, ?, ?, ?, 'open')"
+  ).bind(code, gameId, uid, Date.now()).run();
+
+  return c.json({ roomCode: code, gameId });
+});
+
+app.post("/api/rooms/join", async (c) => {
+  const uid = c.get("uid" as never) as string;
+  const { code } = await c.req.json<{ code: string }>();
+
+  const row = await c.env.DB.prepare(
+    "SELECT do_id, status FROM room_codes WHERE code = ?"
+  ).bind(code.toUpperCase()).first<{ do_id: string; status: string }>();
+
+  if (!row) return c.json({ error: "Room not found" }, 404);
+  if (row.status === 'playing') return c.json({ error: "Game already started" }, 410);
+  if (row.status === 'closed') return c.json({ error: "Room closed" }, 410);
+
+  const doId = c.env.GAME_ROOM.idFromString(row.do_id);
+  const stub = c.env.GAME_ROOM.get(doId);
+  const res = await stub.fetch(new Request("https://do/join", {
+    method: "POST",
+    body: JSON.stringify({ playerUid: uid }),
+    headers: { "Content-Type": "application/json" },
+  }));
+
+  if (!res.ok) {
+    const err = await res.json<{ error: string }>();
+    return c.json(err, res.status as any);
+  }
+
+  return c.json({ gameId: row.do_id });
+});
+
+app.post("/api/rooms/start", async (c) => {
+  const uid = c.get("uid" as never) as string;
+  const { gameId } = await c.req.json<{ gameId: string }>();
+
+  const doId = c.env.GAME_ROOM.idFromString(gameId);
+  const stub = c.env.GAME_ROOM.get(doId);
+  const res = await stub.fetch(new Request("https://do/start", {
+    method: "POST",
+    body: JSON.stringify({ hostUid: uid }),
+    headers: { "Content-Type": "application/json" },
+  }));
+
+  if (!res.ok) {
+    const err = await res.json<{ error: string }>();
+    return c.json(err, res.status as any);
+  }
+
+  await c.env.DB.prepare(
+    "UPDATE room_codes SET status = 'playing' WHERE do_id = ?"
+  ).bind(gameId).run();
+
+  return c.json({ ok: true });
+});
+
+app.get("/api/rooms/:code/status", async (c) => {
+  const code = c.req.param("code").toUpperCase();
+
+  const row = await c.env.DB.prepare(
+    "SELECT do_id, status FROM room_codes WHERE code = ?"
+  ).bind(code).first<{ do_id: string; status: 'open' | 'playing' | 'closed' }>();
+
+  if (!row) return c.json({ error: "Room not found" }, 404);
+
+  if (row.status === 'open' || row.status === 'playing') {
+    const doId = c.env.GAME_ROOM.idFromString(row.do_id);
+    const stub = c.env.GAME_ROOM.get(doId);
+    const res = await stub.fetch(new Request("https://do/status"));
+    const doStatus = await res.json<{ phase: string; seats: any[]; closed: boolean }>();
+
+    if (doStatus.closed) {
+      await c.env.DB.prepare(
+        "UPDATE room_codes SET status = 'closed' WHERE code = ?"
+      ).bind(code).run();
+      return c.json({ status: 'closed', seats: doStatus.seats });
+    }
+
+    return c.json({ status: row.status, seats: doStatus.seats });
+  }
+
+  return c.json({ status: row.status, seats: [] });
 });
 
 // ─── WebSocket Upgrade: Game Room ──────────────────────────────────────────
