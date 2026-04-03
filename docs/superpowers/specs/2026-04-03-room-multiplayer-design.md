@@ -73,16 +73,18 @@ When any action resolves (human or bot), the DO checks if the next seat is a bot
 
 1. If human → broadcast state, wait for WebSocket message.
 2. If bot → call `storage.setAlarm(Date.now() + delay)` where delay = 800 + random(0, 1200) ms.
-3. Alarm fires → read game state from DO storage → run strategy function (`botBid`, `botTrump`, or `botPlay`) → apply action through the same code path as a human action → broadcast updated state → check if next seat is also a bot (chain alarms).
+3. Alarm fires → read game state from DO storage → run strategy function (`botBid`, `botTrump`, or `botPlay`) → apply action through the same code path as a human action → broadcast updated state → check if next seat is also a bot (schedule next alarm).
+
+**Alarm chaining is strictly sequential.** Only one alarm is active at a time. The DO is single-threaded, so each alarm handler runs to completion, applies the bot's action, persists state, then schedules the next alarm if the next seat is also a bot. No concurrent alarms. This matches the existing alarm pattern in game-room.ts.
 
 Bot-to-bot chaining example (seats 1 and 3 are both bots, playing in a trick):
 
 ```
 Human seat 0 plays card
-→ seat 1 is bot → alarm ~1.2s → seat 1 plays
-→ seat 2 is human → wait for WS
+→ seat 1 is bot → schedule alarm(~1.2s) → alarm fires → seat 1 plays → persist state
+→ seat 2 is human → broadcast state, wait for WS
 → human seat 2 plays
-→ seat 3 is bot → alarm ~1.0s → seat 3 plays
+→ seat 3 is bot → schedule alarm(~1.0s) → alarm fires → seat 3 plays → persist state
 → trick complete → resolve winner
 ```
 
@@ -159,9 +161,15 @@ Server → Client (on connect, during LOBBY):
 }
 ```
 
-Server → All (friend joins): Updated `lobby_state` with seat 2 filled.
+Server → All (friend joins): Updated `lobby_state` with seat 2 filled and `connected: true`.
+
+Server → All (friend disconnects during lobby): Updated `lobby_state` with seat 2 cleared (`uid: null`, `connected: false`). Client uses the `connected` field on human seats to determine UI state: `uid != null && connected == false` → "Player disconnected", `uid == null` → "Waiting for player...".
+
+Server → All (host disconnects during lobby): Updated `lobby_state` with seat 0 `connected: false`. Friend sees "Host disconnected, waiting..." Room stays open per idle expiry timer.
 
 Server → All (game starts): `{ "type": "game_state", "phase": "DEALING", ... }` followed by individual `hand` messages.
+
+**Reconnection during lobby:** Same as in-game — client auto-reconnects to `/ws/game/:gameId` using existing `GameService` reconnection logic (5 retries, exponential backoff). On reconnect, DO sends current `lobby_state`. No special rejoin endpoint needed.
 
 ### Game Phase Messages
 
@@ -172,28 +180,76 @@ Identical to existing protocol. Bot turns are invisible — clients just see `ga
 ### Module: `workers/src/game/bot-engine.ts`
 
 ```typescript
+interface BotContext {
+  hand: Card[];
+  scores: { teamA: number; teamB: number };
+  myTeam: 'A' | 'B';
+  mySeat: number;
+  bidHistory: Array<{ seat: number; action: 'bid' | 'pass'; amount?: number }>;
+  trickHistory: Array<{ winner: number; plays: TrickPlay[] }>;
+  trumpSuit?: Suit;
+  currentBid?: number;
+  currentTrick: TrickPlay[];
+  isLead: boolean;
+  isForced: boolean;  // forced bid (last player, no bids yet)
+}
+
 interface BotEngine {
-  decideBid(hand: Card[], currentBid: number | null, isForced: boolean): BidAction | PassAction;
-  decideTrump(hand: Card[]): Suit;
-  decidePlay(hand: Card[], trick: TrickPlay[], trumpSuit: Suit, isLead: boolean): Card;
+  decideBid(ctx: BotContext): BidAction | PassAction;
+  decideTrump(ctx: BotContext): Suit;
+  decidePlay(ctx: BotContext): Card;
 }
 ```
 
-Ported from Dart bot strategies (`lib/offline/bot/`). Same logic, TypeScript syntax:
+Ported from Dart bot strategies (`lib/offline/bot/`). The `BotContext` carries the same information that the Dart `BidStrategy`, `TrumpStrategy`, and `PlayStrategy` classes receive (hand, scores, team, seat, bid history, trick history). Same strategic logic, TypeScript syntax:
 
-- **Bidding**: Hand evaluation based on high cards, trump-length potential, joker presence. Forced bid logic.
+- **Bidding**: Hand evaluation based on high cards, trump-length potential, joker presence. Score-aware (more aggressive when behind). Forced bid logic.
 - **Trump selection**: Longest suit with most honors (A, K, Q, J).
-- **Play**: Lead strongest suit, follow high when winning / low when losing, trump when void in led suit, protect joker from becoming poison.
+- **Play**: Lead strongest suit, follow high when winning / low when losing, trump when void in led suit, protect joker from becoming poison. Tracks voids from trick history.
 
 Difficulty: "balanced" (hardcoded for v1). Reuses existing `bid-validator.ts`, `play-validator.ts`, and `trick-resolver.ts` for validation.
 
 ## GameRoom DO Changes
 
+### Dual-Mode `/init`
+
+The existing `/init` endpoint currently accepts `{ players: string[] }` (4 human UIDs from matchmaking). It is extended to support both modes:
+
+```typescript
+// Mode 1: Matchmaking (existing, unchanged)
+POST /init { mode: "matchmaking", players: ["uid1", "uid2", "uid3", "uid4"] }
+// → All 4 seats are human, deal immediately, phase = DEALING
+
+// Mode 2: Room (new)
+POST /init { mode: "room", hostUid: "abc123" }
+// → Seat 0 = host (human), seats 1,3 = bots, seat 2 = empty (awaiting friend)
+// → Phase = LOBBY, cards NOT dealt
+```
+
+**Bot seat representation in DO storage:**
+
+```typescript
+interface SeatState {
+  uid: string | null;    // null = empty seat awaiting player
+  isBot: boolean;        // true for seats 1, 3 in room mode
+  connected: boolean;    // WS connection status (always true for bots)
+}
+
+// Room mode initial state:
+seats: [
+  { uid: "host_uid", isBot: false, connected: false },  // connected becomes true on WS connect
+  { uid: "bot_1",    isBot: true,  connected: true },    // synthetic UID, never has WS
+  { uid: null,       isBot: false, connected: false },   // seat 2, awaiting friend
+  { uid: "bot_3",    isBot: true,  connected: true },    // synthetic UID, never has WS
+]
+```
+
+Bot UIDs are synthetic strings like `"bot_1"`, `"bot_3"` — they exist so the game state arrays (hands, tricks, etc.) can reference them consistently. They never have WebSocket connections. The `isBotSeat(seat)` helper checks `seats[seat].isBot`.
+
 ### New Internal Endpoints
 
-- **`/init` (modified)**: Accepts `{ hostUid, mode: "room" }`. Sets phase to LOBBY, assigns host to seat 0, marks seats 1 and 3 as bots. Does NOT deal cards.
 - **`/join` (new)**: Accepts `{ playerUid }`. Validates phase is LOBBY and seat 2 is empty. Assigns player to seat 2. Broadcasts updated `lobby_state`.
-- **`/start` (new)**: Validates caller is host and seat 2 is filled. Deals cards, sets phase to DEALING, begins game loop. If first bidder is a bot, schedules bot alarm.
+- **`/start` (new)**: Validates caller UID matches host UID (from JWT, checked against `seats[0].uid`). Validates seat 2 is filled. Deals cards, sets phase to DEALING, begins game loop. If first bidder is a bot, schedules bot alarm. Returns 403 if not host, 400 if friend not joined.
 - **`/status` (new)**: Returns current seat assignments and phase.
 
 ### Modified Game Loop
