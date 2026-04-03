@@ -10,6 +10,7 @@ import type {
 import { buildFourPlayerDeck, dealHands } from "./deck";
 import { decodeCard } from "./card";
 import { validateBid, validatePass, checkBiddingComplete, isLastBidder } from "./bid-validator";
+import { BotEngine, buildBotContext } from './bot';
 import { validatePlay, detectPoisonJoker } from "./play-validator";
 import { resolveTrick as resolveTrickWinner } from "./trick-resolver";
 import {
@@ -411,11 +412,7 @@ export class GameRoom extends DurableObject<Env> {
           }
           break;
         case 'bot_turn':
-          // Placeholder — will be implemented in Task 9
-          // Uses isBotSeat to verify the target seat before dispatching bot logic
-          if (event.meta !== undefined && this.isBotSeat(Number(event.meta))) {
-            // bot dispatch goes here
-          }
+          await this.handleBotTurn();
           break;
         case 'lobby_expiry':
           if (this.game?.phase === 'LOBBY') {
@@ -471,6 +468,7 @@ export class GameRoom extends DurableObject<Env> {
         game.biddingState = { ...biddingState, passed: newPassed };
         game.currentPlayer = complete.winner!;
         await this.persistAndBroadcast();
+        await this.checkAndScheduleBotTurn();
         return;
       }
 
@@ -496,6 +494,7 @@ export class GameRoom extends DurableObject<Env> {
         };
         game.currentPlayer = uid;
         await this.persistAndBroadcast();
+        await this.checkAndScheduleBotTurn();
         return;
       }
 
@@ -511,6 +510,7 @@ export class GameRoom extends DurableObject<Env> {
     }
 
     await this.persistAndBroadcast();
+    await this.checkAndScheduleBotTurn();
   }
 
   private async handleSelectTrump(uid: string, suit: string): Promise<void> {
@@ -529,6 +529,7 @@ export class GameRoom extends DurableObject<Env> {
     game.tricks = { teamA: 0, teamB: 0 };
 
     await this.persistAndBroadcast();
+    await this.checkAndScheduleBotTurn();
   }
 
   private async handlePlayCard(uid: string, card: string): Promise<void> {
@@ -567,6 +568,7 @@ export class GameRoom extends DurableObject<Env> {
       game.currentPlayer = this.nextPlayer(game.players, uid);
       await this.persistAndBroadcast();
       this.sendHandToPlayer(uid, newHand);
+      await this.checkAndScheduleBotTurn();
       return;
     }
 
@@ -607,6 +609,7 @@ export class GameRoom extends DurableObject<Env> {
       game.currentPlayer = trickWinner;
       await this.persistAndBroadcast();
       this.broadcastHands();
+      await this.checkAndScheduleBotTurn();
       return;
     }
 
@@ -692,6 +695,53 @@ export class GameRoom extends DurableObject<Env> {
 
   private isBotSeat(seatIndex: number): boolean {
     return this.game?.seats?.[seatIndex]?.isBot === true;
+  }
+
+  private async checkAndScheduleBotTurn(): Promise<void> {
+    if (!this.game || !this.game.isRoomGame) return;
+    const currentUid = this.game.currentPlayer;
+    const seatIdx = this.game.players.indexOf(currentUid);
+    if (seatIdx >= 0 && this.isBotSeat(seatIdx)) {
+      await this.scheduleEvent({
+        type: 'bot_turn',
+        fireAt: Date.now() + 800 + Math.floor(Math.random() * 1200),
+      });
+    }
+  }
+
+  private async handleBotTurn(): Promise<void> {
+    if (!this.game || this.game.phase === 'GAME_OVER') return;
+
+    const currentUid = this.game.currentPlayer;
+    const seatIdx = this.game.players.indexOf(currentUid);
+    if (!this.isBotSeat(seatIdx)) return;
+
+    const ctx = buildBotContext(this.game, this.hands, seatIdx);
+
+    switch (this.game.phase) {
+      case 'BIDDING': {
+        const biddingState = this.game.biddingState!;
+        const forced = isLastBidder(biddingState.passed, currentUid, 4) && biddingState.highestBid === null;
+        const forcedCtx = { ...ctx, isForced: forced };
+        const decision = BotEngine.bid(forcedCtx);
+        if (decision.action === 'bid') {
+          await this.handleBid(currentUid, decision.amount);
+        } else {
+          await this.handleBid(currentUid, 0); // pass
+        }
+        break;
+      }
+      case 'TRUMP_SELECTION': {
+        const suit = BotEngine.trump(ctx);
+        await this.handleSelectTrump(currentUid, suit);
+        break;
+      }
+      case 'PLAYING': {
+        const card = BotEngine.play(ctx);
+        await this.handlePlayCard(currentUid, card);
+        break;
+      }
+    }
   }
 
   private getTeamForPlayer(uid: string): TeamName {
@@ -844,6 +894,7 @@ export class GameRoom extends DurableObject<Env> {
 
     await this.persistAndBroadcast();
     this.broadcastHands();
+    await this.checkAndScheduleBotTurn();
   }
 
   private async scheduleRoundAdvance(): Promise<void> {
