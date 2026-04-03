@@ -8,7 +8,7 @@ export interface GameCard {
   code: string;
 }
 
-export type GamePhase = 'WAITING' | 'DEALING' | 'BIDDING' | 'TRUMP_SELECTION' | 'PLAYING' | 'ROUND_SCORING' | 'GAME_OVER';
+export type GamePhase = 'WAITING' | 'LOBBY' | 'DEALING' | 'BIDDING' | 'TRUMP_SELECTION' | 'PLAYING' | 'ROUND_SCORING' | 'GAME_OVER';
 export type TeamName = 'teamA' | 'teamB';
 
 export interface TrickPlay {
@@ -37,7 +37,21 @@ export interface GameDocument {
   bidHistory: { player: string; action: string }[];
   roundHistory: TrickPlay[][];
   trickWinners: TeamName[];
-  metadata: { createdAt: string; status: string; winner?: TeamName };
+  metadata: { createdAt: string; status: string; winner?: TeamName; roomCode?: string };
+  seats?: SeatState[];
+  isRoomGame?: boolean;
+}
+
+export interface SeatState {
+  uid: string | null;
+  isBot: boolean;
+  connected: boolean;
+}
+
+export interface PendingEvent {
+  type: 'bot_turn' | 'disconnect_timeout' | 'lobby_expiry' | 'round_delay';
+  fireAt: number;
+  meta?: string;
 }
 
 export const RANK_VALUES: Record<RankName, number> = {
