@@ -196,6 +196,9 @@ class _GameScreenState extends State<GameScreen> {
                     '/game',
                     arguments: _gameMode,
                   );
+                } else {
+                  Navigator.of(context)
+                      .pushNamedAndRemoveUntil('/', (route) => false);
                 }
               },
               onReturnToMenu: () {
