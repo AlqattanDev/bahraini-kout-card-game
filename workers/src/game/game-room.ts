@@ -125,6 +125,7 @@ export class GameRoom extends DurableObject<Env> {
 
     this.hands = new Map();
     await this.persistState();
+    await this.scheduleEvent({ type: 'lobby_expiry', fireAt: Date.now() + 600_000 });
     return gameId;
   }
 
@@ -157,20 +158,6 @@ export class GameRoom extends DurableObject<Env> {
       // Tag the WebSocket with the player's UID for later identification
       this.ctx.acceptWebSocket(server, [uid]);
 
-      // Send initial state to this player
-      server.send(JSON.stringify({
-        event: "gameState",
-        data: this.getPublicState(),
-      }));
-
-      const hand = this.hands.get(uid);
-      if (hand) {
-        server.send(JSON.stringify({
-          event: "hand",
-          data: { hand },
-        }));
-      }
-
       // Cancel any pending disconnect timeout for this player (reconnect detection)
       const events = await this.ctx.storage.get<PendingEvent[]>('pendingEvents') ?? [];
       const hadDisconnect = events.some(e => e.type === 'disconnect_timeout' && e.meta === uid);
@@ -180,6 +167,32 @@ export class GameRoom extends DurableObject<Env> {
           event: "reconnected",
           data: { gracePeriodRemaining: 90 },
         }));
+      }
+
+      // Mark seat as connected
+      if (this.game?.seats) {
+        const seatIdx = this.game.players.indexOf(uid);
+        if (seatIdx >= 0 && this.game.seats[seatIdx]) {
+          this.game.seats[seatIdx].connected = true;
+          await this.persistState();
+        }
+      }
+
+      // Send appropriate initial state based on phase
+      if (this.game?.phase === 'LOBBY') {
+        this.broadcastLobbyState();
+      } else {
+        server.send(JSON.stringify({
+          event: "gameState",
+          data: this.getPublicState(),
+        }));
+        const hand = this.hands.get(uid);
+        if (hand) {
+          server.send(JSON.stringify({
+            event: "hand",
+            data: { hand },
+          }));
+        }
       }
 
       return new Response(null, { status: 101, webSocket: client });
@@ -194,6 +207,101 @@ export class GameRoom extends DurableObject<Env> {
       // Default: matchmaking mode (backward compatible)
       const gameId = await this.initGame(body.players!);
       return Response.json({ gameId });
+    }
+
+    if (url.pathname === "/join") {
+      const body = await request.json<{ playerUid: string }>();
+      await this.loadState();
+      if (!this.game || this.game.phase !== 'LOBBY') {
+        return Response.json({ error: 'Room not in lobby phase' }, { status: 410 });
+      }
+      const seats = this.game.seats!;
+      // Same player reconnecting
+      if (seats[2].uid === body.playerUid) {
+        seats[2].connected = true;
+        await this.persistState();
+        this.broadcastLobbyState();
+        return Response.json({ ok: true });
+      }
+      // Different player trying to take seat 2
+      if (seats[2].uid !== null) {
+        return Response.json({ error: 'Room is full' }, { status: 409 });
+      }
+      seats[2] = { uid: body.playerUid, isBot: false, connected: false };
+      this.game.players[2] = body.playerUid;
+      await this.persistState();
+      this.broadcastLobbyState();
+      // Reset lobby expiry
+      await this.cancelEvent('lobby_expiry');
+      await this.scheduleEvent({ type: 'lobby_expiry', fireAt: Date.now() + 600_000 });
+      return Response.json({ ok: true });
+    }
+
+    if (url.pathname === "/start") {
+      const body = await request.json<{ hostUid: string }>();
+      await this.loadState();
+      if (!this.game || this.game.phase !== 'LOBBY') {
+        return Response.json({ error: 'Not in lobby' }, { status: 400 });
+      }
+      const seats = this.game.seats!;
+      if (seats[0].uid !== body.hostUid) {
+        return Response.json({ error: 'Not the host' }, { status: 403 });
+      }
+      if (!seats[2].uid) {
+        return Response.json({ error: 'Friend has not joined' }, { status: 400 });
+      }
+
+      // Cancel lobby expiry
+      await this.cancelEvent('lobby_expiry');
+
+      // Deal cards and start game
+      const deck = buildFourPlayerDeck();
+      const dealtHands = dealHands(deck);
+      for (let i = 0; i < 4; i++) {
+        const hand = dealtHands[i].map(c => c.code);
+        this.hands.set(this.game.players[i], hand);
+      }
+
+      const dealerIndex = Math.floor(Math.random() * 4);
+      const dealer = this.game.players[dealerIndex];
+      const firstBidderIndex = (dealerIndex - 1 + 4) % 4;
+      const firstBidder = this.game.players[firstBidderIndex];
+
+      this.game.phase = 'BIDDING';
+      this.game.dealer = dealer;
+      this.game.currentPlayer = firstBidder;
+      this.game.biddingState = {
+        currentBidder: firstBidder,
+        highestBid: null,
+        highestBidder: null,
+        passed: [],
+      };
+      this.game.metadata.status = 'active';
+
+      await this.persistAndBroadcast();
+      this.broadcastHands();
+
+      // If first bidder is a bot, schedule bot turn
+      if (this.isBotSeat(firstBidderIndex)) {
+        await this.scheduleEvent({
+          type: 'bot_turn',
+          fireAt: Date.now() + 800 + Math.floor(Math.random() * 1200),
+        });
+      }
+
+      return Response.json({ ok: true });
+    }
+
+    if (url.pathname === "/status") {
+      await this.loadState();
+      if (!this.game) {
+        return Response.json({ error: 'No game' }, { status: 404 });
+      }
+      return Response.json({
+        phase: this.game.phase,
+        seats: this.game.seats ?? [],
+        closed: this.game.metadata.status === 'closed',
+      });
     }
 
     return new Response("Not found", { status: 404 });
@@ -255,6 +363,18 @@ export class GameRoom extends DurableObject<Env> {
     await this.loadState();
     if (!this.game || this.game.phase === "GAME_OVER") return;
 
+    // Lobby disconnect: mark seat disconnected but keep UID reserved
+    if (this.game?.phase === 'LOBBY' && this.game.seats) {
+      const seatIdx = this.game.players.indexOf(uid);
+      if (seatIdx >= 0 && this.game.seats[seatIdx]) {
+        this.game.seats[seatIdx].connected = false;
+      }
+      await this.persistState();
+      this.broadcastLobbyState();
+      ws.close(code, reason);
+      return;
+    }
+
     await this.scheduleEvent({
       type: 'disconnect_timeout',
       fireAt: Date.now() + 90_000,
@@ -298,7 +418,13 @@ export class GameRoom extends DurableObject<Env> {
           }
           break;
         case 'lobby_expiry':
-          // Placeholder — will be implemented in Task 8
+          if (this.game?.phase === 'LOBBY') {
+            this.game.metadata.status = 'closed';
+            await this.persistState();
+            for (const ws of this.ctx.getWebSockets()) {
+              try { ws.close(1000, 'Room expired'); } catch { /* */ }
+            }
+          }
           break;
       }
     }
@@ -538,6 +664,31 @@ export class GameRoom extends DurableObject<Env> {
   }
 
   // ─── Helpers ─────────────────────────────────────────────────────────────
+
+  private broadcastLobbyState(): void {
+    if (!this.game || this.game.phase !== 'LOBBY') return;
+    const seats = this.game.seats ?? [];
+    for (const ws of this.ctx.getWebSockets()) {
+      const tags = this.ctx.getTags(ws);
+      const uid = tags[0];
+      if (!uid) continue;
+      try {
+        ws.send(JSON.stringify({
+          event: 'lobby_state',
+          data: {
+            seats: seats.map((s, i) => ({
+              seat: i,
+              uid: s.uid,
+              isBot: s.isBot,
+              connected: s.connected,
+            })),
+            roomCode: this.game.metadata.roomCode,
+            isHost: uid === seats[0]?.uid,
+          },
+        }));
+      } catch { /* closed */ }
+    }
+  }
 
   private isBotSeat(seatIndex: number): boolean {
     return this.game?.seats?.[seatIndex]?.isBot === true;
