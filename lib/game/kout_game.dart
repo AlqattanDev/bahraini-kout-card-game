@@ -120,9 +120,9 @@ class KoutGame extends FlameGame {
     // Wood grain table background — rendered first (behind everything else)
     add(TableBackgroundComponent());
 
-    // 3D perspective table surface
+    // 3D perspective table surface (portrait only)
     _perspectiveTable = PerspectiveTableComponent(layout: layout);
-    add(_perspectiveTable!);
+    if (!layout.isLandscape) add(_perspectiveTable!);
 
     _stateSub = stateStream.listen((state) {
       currentState = state;
