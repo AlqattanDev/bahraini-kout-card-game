@@ -23,7 +23,6 @@ class LayoutManager {
         height - safeArea.bottom,
       );
 
-  double get _safeWidth => safeRect.width;
   double get _safeHeight => safeRect.height;
 
   // ---------------------------------------------------------------------------
