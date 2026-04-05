@@ -315,12 +315,20 @@ class KoutGame extends FlameGame {
         );
         _opponentLabels[i]!.position = pos;
       } else {
+        final placement = switch (relativeSeat) {
+          1 => OpponentLabelPlacement.left,
+          2 => OpponentLabelPlacement.top,
+          3 => OpponentLabelPlacement.right,
+          _ => OpponentLabelPlacement.top,
+        };
+
         final label = OpponentNameLabel(
           playerName: _shortUid(state.playerUids[i]),
           isTeamA: i.isEven,
           bidAction: bidAction,
           isActive: state.currentPlayerUid == state.playerUids[i],
           cardCount: state.cardCounts[i] ?? 8,
+          placement: placement,
           position: pos,
         );
         _opponentLabels[i] = label;
