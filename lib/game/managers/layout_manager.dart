@@ -23,8 +23,6 @@ class LayoutManager {
         height - safeArea.bottom,
       );
 
-  double get _safeHeight => safeRect.height;
-
   // ---------------------------------------------------------------------------
   // Dynamic card scale
   // ---------------------------------------------------------------------------
