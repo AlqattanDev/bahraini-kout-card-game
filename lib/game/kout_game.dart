@@ -149,6 +149,8 @@ class KoutGame extends FlameGame {
     layout = LayoutManager(size, safeArea: _safeArea);
     _unifiedHud?.updateWidth(size.x);
     _perspectiveTable?.updateLayout(layout);
+    // Sync landscape flag with new layout (handles macOS window resize)
+    if (currentState != null) _updateLandscapeVisibility();
   }
 
   @override
@@ -206,183 +208,183 @@ class KoutGame extends FlameGame {
   // State update — wires all components and overlays to [ClientGameState]
   // ---------------------------------------------------------------------------
 
-void _updateLandscapeVisibility() {
-  final landscape = layout.isLandscape;
-  if (landscape == _isLandscape) return; // no change
-  _isLandscape = landscape;
+  void _updateLandscapeVisibility() {
+    final landscape = layout.isLandscape;
+    if (landscape == _isLandscape) return; // no change
+    _isLandscape = landscape;
 
-  // Toggle perspective table
-  if (_perspectiveTable != null) {
-    if (landscape && _perspectiveTable!.isMounted) {
-      _perspectiveTable!.removeFromParent();
-    } else if (!landscape && !_perspectiveTable!.isMounted) {
-      add(_perspectiveTable!);
-    }
-  }
-
-  // Toggle seats
-  for (final seat in _seats) {
-    if (landscape && seat.isMounted) {
-      seat.removeFromParent();
-    } else if (!landscape && !seat.isMounted) {
-      add(seat);
-    }
-  }
-
-  // Toggle ambient decoration
-  if (_ambientDecoration != null) {
-    if (landscape && _ambientDecoration!.isMounted) {
-      _ambientDecoration!.removeFromParent();
-    } else if (!landscape && !_ambientDecoration!.isMounted) {
-      add(_ambientDecoration!);
-    }
-  }
-
-  // Toggle opponent fans
-  for (final fan in _opponentFans.values) {
-    if (landscape && fan.isMounted) {
-      fan.removeFromParent();
-    } else if (!landscape && !fan.isMounted) {
-      add(fan);
-    }
-  }
-
-  // Update table background
-  final tableBg = children.whereType<TableBackgroundComponent>().firstOrNull;
-  if (tableBg != null) {
-    tableBg.isLandscape = landscape;
-  }
-}
-
-void _onStateUpdate(ClientGameState state) {
-  _updateLandscapeVisibility();
-  _updateLandscapeLabels(state);
-  _updateScoreDisplay(state);
-  _updateSeats(state);
-  _updateBidderGlow(state);
-  _updateHand(state);
-  _updateTrickArea(state);
-  _updateOverlays(state);
-}
-
-void _updateLandscapeLabels(ClientGameState state) {
-  if (!_isLandscape) {
-    // Remove labels in portrait
-    for (final label in _opponentLabels.values) {
-      if (label.isMounted) label.removeFromParent();
-    }
-    _opponentLabels.clear();
-    return;
-  }
-
-  // Create or update labels for all 4 players (including self as just a name)
-  for (int i = 0; i < 4; i++) {
-    final relativeSeat = layout.toRelativeSeat(i, state.mySeatIndex);
-    final pos = layout.seatPosition(i, state.mySeatIndex);
-
-    if (relativeSeat == 0) {
-      // Skip self — the user sees their own hand
-      continue;
-    }
-
-    String? bidAction;
-    if (state.phase == GamePhase.bidding || state.phase == GamePhase.trumpSelection) {
-      for (final entry in state.bidHistory) {
-        if (entry.playerUid == state.playerUids[i]) {
-          bidAction = entry.action;
-        }
+    // Toggle perspective table
+    if (_perspectiveTable != null) {
+      if (landscape && _perspectiveTable!.isMounted) {
+        _perspectiveTable!.removeFromParent();
+      } else if (!landscape && !_perspectiveTable!.isMounted) {
+        add(_perspectiveTable!);
       }
     }
 
-    final showBidderGlow = state.phase != GamePhase.bidding &&
-        state.phase != GamePhase.waiting &&
-        state.phase != GamePhase.dealing;
-
-    if (_opponentLabels.containsKey(i)) {
-      _opponentLabels[i]!.updateState(
-        name: _shortUid(state.playerUids[i]),
-        teamA: i.isEven,
-        active: state.currentPlayerUid == state.playerUids[i],
-        cards: state.cardCounts[i] ?? 8,
-        bidAction: bidAction,
-        isBidder: showBidderGlow && state.playerUids[i] == state.bidderUid,
-      );
-      _opponentLabels[i]!.position = pos;
-    } else {
-      final label = OpponentNameLabel(
-        playerName: _shortUid(state.playerUids[i]),
-        isTeamA: i.isEven,
-        bidAction: bidAction,
-        isActive: state.currentPlayerUid == state.playerUids[i],
-        cardCount: state.cardCounts[i] ?? 8,
-        position: pos,
-      );
-      _opponentLabels[i] = label;
-      add(label);
+    // Toggle seats
+    for (final seat in _seats) {
+      if (landscape && seat.isMounted) {
+        seat.removeFromParent();
+      } else if (!landscape && !seat.isMounted) {
+        add(seat);
+      }
     }
-  }
-}
 
-void _updateScoreDisplay(ClientGameState state) {
-  _gameTimer ??= Stopwatch()..start();
+    // Toggle ambient decoration
+    if (_ambientDecoration != null) {
+      if (landscape && _ambientDecoration!.isMounted) {
+        _ambientDecoration!.removeFromParent();
+      } else if (!landscape && !_ambientDecoration!.isMounted) {
+        add(_ambientDecoration!);
+      }
+    }
 
-  if (_unifiedHud == null) {
-    final w = hasLayout ? size.x : 375.0;
-    _unifiedHud = UnifiedHudComponent(screenWidth: w);
-    add(_unifiedHud!);
-  }
+    // Toggle opponent fans
+    for (final fan in _opponentFans.values) {
+      if (landscape && fan.isMounted) {
+        fan.removeFromParent();
+      } else if (!landscape && !fan.isMounted) {
+        add(fan);
+      }
+    }
 
-  final teamAScore = state.scores[Team.a] ?? 0;
-  final teamBScore = state.scores[Team.b] ?? 0;
-  final roundNumber = (state.trickWinners.length ~/ 8) + 1;
-
-  int? bidValue;
-  Team? bidderTeam;
-  int bidderTricks = 0;
-  int opponentTricks = 0;
-  int opponentTarget = 0;
-
-  if (state.bidderUid != null && state.currentBid != null) {
-    bidValue = state.currentBid!.value;
-    final bidderSeat = state.playerUids.indexOf(state.bidderUid!);
-    if (bidderSeat >= 0) {
-      bidderTeam = teamForSeat(bidderSeat);
-      bidderTricks = state.tricks[bidderTeam] ?? 0;
-      opponentTricks = state.tricks[bidderTeam.opponent] ?? 0;
-      opponentTarget = 9 - bidValue;
+    // Update table background
+    final tableBg = children.whereType<TableBackgroundComponent>().firstOrNull;
+    if (tableBg != null) {
+      tableBg.isLandscape = landscape;
     }
   }
 
-  _unifiedHud!.updateState(
-    phase: state.phase,
-    teamAScore: teamAScore,
-    teamBScore: teamBScore,
-    roundNumber: roundNumber,
-    bidValue: bidValue,
-    bidderTeam: bidderTeam,
-    trumpSuit: state.trumpSuit,
-    bidderTricks: bidderTricks,
-    opponentTricks: opponentTricks,
-    opponentTarget: opponentTarget,
-  );
+  void _onStateUpdate(ClientGameState state) {
+    _updateLandscapeVisibility();
+    _updateLandscapeLabels(state);
+    _updateScoreDisplay(state);
+    _updateSeats(state);
+    _updateBidderGlow(state);
+    _updateHand(state);
+    _updateTrickArea(state);
+    _updateOverlays(state);
+  }
 
-  _unifiedHud!.updateTimer(_gameTimer!.elapsed);
+  void _updateLandscapeLabels(ClientGameState state) {
+    if (!_isLandscape) {
+      // Remove labels in portrait
+      for (final label in _opponentLabels.values) {
+        if (label.isMounted) label.removeFromParent();
+      }
+      _opponentLabels.clear();
+      return;
+    }
 
-  // Position HUD within safe area
-  if (_isLandscape) {
-    _unifiedHud!.updateLayout(
-      hasLayout ? size.x : 852,
-      rightInset: _safeArea.right,
-      topInset: _safeArea.top,
+    // Create or update labels for opponents in landscape
+    for (int i = 0; i < 4; i++) {
+      final relativeSeat = layout.toRelativeSeat(i, state.mySeatIndex);
+      final pos = layout.seatPosition(i, state.mySeatIndex);
+
+      if (relativeSeat == 0) {
+        // Skip self — the user sees their own hand
+        continue;
+      }
+
+      String? bidAction;
+      if (state.phase == GamePhase.bidding || state.phase == GamePhase.trumpSelection) {
+        for (final entry in state.bidHistory) {
+          if (entry.playerUid == state.playerUids[i]) {
+            bidAction = entry.action;
+          }
+        }
+      }
+
+      final showBidderGlow = state.phase != GamePhase.bidding &&
+          state.phase != GamePhase.waiting &&
+          state.phase != GamePhase.dealing;
+
+      if (_opponentLabels.containsKey(i)) {
+        _opponentLabels[i]!.updateState(
+          name: _shortUid(state.playerUids[i]),
+          teamA: i.isEven,
+          active: state.currentPlayerUid == state.playerUids[i],
+          cards: state.cardCounts[i] ?? 8,
+          bidAction: bidAction,
+          isBidder: showBidderGlow && state.playerUids[i] == state.bidderUid,
+        );
+        _opponentLabels[i]!.position = pos;
+      } else {
+        final label = OpponentNameLabel(
+          playerName: _shortUid(state.playerUids[i]),
+          isTeamA: i.isEven,
+          bidAction: bidAction,
+          isActive: state.currentPlayerUid == state.playerUids[i],
+          cardCount: state.cardCounts[i] ?? 8,
+          position: pos,
+        );
+        _opponentLabels[i] = label;
+        add(label);
+      }
+    }
+  }
+
+  void _updateScoreDisplay(ClientGameState state) {
+    _gameTimer ??= Stopwatch()..start();
+
+    if (_unifiedHud == null) {
+      final w = hasLayout ? size.x : 375.0;
+      _unifiedHud = UnifiedHudComponent(screenWidth: w);
+      add(_unifiedHud!);
+    }
+
+    final teamAScore = state.scores[Team.a] ?? 0;
+    final teamBScore = state.scores[Team.b] ?? 0;
+    final roundNumber = (state.trickWinners.length ~/ 8) + 1;
+
+    int? bidValue;
+    Team? bidderTeam;
+    int bidderTricks = 0;
+    int opponentTricks = 0;
+    int opponentTarget = 0;
+
+    if (state.bidderUid != null && state.currentBid != null) {
+      bidValue = state.currentBid!.value;
+      final bidderSeat = state.playerUids.indexOf(state.bidderUid!);
+      if (bidderSeat >= 0) {
+        bidderTeam = teamForSeat(bidderSeat);
+        bidderTricks = state.tricks[bidderTeam] ?? 0;
+        opponentTricks = state.tricks[bidderTeam.opponent] ?? 0;
+        opponentTarget = 9 - bidValue;
+      }
+    }
+
+    _unifiedHud!.updateState(
+      phase: state.phase,
+      teamAScore: teamAScore,
+      teamBScore: teamBScore,
+      roundNumber: roundNumber,
+      bidValue: bidValue,
+      bidderTeam: bidderTeam,
+      trumpSuit: state.trumpSuit,
+      bidderTricks: bidderTricks,
+      opponentTricks: opponentTricks,
+      opponentTarget: opponentTarget,
     );
-  }
 
-  // Track scores for round result overlay
-  if (state.phase != GamePhase.roundScoring) {
-    _lastScoreA = state.scores[Team.a] ?? 0;
-    _lastScoreB = state.scores[Team.b] ?? 0;
+    _unifiedHud!.updateTimer(_gameTimer!.elapsed);
+
+    // Position HUD within safe area
+    if (_isLandscape) {
+      _unifiedHud!.updateLayout(
+        hasLayout ? size.x : 852,
+        rightInset: _safeArea.right,
+        topInset: _safeArea.top,
+      );
+    }
+
+    // Track scores for round result overlay
+    if (state.phase != GamePhase.roundScoring) {
+      _lastScoreA = state.scores[Team.a] ?? 0;
+      _lastScoreB = state.scores[Team.b] ?? 0;
+    }
   }
-}
 
   void _updateSeats(ClientGameState state) {
     // Create seat components on first call; update thereafter
