@@ -72,6 +72,9 @@ class OverlayAnimationWrapperState extends State<OverlayAnimationWrapper>
 
   @override
   Widget build(BuildContext context) {
+    final isLandscape = MediaQuery.orientationOf(context) == Orientation.landscape;
+    final landscapeScale = isLandscape ? 0.75 : 1.0;
+
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
@@ -80,7 +83,7 @@ class OverlayAnimationWrapperState extends State<OverlayAnimationWrapper>
           child: SafeArea(
             child: Center(
               child: Transform.scale(
-                scale: _scaleAnimation.value,
+                scale: _scaleAnimation.value * landscapeScale,
                 child: Opacity(
                   opacity: _opacityAnimation.value,
                   child: child,
