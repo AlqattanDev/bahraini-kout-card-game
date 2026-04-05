@@ -30,10 +30,10 @@ class KoutGame extends FlameGame {
   ClientGameState? currentState;
   late LayoutManager layout;
 
-  // Extracted managers
-  late final TurnTimerManager _turnTimer;
-  late final OverlayController _overlayController;
-  late final ComponentLifecycleManager _lifecycle;
+  // Extracted managers — lazy init so they're safe before onLoad()
+  late final TurnTimerManager _turnTimer = TurnTimerManager();
+  late final OverlayController _overlayController = OverlayController();
+  late final ComponentLifecycleManager _lifecycle = ComponentLifecycleManager(game: this);
 
   // Lazily-created components
   HandComponent? _hand;
@@ -96,9 +96,6 @@ class KoutGame extends FlameGame {
     final safeSize = hasLayout ? size : Vector2(375, 812);
     layout = LayoutManager(safeSize, safeArea: _safeArea);
     _animationManager = AnimationManager(game: this);
-    _turnTimer = TurnTimerManager();
-    _overlayController = OverlayController();
-    _lifecycle = ComponentLifecycleManager(game: this);
     soundManager = SoundManager();
     await soundManager!.init();
 
