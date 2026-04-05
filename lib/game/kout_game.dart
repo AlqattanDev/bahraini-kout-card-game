@@ -53,6 +53,8 @@ class KoutGame extends FlameGame {
   // Track previous trick play count to detect new card plays
   int _prevTrickPlayCount = 0;
 
+  bool _isLandscape = false;
+
   // Track previous phase to detect transitions (e.g. poison joker roundScoring)
   GamePhase? _prevPhase;
 
@@ -202,7 +204,56 @@ class KoutGame extends FlameGame {
   // State update — wires all components and overlays to [ClientGameState]
   // ---------------------------------------------------------------------------
 
+void _updateLandscapeVisibility() {
+  final landscape = layout.isLandscape;
+  if (landscape == _isLandscape) return; // no change
+  _isLandscape = landscape;
+
+  // Toggle perspective table
+  if (_perspectiveTable != null) {
+    if (landscape && _perspectiveTable!.isMounted) {
+      _perspectiveTable!.removeFromParent();
+    } else if (!landscape && !_perspectiveTable!.isMounted) {
+      add(_perspectiveTable!);
+    }
+  }
+
+  // Toggle seats
+  for (final seat in _seats) {
+    if (landscape && seat.isMounted) {
+      seat.removeFromParent();
+    } else if (!landscape && !seat.isMounted) {
+      add(seat);
+    }
+  }
+
+  // Toggle ambient decoration
+  if (_ambientDecoration != null) {
+    if (landscape && _ambientDecoration!.isMounted) {
+      _ambientDecoration!.removeFromParent();
+    } else if (!landscape && !_ambientDecoration!.isMounted) {
+      add(_ambientDecoration!);
+    }
+  }
+
+  // Toggle opponent fans
+  for (final fan in _opponentFans.values) {
+    if (landscape && fan.isMounted) {
+      fan.removeFromParent();
+    } else if (!landscape && !fan.isMounted) {
+      add(fan);
+    }
+  }
+
+  // Update table background
+  final tableBg = children.whereType<TableBackgroundComponent>().firstOrNull;
+  if (tableBg != null) {
+    tableBg.isLandscape = landscape;
+  }
+}
+
 void _onStateUpdate(ClientGameState state) {
+  _updateLandscapeVisibility();
   _updateScoreDisplay(state);
   _updateSeats(state);
   _updateBidderGlow(state);
@@ -277,7 +328,7 @@ void _updateScoreDisplay(ClientGameState state) {
           position: pos,
         );
         _seats.add(seat);
-        add(seat);
+        if (!_isLandscape) add(seat);
       }
 
       // Ambient decoration layer (tea glass silhouettes + geometric overlay)
@@ -288,7 +339,7 @@ void _updateScoreDisplay(ClientGameState state) {
             layout.seatPosition(i, state.mySeatIndex),
         ],
       );
-      add(_ambientDecoration!);
+      if (!_isLandscape) add(_ambientDecoration!);
 
       // Create opponent card-back fans for non-player seats.
       // Each fan is a horizontal arc in local space, rotated via baseRotation
@@ -324,7 +375,7 @@ void _updateScoreDisplay(ClientGameState state) {
           baseRotation: rotation,
         );
         _opponentFans[i] = fan;
-        add(fan);
+        if (!_isLandscape) add(fan);
       }
     }
 
