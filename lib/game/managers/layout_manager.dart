@@ -1,12 +1,13 @@
-import 'dart:ui';
 import 'package:flame/components.dart';
+import 'package:flutter/painting.dart';
 
 /// Calculates positions and angles for all game elements based on screen size.
 /// Seat indices: 0=bottom (me), 1=left, 2=top (partner), 3=right.
 class LayoutManager {
   final Vector2 screenSize;
 
-  LayoutManager(this.screenSize);
+  // ignore: unused_element
+  LayoutManager(this.screenSize, {EdgeInsets safeArea = EdgeInsets.zero});
 
   double get width => screenSize.x;
   double get height => screenSize.y;

@@ -125,6 +125,10 @@ class _GameScreenState extends State<GameScreen> {
       );
     }
 
+    // Read safe area insets and pass to game engine
+    final padding = MediaQuery.of(context).padding;
+    _koutGame!.updateSafeArea(padding);
+
     return Scaffold(
       body: Stack(
         children: [

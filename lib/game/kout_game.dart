@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'package:flame/components.dart';
 import 'package:flame/game.dart';
+import 'package:flutter/painting.dart';
 import '../app/models/client_game_state.dart';
 import '../app/services/game_service.dart';
 import '../shared/models/game_state.dart';
@@ -75,6 +76,19 @@ class KoutGame extends FlameGame {
       GameTiming.humanTurnTimeout.inMilliseconds / 1000.0;
   static const double _botTimeout = 4.0; // average of 3-5s
 
+  /// Safe area insets from the Flutter widget layer.
+  EdgeInsets _safeArea = EdgeInsets.zero;
+
+  void updateSafeArea(EdgeInsets insets) {
+    _safeArea = insets;
+    // Re-create layout with new insets
+    if (hasLayout) {
+      layout = LayoutManager(size, safeArea: _safeArea);
+      _unifiedHud?.updateWidth(size.x);
+      _perspectiveTable?.updateLayout(layout);
+    }
+  }
+
   KoutGame({
     required this.stateStream,
     required this.inputSink,
@@ -96,7 +110,7 @@ class KoutGame extends FlameGame {
   Future<void> onLoad() async {
     // Use a safe fallback size when the canvas is not yet available (e.g. in tests).
     final safeSize = hasLayout ? size : Vector2(375, 812);
-    layout = LayoutManager(safeSize);
+    layout = LayoutManager(safeSize, safeArea: _safeArea);
     _animationManager = AnimationManager(game: this);
     soundManager = SoundManager();
     await soundManager!.init();
@@ -128,7 +142,7 @@ class KoutGame extends FlameGame {
   @override
   void onGameResize(Vector2 size) {
     super.onGameResize(size);
-    layout = LayoutManager(size);
+    layout = LayoutManager(size, safeArea: _safeArea);
     _unifiedHud?.updateWidth(size.x);
     _perspectiveTable?.updateLayout(layout);
   }
