@@ -32,9 +32,10 @@ class TrickAreaComponent extends Component {
       ..color = DiwaniyaColors.goldAccent.withValues(alpha: 0.12)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.0;
+    final radius = layout.isLandscape ? 40.0 : 60.0;
     canvas.drawCircle(
       Offset(layout.trickCenter.x, layout.trickCenter.y),
-      60,
+      radius,
       markerPaint,
     );
   }
@@ -75,14 +76,18 @@ class TrickAreaComponent extends Component {
 
       // Later cards get higher priority (z-order) so play order is
       // visually obvious — the most recent card renders on top.
+      final trickScale = layout.isLandscape ? layout.handCardScale : 1.0;
       final cardComp = CardComponent(
         card: play.card,
         isFaceUp: true,
         isHighlighted: false,
         showShadow: true,
+        restScale: trickScale,
         position: pos,
         angle: angle,
-      )..priority = i;
+      )
+        ..scale = Vector2.all(trickScale)
+        ..priority = i;
 
       _trickCards.add(cardComp);
       add(cardComp);

@@ -39,8 +39,13 @@ class UnifiedHudComponent extends PositionComponent {
     position = Vector2(newWidth - _hudWidth - 12, 10);
   }
 
-  void updateLayout(double screenWidth, {double rightInset = 0, double topInset = 0}) {
-    position = Vector2(screenWidth - _hudWidth - 12 - rightInset, 10 + topInset);
+  void updateLayout(double screenWidth, {double rightInset = 0, double topInset = 0, bool landscape = false, double leftInset = 0}) {
+    if (landscape) {
+      // Top-left in landscape to avoid right opponent overlap
+      position = Vector2(leftInset + 12, 10 + topInset);
+    } else {
+      position = Vector2(screenWidth - _hudWidth - 12 - rightInset, 10 + topInset);
+    }
   }
 
   void updateState({

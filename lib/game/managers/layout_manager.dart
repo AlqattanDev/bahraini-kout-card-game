@@ -66,8 +66,8 @@ class LayoutManager {
     return Vector2(safeRect.center.dx, height + 15);
   }
 
-  /// Player label at bottom-right of safe rect
-  Vector2 get _landscapeMySeat => Vector2(safeRect.right - 50, safeRect.bottom - 25);
+  /// Player label at bottom-right, near the hand
+  Vector2 get _landscapeMySeat => Vector2(safeRect.right - 80, safeRect.bottom - 40);
 
   /// Partner label at top-center of safe rect
   Vector2 get _landscapePartnerSeat => Vector2(safeRect.center.dx, safeRect.top + 25);

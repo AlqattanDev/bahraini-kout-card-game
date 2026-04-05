@@ -94,7 +94,7 @@ class KoutGame extends FlameGame {
       _hand?.layout = layout;
       _trickArea?.layout = layout;
       if (layout.isLandscape) {
-        _unifiedHud?.updateLayout(size.x, rightInset: _safeArea.right, topInset: _safeArea.top);
+        _unifiedHud?.updateLayout(size.x, rightInset: _safeArea.right, topInset: _safeArea.top, landscape: true, leftInset: _safeArea.left);
       }
     }
   }
@@ -158,7 +158,7 @@ class KoutGame extends FlameGame {
     _hand?.layout = layout;
     _trickArea?.layout = layout;
     if (layout.isLandscape) {
-      _unifiedHud?.updateLayout(size.x, rightInset: _safeArea.right, topInset: _safeArea.top);
+      _unifiedHud?.updateLayout(size.x, rightInset: _safeArea.right, topInset: _safeArea.top, landscape: true, leftInset: _safeArea.left);
     }
     // Sync landscape flag with new layout (handles macOS window resize)
     if (currentState != null) _updateLandscapeVisibility();
