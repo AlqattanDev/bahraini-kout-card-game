@@ -368,6 +368,15 @@ void _updateScoreDisplay(ClientGameState state) {
 
   _unifiedHud!.updateTimer(_gameTimer!.elapsed);
 
+  // Position HUD within safe area
+  if (_isLandscape) {
+    _unifiedHud!.updateLayout(
+      hasLayout ? size.x : 852,
+      rightInset: _safeArea.right,
+      topInset: _safeArea.top,
+    );
+  }
+
   // Track scores for round result overlay
   if (state.phase != GamePhase.roundScoring) {
     _lastScoreA = state.scores[Team.a] ?? 0;

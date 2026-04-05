@@ -39,6 +39,10 @@ class UnifiedHudComponent extends PositionComponent {
     position = Vector2(newWidth - _hudWidth - 12, 10);
   }
 
+  void updateLayout(double screenWidth, {double rightInset = 0, double topInset = 0}) {
+    position = Vector2(screenWidth - _hudWidth - 12 - rightInset, 10 + topInset);
+  }
+
   void updateState({
     required GamePhase phase,
     required int teamAScore,
