@@ -27,6 +27,7 @@ class UnifiedHudComponent extends PositionComponent {
   int opponentTricks = 0;
   int opponentTarget = 0;
   GamePhase _phase = GamePhase.waiting;
+  bool _isLandscape = false;
   String timerText = '00:00';
 
   UnifiedHudComponent({required double screenWidth})
@@ -41,6 +42,7 @@ class UnifiedHudComponent extends PositionComponent {
   }
 
   void updateLayout(double screenWidth, {double rightInset = 0, double topInset = 0, bool landscape = false, double leftInset = 0}) {
+    _isLandscape = landscape;
     if (landscape) {
       // Top-left in landscape to avoid right opponent overlap
       position = Vector2(leftInset + 12, 10 + topInset);
@@ -101,7 +103,8 @@ class UnifiedHudComponent extends PositionComponent {
 
   double _computeHeight() {
     double h = _padding;
-    h += 30;
+    h += 10; // SCORE label
+    h += 30; // score number
     h += _rowGap;
     h += _dividerHeight;
     h += _rowGap;
@@ -125,39 +128,55 @@ class UnifiedHudComponent extends PositionComponent {
     final hudHeight = _computeHeight();
     size = Vector2(_hudWidth, hudHeight);
 
+    // Background — use green-tinted bg in landscape for felt harmony
+    final bgColor = _isLandscape
+        ? DiwaniyaColors.hudBgLandscape
+        : DiwaniyaColors.scoreHudBg;
+    final borderColor = _isLandscape
+        ? DiwaniyaColors.hudBorderLandscape
+        : DiwaniyaColors.scoreHudBorder;
+
     final bgRect = RRect.fromRectAndRadius(
       Rect.fromLTWH(0, 0, _hudWidth, hudHeight),
       const Radius.circular(12),
     );
-    canvas.drawRRect(bgRect, Paint()..color = DiwaniyaColors.scoreHudBg);
+    canvas.drawRRect(bgRect, Paint()..color = bgColor);
     canvas.drawRRect(
       bgRect,
       Paint()
-        ..color = DiwaniyaColors.scoreHudBorder
+        ..color = borderColor
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.5,
     );
 
     double y = _padding;
 
+    // --- Score section with label ---
+    TextRenderer.draw(canvas, 'SCORE', DiwaniyaColors.hudLabelMuted,
+        Offset(_padding, y), 8, align: TextAlign.left, width: 50);
+    TextRenderer.draw(canvas, 'R$roundNumber',
+        DiwaniyaColors.hudLabelMuted,
+        Offset(_hudWidth - _padding - 20, y), 8,
+        align: TextAlign.right, width: 20);
+    y += 10;
+
+    // Large score number
     TextRenderer.draw(canvas, '$score', scoreColor,
         Offset(_padding, y), 28, align: TextAlign.left, width: 60);
     TextRenderer.draw(canvas, '/ 31',
-        DiwaniyaColors.cream.withValues(alpha: 0.5),
+        DiwaniyaColors.cream.withValues(alpha: 0.4),
         Offset(_padding + 50, y + 10), 11, align: TextAlign.left, width: 40);
-    TextRenderer.draw(canvas, 'R$roundNumber',
-        DiwaniyaColors.cream.withValues(alpha: 0.5),
-        Offset(_hudWidth - _padding - 30, y + 10), 11,
-        align: TextAlign.right, width: 30);
     y += 30 + _rowGap;
 
+    // Divider
     canvas.drawLine(
       Offset(_padding, y),
       Offset(_hudWidth - _padding, y),
-      Paint()..color = DiwaniyaColors.goldAccent.withValues(alpha: 0.35),
+      Paint()..color = DiwaniyaColors.goldAccent.withValues(alpha: 0.25),
     );
     y += _dividerHeight + _rowGap;
 
+    // --- Bid + Trump section ---
     if (_showBidRow && bidValue != null) {
       final bidTeamColor = bidderTeam != null
           ? KoutTheme.teamColor(bidderTeam!)
@@ -168,9 +187,8 @@ class UnifiedHudComponent extends PositionComponent {
           Offset(_padding, y), 12, align: TextAlign.left, width: 80);
 
       if (trumpSuit != null) {
-        final suitColor = trumpSuit!.isRed
-            ? KoutTheme.suitCardColor(trumpSuit!)
-            : DiwaniyaColors.pureWhite;
+        // Use HUD-safe suit color — gold for black suits, red for red suits
+        final suitColor = KoutTheme.suitHudColor(trumpSuit!);
         TextRenderer.draw(canvas, trumpSuit!.symbol, suitColor,
             Offset(_hudWidth - _padding - 20, y - 2), 18,
             align: TextAlign.right, width: 20);
@@ -178,19 +196,20 @@ class UnifiedHudComponent extends PositionComponent {
       y += 18 + _rowGap;
     }
 
+    // --- Trick progress pips with labels ---
     if (_showPips && bidValue != null) {
       final bidTeamColor = KoutTheme.teamColor(bidderTeam ?? Team.a);
       final oppTeamColor = KoutTheme.teamColor((bidderTeam ?? Team.a).opponent);
       final bidTeamLabel = bidderTeam == Team.a ? 'A' : 'B';
       final oppTeamLabel = bidderTeam == Team.a ? 'B' : 'A';
 
-      // Bidder pip row with team label
+      // Bidder pip row: label + pips
       TextRenderer.draw(canvas, bidTeamLabel, bidTeamColor,
           Offset(_padding, y + 1), 10, align: TextAlign.left, width: 12);
       _drawPipRow(canvas, y + 4, bidValue!, bidderTricks, bidTeamColor);
       y += 16;
 
-      // Opponent pip row with team label
+      // Opponent pip row
       TextRenderer.draw(canvas, oppTeamLabel, oppTeamColor,
           Offset(_padding, y + 1), 10, align: TextAlign.left, width: 12);
       _drawPipRow(canvas, y + 4, opponentTarget, opponentTricks, oppTeamColor);
@@ -199,14 +218,15 @@ class UnifiedHudComponent extends PositionComponent {
       canvas.drawLine(
         Offset(_padding, y),
         Offset(_hudWidth - _padding, y),
-        Paint()..color = DiwaniyaColors.goldAccent.withValues(alpha: 0.35),
+        Paint()..color = DiwaniyaColors.goldAccent.withValues(alpha: 0.25),
       );
       y += _dividerHeight + _rowGap;
     }
 
+    // --- Timer with label ---
     TextRenderer.draw(canvas, timerText,
-        DiwaniyaColors.cream.withValues(alpha: 0.65),
-        Offset(_hudWidth / 2, y), 12,
+        DiwaniyaColors.cream.withValues(alpha: 0.5),
+        Offset(_hudWidth / 2, y), 11,
         align: TextAlign.center, width: _hudWidth);
   }
 

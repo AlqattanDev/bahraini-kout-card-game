@@ -18,8 +18,17 @@ enum Team {
 
 Team teamForSeat(int seatIndex) => seatIndex.isEven ? Team.a : Team.b;
 
-/// Truncates a UID to 6 characters for display.
-String shortUid(String uid) => uid.length <= 6 ? uid : uid.substring(0, 6);
+/// Produces a short display name from a UID.
+/// Offline bot UIDs like "bot_1" become "Bot 1".
+/// Online UIDs get first 6 chars.
+String shortUid(String uid) {
+  if (uid.startsWith('bot_')) {
+    final num = uid.substring(4);
+    return 'Bot $num';
+  }
+  if (uid.length <= 8) return uid;
+  return uid.substring(0, 6);
+}
 
 /// Next seat in counter-clockwise (right-to-left) order: 0→3→2→1.
 int nextSeat(int seatIndex, {int playerCount = 4}) =>

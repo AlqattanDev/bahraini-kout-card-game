@@ -4,7 +4,8 @@ import 'package:koutbh/game/managers/layout_manager.dart';
 
 void main() {
   group('LayoutManager table geometry', () {
-    final layout = LayoutManager(Vector2(800, 600));
+    // Portrait orientation: height > width (table geometry was designed for portrait)
+    final layout = LayoutManager(Vector2(600, 800));
 
     test('trapezoid has 4 vertices in correct order (TL, TR, BL, BR)', () {
       final verts = layout.tableVertices;
@@ -25,8 +26,8 @@ void main() {
       final botWidth = verts[3].dx - verts[2].dx;
       expect(botWidth, greaterThan(topWidth));
       // Specifically: 85% vs 55% of screen width
-      expect(topWidth, closeTo(800 * 0.55, 1));
-      expect(botWidth, closeTo(800 * 0.85, 1));
+      expect(topWidth, closeTo(600 * 0.55, 1));
+      expect(botWidth, closeTo(600 * 0.85, 1));
     });
 
     test('table top clears score panel area (>= 60px)', () {
@@ -37,7 +38,7 @@ void main() {
     test('table bottom leaves room for hand area', () {
       final verts = layout.tableVertices;
       // Hand center is at height - 80, table should end before that
-      expect(verts[2].dy, lessThan(600 - 80));
+      expect(verts[2].dy, lessThan(800 - 80));
     });
 
     test('table center is centroid of all 4 vertices', () {
@@ -52,8 +53,8 @@ void main() {
       final verts = layout.tableVertices;
       final topMidX = (verts[0].dx + verts[1].dx) / 2;
       final botMidX = (verts[2].dx + verts[3].dx) / 2;
-      expect(topMidX, closeTo(400, 1));
-      expect(botMidX, closeTo(400, 1));
+      expect(topMidX, closeTo(300, 1));
+      expect(botMidX, closeTo(300, 1));
     });
 
     test('scales proportionally with screen size', () {

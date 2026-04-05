@@ -21,6 +21,11 @@ class KoutTheme {
   static Color suitCardColor(Suit suit) =>
       suit.isRed ? const Color(0xFFCC0000) : const Color(0xFF111111);
 
+  /// Suit color for HUD/dark-background contexts — all suits must be visible.
+  /// Black suits get cream/gold instead of black.
+  static Color suitHudColor(Suit suit) =>
+      suit.isRed ? const Color(0xFFCC0000) : DiwaniyaColors.goldAccent;
+
   /// Team color lookup.
   static Color teamColor(Team team) =>
       team == Team.a ? teamAColor : teamBColor;

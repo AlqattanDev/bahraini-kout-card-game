@@ -52,13 +52,13 @@ void main() {
       expect(pos.first.angle, closeTo(-pos.last.angle, 0.01));
     });
 
-    test('spacing stays within clamped range [44, 72]', () {
+    test('spacing stays within clamped range [48, 76]', () {
       for (int count = 1; count <= 8; count++) {
         final pos = layout.handCardPositions(count);
         if (pos.length < 2) continue;
         final spacing = (pos[1].position.x - pos[0].position.x).abs();
-        expect(spacing, greaterThanOrEqualTo(44), reason: 'Spacing too tight for $count cards');
-        expect(spacing, lessThanOrEqualTo(72), reason: 'Spacing too wide for $count cards');
+        expect(spacing, greaterThanOrEqualTo(48), reason: 'Spacing too tight for $count cards');
+        expect(spacing, lessThanOrEqualTo(76), reason: 'Spacing too wide for $count cards');
       }
     });
   });
@@ -91,27 +91,22 @@ void main() {
       expect(hc.y, greaterThan(393), reason: 'Hand should extend past bottom edge');
     });
 
-    test('left seat is on left side vertically centered', () {
+    test('left seat is on left side at mid-height', () {
       final ls = landscapeLayout.leftSeat;
-      // Proportional: safeRect.left + safeW * 0.12
-      expect(ls.x, closeTo(landscapeLayout.safeRect.left + landscapeLayout.safeRect.width * 0.12, 1));
-      final centerY = landscapeLayout.safeRect.center.dy;
-      expect(ls.y, closeTo(centerY, 1));
+      expect(ls.x, closeTo(landscapeLayout.safeRect.left + landscapeLayout.safeRect.width * 0.09, 1));
+      expect(ls.y, closeTo(landscapeLayout.safeRect.top + landscapeLayout.safeRect.height * 0.44, 1));
     });
 
-    test('right seat is on right side vertically centered', () {
+    test('right seat is on right side at mid-height', () {
       final rs = landscapeLayout.rightSeat;
-      // Proportional: safeRect.right - safeW * 0.12
       expect(rs.x, closeTo(landscapeLayout.safeRect.right - landscapeLayout.safeRect.width * 0.12, 1));
-      final centerY = landscapeLayout.safeRect.center.dy;
-      expect(rs.y, closeTo(centerY, 1));
+      expect(rs.y, closeTo(landscapeLayout.safeRect.top + landscapeLayout.safeRect.height * 0.44, 1));
     });
 
     test('partner seat is at top center', () {
       final ps = landscapeLayout.partnerSeat;
       expect(ps.x, closeTo(landscapeLayout.safeRect.center.dx, 1));
-      // Proportional: safeRect.top + safeH * 0.08
-      expect(ps.y, closeTo(landscapeLayout.safeRect.top + landscapeLayout.safeRect.height * 0.08, 1));
+      expect(ps.y, closeTo(landscapeLayout.safeRect.top + landscapeLayout.safeRect.height * 0.14, 1));
     });
 
     test('trick center is within safe rect', () {
@@ -123,10 +118,10 @@ void main() {
     });
 
     test('handCardScale is proportional to safe height on landscape phone', () {
-      // 372 * 0.33 / 100 = 1.228, clamped to [1.0, 1.6]
+      // 372 * 0.35 / 100 = 1.302, clamped to [1.0, 1.6]
       expect(landscapeLayout.handCardScale, greaterThanOrEqualTo(1.0));
       expect(landscapeLayout.handCardScale, lessThanOrEqualTo(1.6));
-      expect(landscapeLayout.handCardScale, closeTo(1.228, 0.01));
+      expect(landscapeLayout.handCardScale, closeTo(1.302, 0.01));
     });
 
     test('trickCardScale matches handCardScale in landscape', () {

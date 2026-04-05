@@ -50,7 +50,7 @@ class TextureGenerator {
   }
 
   /// Draws a radial vignette darkening the edges of [bounds].
-  static void drawVignette(Canvas canvas, Rect bounds) {
+  static void drawVignette(Canvas canvas, Rect bounds, {double intensity = 0.5}) {
     final center = bounds.center;
     final radius = math.max(bounds.width, bounds.height) * 0.7;
 
@@ -60,8 +60,8 @@ class TextureGenerator {
       [
         const Color(0x00000000),
         const Color(0x00000000),
-        DiwaniyaColors.vignette.withValues(alpha: 0.5),
-        DiwaniyaColors.vignette.withValues(alpha: 0.8),
+        DiwaniyaColors.vignette.withValues(alpha: intensity * 0.8),
+        DiwaniyaColors.vignette.withValues(alpha: intensity),
       ],
       [0.0, 0.5, 0.8, 1.0],
     );

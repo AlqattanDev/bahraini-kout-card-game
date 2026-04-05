@@ -35,14 +35,8 @@ class ComponentLifecycleManager {
     if (landscape == _isLandscape) return false;
     _isLandscape = landscape;
 
-    _toggleVisibility(perspectiveTable, showInPortrait: true);
-    for (final seat in seats) {
-      _toggleVisibility(seat, showInPortrait: true);
-    }
+    // Only ambient decoration is portrait-only
     _toggleVisibility(ambientDecoration, showInPortrait: true);
-    for (final fan in opponentFans.values) {
-      _toggleVisibility(fan, showInPortrait: true);
-    }
 
     // Update table background
     final tableBg =
@@ -70,7 +64,7 @@ class ComponentLifecycleManager {
         position: pos,
       );
       seats.add(seat);
-      if (!_isLandscape) game.add(seat);
+      game.add(seat);
     }
 
     ambientDecoration = AmbientDecorationComponent(
@@ -80,7 +74,6 @@ class ComponentLifecycleManager {
     );
     if (!_isLandscape) game.add(ambientDecoration!);
 
-    const fanOffset = 70.0;
     for (int i = 0; i < 4; i++) {
       if (i == state.mySeatIndex) continue;
       final relativeSeat = layout.toRelativeSeat(i, state.mySeatIndex);
@@ -91,13 +84,13 @@ class ComponentLifecycleManager {
       switch (relativeSeat) {
         case 1:
           rotation = math.pi / 2;
-          offset = Vector2(fanOffset, -10);
+          offset = _fanOffset(1);
         case 2:
           rotation = math.pi;
-          offset = Vector2(0, fanOffset);
+          offset = _fanOffset(2);
         case 3:
           rotation = -math.pi / 2;
-          offset = Vector2(-fanOffset, -10);
+          offset = _fanOffset(3);
         default:
           continue;
       }
@@ -108,7 +101,7 @@ class ComponentLifecycleManager {
         baseRotation: rotation,
       );
       opponentFans[i] = fan;
-      if (!_isLandscape) game.add(fan);
+      game.add(fan);
     }
   }
 
@@ -133,69 +126,32 @@ class ComponentLifecycleManager {
 
       if (opponentFans.containsKey(i)) {
         opponentFans[i]!.updateCardCount(state.cardCounts[i] ?? 8);
+        final relativeSeat = layout.toRelativeSeat(i, state.mySeatIndex);
+        final seatPos = layout.seatPosition(i, state.mySeatIndex);
+        opponentFans[i]!.position = seatPos + _fanOffset(relativeSeat);
       }
     }
   }
 
-  /// Creates/updates landscape-mode opponent labels and player label.
+  Vector2 _fanOffset(int relativeSeat) {
+    const offset = 70.0;
+    return switch (relativeSeat) {
+      1 => Vector2(offset, -10),
+      2 => Vector2(0, offset),
+      3 => Vector2(-offset, -10),
+      _ => Vector2.zero(),
+    };
+  }
+
+  /// Seats handle identity in all orientations — clean up any leftover labels.
   void updateLandscapeLabels(ClientGameState state, LayoutManager layout) {
-    if (!_isLandscape) {
-      for (final label in opponentLabels.values) {
-        if (label.isMounted) label.removeFromParent();
-      }
-      opponentLabels.clear();
-      if (playerLabel != null) {
-        if (playerLabel!.isMounted) playerLabel!.removeFromParent();
-        playerLabel = null;
-      }
-      return;
+    for (final label in opponentLabels.values) {
+      if (label.isMounted) label.removeFromParent();
     }
-
-    for (int i = 0; i < 4; i++) {
-      final relativeSeat = layout.toRelativeSeat(i, state.mySeatIndex);
-      final pos = layout.seatPosition(i, state.mySeatIndex);
-
-      if (relativeSeat == 0) continue;
-
-      if (opponentLabels.containsKey(i)) {
-        opponentLabels[i]!.updateState(state);
-        opponentLabels[i]!.position = pos;
-      } else {
-        final placement = switch (relativeSeat) {
-          1 => OpponentLabelPlacement.left,
-          2 => OpponentLabelPlacement.top,
-          3 => OpponentLabelPlacement.right,
-          _ => OpponentLabelPlacement.top,
-        };
-
-        final label = OpponentNameLabel(
-          seatIndex: i,
-          playerName: shortUid(state.playerUids[i]),
-          team: teamForSeat(i),
-          isActive: state.currentPlayerUid == state.playerUids[i],
-          cardCount: state.cardCounts[i] ?? 8,
-          placement: placement,
-          position: pos,
-        );
-        opponentLabels[i] = label;
-        game.add(label);
-      }
-    }
-
-    final myPos = layout.mySeat;
-    if (playerLabel == null) {
-      playerLabel = OpponentNameLabel(
-        seatIndex: state.mySeatIndex,
-        playerName: shortUid(state.playerUids[state.mySeatIndex]),
-        team: state.myTeam,
-        cardCount: 0,
-        placement: OpponentLabelPlacement.right,
-        position: myPos,
-      );
-      game.add(playerLabel!);
-    } else {
-      playerLabel!.updateState(state);
-      playerLabel!.position = myPos;
+    opponentLabels.clear();
+    if (playerLabel != null) {
+      if (playerLabel!.isMounted) playerLabel!.removeFromParent();
+      playerLabel = null;
     }
   }
 

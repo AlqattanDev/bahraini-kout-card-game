@@ -102,7 +102,7 @@ class KoutGame extends FlameGame {
     add(TableBackgroundComponent());
 
     _lifecycle.perspectiveTable = PerspectiveTableComponent(layout: layout);
-    if (!layout.isLandscape) add(_lifecycle.perspectiveTable!);
+    add(_lifecycle.perspectiveTable!);
 
     _stateSub = stateStream.listen((state) {
       currentState = state;

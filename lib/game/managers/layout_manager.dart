@@ -16,6 +16,9 @@ class LayoutManager {
   static const double _portraitArcBow = 32.0;
   static const double _portraitTrickTrackerYOffset = 130.0;
 
+  // Landscape zone budget (proportional to safeRect)
+  static const double _handBleedRatio = 0.20;      // 20% of scaled card hidden below edge
+
   LayoutManager(this.screenSize, {this.safeArea = EdgeInsets.zero});
 
   double get width => screenSize.x;
@@ -38,17 +41,14 @@ class LayoutManager {
   /// Scale factor for hand cards. Smaller on landscape phones, 1.4x on portrait.
   double get handCardScale {
     if (!isLandscape) return 1.4;
-    // Cards are ~100px tall at scale 1.0. Target 33% of safe height:
-    // (safeHeight * 0.33) / cardBaseHeight → scale factor.
-    return (safeRect.height * 0.33 / 100).clamp(1.0, 1.6);
+    // Cards are ~100px tall at scale 1.0. Target 35% of safe height:
+    // (safeHeight * 0.35) / cardBaseHeight → scale factor.
+    return (safeRect.height * 0.35 / 100).clamp(1.0, 1.6);
   }
 
-  /// Scale for trick-area cards — matches hand cards for visual consistency.
+  /// Trick cards match hand scale in ALL orientations for visual consistency.
   /// Hierarchy comes from position/rotation, not size difference.
-  double get trickCardScale {
-    if (!isLandscape) return 1.0;
-    return handCardScale;
-  }
+  double get trickCardScale => handCardScale;
 
   /// Proportional trick card offset (12% of shorter safe dimension).
   double get trickOffset {
@@ -89,41 +89,41 @@ class LayoutManager {
   // ---------------------------------------------------------------------------
 
   /// Hand at bottom-center, pushed below screen edge so cards bleed off-screen.
-  /// 15% of scaled card height hidden below edge.
+  /// 20% of scaled card height hidden below edge.
   Vector2 get _landscapeHandCenter {
-    final bleedAmount = 100 * handCardScale * 0.15;
+    final bleedAmount = 100 * handCardScale * _handBleedRatio;
     return Vector2(safeRect.center.dx, height + bleedAmount);
   }
 
-  /// Player label at bottom-right, near the hand
-  Vector2 get _landscapeMySeat => Vector2(
-        safeRect.right - safeRect.width * 0.10,
-        safeRect.bottom - safeRect.height * 0.08,
-      );
-
-  /// Partner label at top-center of safe rect
+  /// Partner: top-center, above table
   Vector2 get _landscapePartnerSeat => Vector2(
         safeRect.center.dx,
-        safeRect.top + safeRect.height * 0.08,
+        safeRect.top + safeRect.height * 0.14,
       );
 
-  /// Left opponent at left side, vertically centered in safe rect
+  /// Left opponent: left side, mid-height
   Vector2 get _landscapeLeftSeat => Vector2(
-        safeRect.left + safeRect.width * 0.12,
-        safeRect.center.dy,
+        safeRect.left + safeRect.width * 0.09,
+        safeRect.top + safeRect.height * 0.44,
       );
 
-  /// Right opponent at right side, vertically centered in safe rect
+  /// Right opponent: right side, mid-height (further from edge than mySeat to avoid HUD overlap)
   Vector2 get _landscapeRightSeat => Vector2(
         safeRect.right - safeRect.width * 0.12,
-        safeRect.center.dy,
+        safeRect.top + safeRect.height * 0.44,
       );
 
-  /// Trick area at center of safe rect, slightly above center
-  Vector2 get _landscapeTrickCenter => Vector2(
-        safeRect.center.dx,
-        safeRect.center.dy - safeRect.height * 0.04,
+  /// Human player: bottom-right, to the right of hand cards
+  Vector2 get _landscapeMySeat => Vector2(
+        safeRect.right - safeRect.width * 0.07,
+        safeRect.bottom - safeRect.height * 0.18,
       );
+
+  /// Trick area: centroid of the table surface
+  Vector2 get _landscapeTrickCenter {
+    final tc = tableCenter;
+    return Vector2(tc.dx, tc.dy);
+  }
 
   // ---------------------------------------------------------------------------
   // 3D Perspective table surface geometry (portrait only)
@@ -135,7 +135,10 @@ class LayoutManager {
   double get _tableTopY => 70.0;
   double get _tableBottomY => height - _portraitTrickTrackerYOffset;
 
-  List<Offset> get tableVertices {
+  List<Offset> get tableVertices =>
+      isLandscape ? _landscapeTableVertices : _portraitTableVertices;
+
+  List<Offset> get _portraitTableVertices {
     final topHalf = width * _tableTopWidthRatio / 2;
     final botHalf = width * _tableBottomWidthRatio / 2;
     final cx = width / 2;
@@ -144,6 +147,20 @@ class LayoutManager {
       Offset(cx + topHalf, _tableTopY),
       Offset(cx - botHalf, _tableBottomY),
       Offset(cx + botHalf, _tableBottomY),
+    ];
+  }
+
+  List<Offset> get _landscapeTableVertices {
+    final playTop = safeRect.top + safeRect.height * 0.20;
+    final playBot = safeRect.bottom - safeRect.height * 0.32;
+    final cx = safeRect.center.dx;
+    final topHalf = safeRect.width * 0.22;
+    final botHalf = safeRect.width * 0.30;
+    return [
+      Offset(cx - topHalf, playTop),
+      Offset(cx + topHalf, playTop),
+      Offset(cx - botHalf, playBot),
+      Offset(cx + botHalf, playBot),
     ];
   }
 
@@ -182,7 +199,7 @@ class LayoutManager {
             safeRect.width * 0.03,
             safeRect.width * 0.06,
           )
-        : (80 - cardCount * 4.0).clamp(44.0, 72.0);
+        : (85 - cardCount * 4.0).clamp(48.0, 76.0);
 
     final totalWidth = (cardCount - 1) * cardSpacing;
     final startX = handCenter.x - totalWidth / 2;
