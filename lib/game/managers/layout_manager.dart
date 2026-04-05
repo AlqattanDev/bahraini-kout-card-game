@@ -32,8 +32,8 @@ class LayoutManager {
   /// Scale factor for hand cards. Smaller on landscape phones, 1.4x on portrait.
   double get handCardScale {
     if (!isLandscape) return 1.4;
-    // Scale relative to safe height so cards are ~15% of available height
-    return (safeRect.height * 0.15 / 100).clamp(0.6, 1.4);
+    // Target ~22% of safe height for card height, clamped for readability
+    return (safeRect.height * 0.22 / 100).clamp(0.75, 1.4);
   }
 
   // ---------------------------------------------------------------------------
@@ -46,7 +46,7 @@ class LayoutManager {
   Vector2 get leftSeat => isLandscape ? _landscapeLeftSeat : _portraitLeftSeat;
   Vector2 get rightSeat => isLandscape ? _landscapeRightSeat : _portraitRightSeat;
   Vector2 get trickCenter => isLandscape ? _landscapeTrickCenter : _portraitTrickCenter;
-  Vector2 get trickTrackerCenter => Vector2(trickCenter.x, trickCenter.y + (isLandscape ? 80 : 130));
+  Vector2 get trickTrackerCenter => Vector2(trickCenter.x, trickCenter.y + (isLandscape ? 60 : 130));
 
   // ---------------------------------------------------------------------------
   // Portrait positions (UNCHANGED from original)
@@ -60,29 +60,28 @@ class LayoutManager {
   Vector2 get _portraitTrickCenter => Vector2(width / 2, height / 2);
 
   // ---------------------------------------------------------------------------
-  // Landscape positions (safe-area aware)
+  // Landscape positions (safe-area aware, opponents on sides)
   // ---------------------------------------------------------------------------
 
-  /// Hand at bottom-center of safe rect
+  /// Hand at bottom-center, pushed below screen edge so cards bleed off-screen
   Vector2 get _landscapeHandCenter {
-    final cardH = 100 * handCardScale;
-    return Vector2(safeRect.center.dx, safeRect.bottom - cardH / 2 - 8);
+    return Vector2(safeRect.center.dx, height + 15);
   }
 
   /// Player label at bottom-right of safe rect
-  Vector2 get _landscapeMySeat => Vector2(safeRect.right - 50, safeRect.bottom - 20);
+  Vector2 get _landscapeMySeat => Vector2(safeRect.right - 50, safeRect.bottom - 25);
 
   /// Partner label at top-center of safe rect
-  Vector2 get _landscapePartnerSeat => Vector2(safeRect.center.dx, safeRect.top + 30);
+  Vector2 get _landscapePartnerSeat => Vector2(safeRect.center.dx, safeRect.top + 25);
 
-  /// Left opponent at top-left of safe rect
-  Vector2 get _landscapeLeftSeat => Vector2(safeRect.left + 60, safeRect.top + 30);
+  /// Left opponent at left side, vertically centered in safe rect
+  Vector2 get _landscapeLeftSeat => Vector2(safeRect.left + 80, safeRect.center.dy);
 
-  /// Right opponent at top-right of safe rect
-  Vector2 get _landscapeRightSeat => Vector2(safeRect.right - 60, safeRect.top + 30);
+  /// Right opponent at right side, vertically centered in safe rect
+  Vector2 get _landscapeRightSeat => Vector2(safeRect.right - 80, safeRect.center.dy);
 
-  /// Trick area slightly above center of safe rect
-  Vector2 get _landscapeTrickCenter => Vector2(safeRect.center.dx, safeRect.top + _safeHeight * 0.48);
+  /// Trick area at center of safe rect, slightly above center
+  Vector2 get _landscapeTrickCenter => Vector2(safeRect.center.dx, safeRect.center.dy - 15);
 
   // ---------------------------------------------------------------------------
   // 3D Perspective table surface geometry (portrait only)
@@ -137,7 +136,7 @@ class LayoutManager {
 
     const maxFanAngle = 0.30;
     final cardSpacing = isLandscape
-        ? (60 - cardCount * 3.0).clamp(32.0, 52.0)
+        ? (50 - cardCount * 3.0).clamp(24.0, 40.0)
         : (80 - cardCount * 4.0).clamp(44.0, 72.0);
 
     final totalWidth = (cardCount - 1) * cardSpacing;

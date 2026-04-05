@@ -81,10 +81,34 @@ void main() {
       expect(landscapeLayout.safeRect.top, 0);
     });
 
-    test('hand center is within safe rect horizontally', () {
+    test('hand center X is centered in safe rect', () {
       final hc = landscapeLayout.handCenter;
-      expect(hc.x, greaterThan(landscapeLayout.safeRect.left));
-      expect(hc.x, lessThan(landscapeLayout.safeRect.right));
+      expect(hc.x, closeTo(landscapeLayout.safeRect.center.dx, 1));
+    });
+
+    test('hand center Y extends below screen height (cards at edge)', () {
+      final hc = landscapeLayout.handCenter;
+      expect(hc.y, greaterThan(393), reason: 'Hand should extend past bottom edge');
+    });
+
+    test('left seat is on left side vertically centered', () {
+      final ls = landscapeLayout.leftSeat;
+      expect(ls.x, closeTo(landscapeLayout.safeRect.left + 80, 1));
+      final centerY = landscapeLayout.safeRect.center.dy;
+      expect(ls.y, closeTo(centerY, 10));
+    });
+
+    test('right seat is on right side vertically centered', () {
+      final rs = landscapeLayout.rightSeat;
+      expect(rs.x, closeTo(landscapeLayout.safeRect.right - 80, 1));
+      final centerY = landscapeLayout.safeRect.center.dy;
+      expect(rs.y, closeTo(centerY, 10));
+    });
+
+    test('partner seat is at top center', () {
+      final ps = landscapeLayout.partnerSeat;
+      expect(ps.x, closeTo(landscapeLayout.safeRect.center.dx, 1));
+      expect(ps.y, closeTo(landscapeLayout.safeRect.top + 25, 1));
     });
 
     test('trick center is within safe rect', () {
@@ -95,9 +119,18 @@ void main() {
       expect(tc.y, lessThan(landscapeLayout.safeRect.bottom));
     });
 
-    test('handCardScale is smaller on landscape phone', () {
-      expect(landscapeLayout.handCardScale, lessThan(1.4));
-      expect(landscapeLayout.handCardScale, greaterThan(0.5));
+    test('handCardScale is between 0.7 and 1.0 on landscape phone', () {
+      expect(landscapeLayout.handCardScale, lessThan(1.0));
+      expect(landscapeLayout.handCardScale, greaterThan(0.7));
+    });
+
+    test('landscape card spacing is tighter than portrait', () {
+      final lPos = landscapeLayout.handCardPositions(8);
+      final pLayout = LayoutManager(Vector2(600, 800));
+      final pPos = pLayout.handCardPositions(8);
+      final lSpacing = (lPos[1].position.x - lPos[0].position.x).abs();
+      final pSpacing = (pPos[1].position.x - pPos[0].position.x).abs();
+      expect(lSpacing, lessThan(pSpacing));
     });
 
     test('portrait layout is unchanged when no safe area', () {
