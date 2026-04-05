@@ -15,6 +15,7 @@ import '../offline/game_input_sink.dart';
 import '../shared/models/card.dart';
 import '../shared/models/trick.dart';
 import '../shared/logic/trick_resolver.dart';
+import 'components/opponent_name_label.dart';
 import 'components/player_seat.dart';
 import 'theme/kout_theme.dart';
 import 'components/unified_hud.dart';
@@ -39,6 +40,7 @@ class KoutGame extends FlameGame {
   AmbientDecorationComponent? _ambientDecoration;
   final List<PlayerSeatComponent> _seats = [];
   final Map<int, OpponentHandFan> _opponentFans = {};
+  final Map<int, OpponentNameLabel> _opponentLabels = {};
   PerspectiveTableComponent? _perspectiveTable;
   UnifiedHudComponent? _unifiedHud;
   Stopwatch? _gameTimer;
@@ -254,12 +256,71 @@ void _updateLandscapeVisibility() {
 
 void _onStateUpdate(ClientGameState state) {
   _updateLandscapeVisibility();
+  _updateLandscapeLabels(state);
   _updateScoreDisplay(state);
   _updateSeats(state);
   _updateBidderGlow(state);
   _updateHand(state);
   _updateTrickArea(state);
   _updateOverlays(state);
+}
+
+void _updateLandscapeLabels(ClientGameState state) {
+  if (!_isLandscape) {
+    // Remove labels in portrait
+    for (final label in _opponentLabels.values) {
+      if (label.isMounted) label.removeFromParent();
+    }
+    _opponentLabels.clear();
+    return;
+  }
+
+  // Create or update labels for all 4 players (including self as just a name)
+  for (int i = 0; i < 4; i++) {
+    final relativeSeat = layout.toRelativeSeat(i, state.mySeatIndex);
+    final pos = layout.seatPosition(i, state.mySeatIndex);
+
+    if (relativeSeat == 0) {
+      // Skip self — the user sees their own hand
+      continue;
+    }
+
+    String? bidAction;
+    if (state.phase == GamePhase.bidding || state.phase == GamePhase.trumpSelection) {
+      for (final entry in state.bidHistory) {
+        if (entry.playerUid == state.playerUids[i]) {
+          bidAction = entry.action;
+        }
+      }
+    }
+
+    final showBidderGlow = state.phase != GamePhase.bidding &&
+        state.phase != GamePhase.waiting &&
+        state.phase != GamePhase.dealing;
+
+    if (_opponentLabels.containsKey(i)) {
+      _opponentLabels[i]!.updateState(
+        name: _shortUid(state.playerUids[i]),
+        teamA: i.isEven,
+        active: state.currentPlayerUid == state.playerUids[i],
+        cards: state.cardCounts[i] ?? 8,
+        bidAction: bidAction,
+        isBidder: showBidderGlow && state.playerUids[i] == state.bidderUid,
+      );
+      _opponentLabels[i]!.position = pos;
+    } else {
+      final label = OpponentNameLabel(
+        playerName: _shortUid(state.playerUids[i]),
+        isTeamA: i.isEven,
+        bidAction: bidAction,
+        isActive: state.currentPlayerUid == state.playerUids[i],
+        cardCount: state.cardCounts[i] ?? 8,
+        position: pos,
+      );
+      _opponentLabels[i] = label;
+      add(label);
+    }
+  }
 }
 
 void _updateScoreDisplay(ClientGameState state) {
