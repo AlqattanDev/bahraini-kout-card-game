@@ -429,7 +429,7 @@ void _updateScoreDisplay(ClientGameState state) {
         }
 
         // Match the source scale: hand cards are scaled up, opponent cards are 1.0
-        final sourceScale = isFromHand ? HandComponent.handCardScale : 1.0;
+        final sourceScale = isFromHand ? (_hand?.handCardScale ?? 1.4) : 1.0;
 
         final tempCard = CardComponent(
           card: lastPlay.card,

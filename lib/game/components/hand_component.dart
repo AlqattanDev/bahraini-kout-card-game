@@ -13,7 +13,8 @@ class HandComponent extends Component {
   final void Function(String cardCode) onCardTap;
 
   /// Scale factor applied to hand cards for readability.
-  static const double handCardScale = 1.4;
+  /// Dynamic: smaller on landscape phones, full 1.4x on portrait.
+  double get handCardScale => layout.handCardScale;
 
   final List<CardComponent> _cards = [];
 
