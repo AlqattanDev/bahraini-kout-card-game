@@ -41,6 +41,7 @@ class KoutGame extends FlameGame {
   final List<PlayerSeatComponent> _seats = [];
   final Map<int, OpponentHandFan> _opponentFans = {};
   final Map<int, OpponentNameLabel> _opponentLabels = {};
+  OpponentNameLabel? _playerLabel;
   PerspectiveTableComponent? _perspectiveTable;
   UnifiedHudComponent? _unifiedHud;
   Stopwatch? _gameTimer;
@@ -92,6 +93,9 @@ class KoutGame extends FlameGame {
       _perspectiveTable?.updateLayout(layout);
       _hand?.layout = layout;
       _trickArea?.layout = layout;
+      if (layout.isLandscape) {
+        _unifiedHud?.updateLayout(size.x, rightInset: _safeArea.right, topInset: _safeArea.top);
+      }
     }
   }
 
@@ -153,6 +157,9 @@ class KoutGame extends FlameGame {
     _perspectiveTable?.updateLayout(layout);
     _hand?.layout = layout;
     _trickArea?.layout = layout;
+    if (layout.isLandscape) {
+      _unifiedHud?.updateLayout(size.x, rightInset: _safeArea.right, topInset: _safeArea.top);
+    }
     // Sync landscape flag with new layout (handles macOS window resize)
     if (currentState != null) _updateLandscapeVisibility();
   }
@@ -278,6 +285,10 @@ class KoutGame extends FlameGame {
         if (label.isMounted) label.removeFromParent();
       }
       _opponentLabels.clear();
+      if (_playerLabel != null) {
+        if (_playerLabel!.isMounted) _playerLabel!.removeFromParent();
+        _playerLabel = null;
+      }
       return;
     }
 
@@ -335,6 +346,27 @@ class KoutGame extends FlameGame {
         add(label);
       }
     }
+
+    // Player "You" label at bottom-right
+    final myPos = layout.mySeat;
+    if (_playerLabel == null) {
+      _playerLabel = OpponentNameLabel(
+        playerName: _shortUid(state.playerUids[state.mySeatIndex]),
+        isTeamA: state.mySeatIndex.isEven,
+        cardCount: 0,
+        placement: OpponentLabelPlacement.right,
+        position: myPos,
+      );
+      add(_playerLabel!);
+    } else {
+      _playerLabel!.updateState(
+        name: _shortUid(state.playerUids[state.mySeatIndex]),
+        teamA: state.mySeatIndex.isEven,
+        active: state.currentPlayerUid == state.myUid,
+        cards: 0,
+      );
+      _playerLabel!.position = myPos;
+    }
   }
 
   void _updateScoreDisplay(ClientGameState state) {
@@ -381,15 +413,6 @@ class KoutGame extends FlameGame {
     );
 
     _unifiedHud!.updateTimer(_gameTimer!.elapsed);
-
-    // Position HUD within safe area
-    if (_isLandscape) {
-      _unifiedHud!.updateLayout(
-        hasLayout ? size.x : 852,
-        rightInset: _safeArea.right,
-        topInset: _safeArea.top,
-      );
-    }
 
     // Track scores for round result overlay
     if (state.phase != GamePhase.roundScoring) {
