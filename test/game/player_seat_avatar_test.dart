@@ -1,49 +1,77 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:koutbh/game/components/player_seat.dart';
+import 'package:koutbh/shared/models/game_state.dart';
+import 'package:koutbh/app/models/client_game_state.dart';
+
+ClientGameState _makeState({
+  int currentSeat = 0,
+  GamePhase phase = GamePhase.playing,
+  List<({String playerUid, String action})>? bidHistory,
+}) {
+  return ClientGameState(
+    playerUids: ['p0', 'p1', 'p2', 'p3'],
+    myUid: 'p0',
+    dealerUid: 'p0',
+    phase: phase,
+    myHand: const [],
+    currentPlayerUid: 'p$currentSeat',
+    scores: const {Team.a: 0, Team.b: 0},
+    tricks: const {Team.a: 0, Team.b: 0},
+    currentTrickPlays: const [],
+    passedPlayers: const [],
+    bidHistory: bidHistory ?? const [],
+    trickWinners: const [],
+    cardCounts: const {0: 8, 1: 8, 2: 8, 3: 8},
+    currentBid: null,
+    bidderUid: null,
+    trumpSuit: null,
+  );
+}
 
 void main() {
   group('PlayerSeatComponent', () {
     test('updateState correctly propagates all properties', () {
       final seat = PlayerSeatComponent(
+        seatIndex: 1,
         playerName: 'Init',
         cardCount: 8,
         isActive: false,
-        isTeamA: true,
+        team: Team.a,
         avatarSeed: 0,
       );
-      seat.updateState(
-        name: 'Changed',
-        cards: 3,
-        active: true,
-        teamA: false,
-        bidAction: 'pass',
+      final state = _makeState(
+        currentSeat: 1,
+        phase: GamePhase.bidding,
+        bidHistory: [(playerUid: 'p1', action: 'pass')],
       );
-      expect(seat.playerName, 'Changed');
-      expect(seat.cardCount, 3);
+      seat.updateState(state);
+      expect(seat.playerName, 'p1');
+      expect(seat.cardCount, 8);
       expect(seat.isActive, true);
-      expect(seat.isTeamA, false);
+      expect(seat.team, Team.b);
       expect(seat.bidAction, 'pass');
     });
 
     test('avatarSeed is immutable after construction', () {
       final seat = PlayerSeatComponent(
+        seatIndex: 0,
         playerName: 'Test',
         cardCount: 8,
         isActive: false,
-        isTeamA: true,
+        team: Team.a,
         avatarSeed: 2,
       );
-      // avatarSeed is final — updating state shouldn't change it
-      seat.updateState(name: 'New', cards: 5, active: true, teamA: true);
+      seat.updateState(_makeState());
       expect(seat.avatarSeed, 2);
     });
 
     test('timerProgress defaults to 0 and can be set', () {
       final seat = PlayerSeatComponent(
+        seatIndex: 0,
         playerName: 'Timer',
         cardCount: 8,
         isActive: true,
-        isTeamA: true,
+        team: Team.a,
         avatarSeed: 0,
       );
       expect(seat.timerProgress, 0.0);
@@ -53,32 +81,27 @@ void main() {
 
     test('component size accounts for avatar radius + name pill', () {
       final seat = PlayerSeatComponent(
+        seatIndex: 0,
         playerName: 'Size',
         cardCount: 8,
         isActive: false,
-        isTeamA: true,
+        team: Team.a,
         avatarSeed: 0,
       );
-      // Size should be wider than 2*radius and taller to fit name pill below
-      expect(seat.size.x, greaterThan(72)); // 2 * 36 radius
-      expect(seat.size.y, greaterThan(72 + 20)); // radius + pill space
+      expect(seat.size.x, greaterThan(72));
+      expect(seat.size.y, greaterThan(72 + 20));
     });
 
     test('_truncateName shortens names over 8 chars', () {
-      // Access via the static method (made static in refactor)
-      // We test this indirectly: create a seat with a long name,
-      // verify the field stores the full name (truncation is render-only)
       final seat = PlayerSeatComponent(
+        seatIndex: 0,
         playerName: 'VeryLongPlayerName',
         cardCount: 8,
         isActive: false,
-        isTeamA: true,
+        team: Team.a,
         avatarSeed: 0,
       );
-      // The raw field stores the full name
       expect(seat.playerName, 'VeryLongPlayerName');
-      // Truncation happens during render, not storage — this is the correct design
-      // because we may need the full name elsewhere (tooltips, overlays)
     });
   });
 }

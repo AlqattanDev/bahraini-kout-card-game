@@ -1,8 +1,21 @@
 import '../models/bid.dart';
 
+enum BidValidationError {
+  alreadyPassed,
+  bidNotHigher,
+  mustBid;
+
+  @override
+  String toString() => switch (this) {
+        BidValidationError.alreadyPassed => 'already-passed',
+        BidValidationError.bidNotHigher => 'bid-not-higher',
+        BidValidationError.mustBid => 'must-bid',
+      };
+}
+
 class BidValidationResult {
   final bool isValid;
-  final String? error;
+  final BidValidationError? error;
   const BidValidationResult.valid() : isValid = true, error = null;
   const BidValidationResult.invalid(this.error) : isValid = false;
 }
@@ -37,10 +50,10 @@ class BidValidator {
     required int playerIndex,
   }) {
     if (passedPlayers.contains(playerIndex)) {
-      return const BidValidationResult.invalid('already-passed');
+      return const BidValidationResult.invalid(BidValidationError.alreadyPassed);
     }
     if (currentHighest != null && bidAmount.value <= currentHighest.value) {
-      return const BidValidationResult.invalid('bid-not-higher');
+      return const BidValidationResult.invalid(BidValidationError.bidNotHigher);
     }
     return const BidValidationResult.valid();
   }
@@ -52,10 +65,10 @@ class BidValidator {
     BidAmount? currentHighest,
   }) {
     if (passedPlayers.contains(playerIndex)) {
-      return const BidValidationResult.invalid('already-passed');
+      return const BidValidationResult.invalid(BidValidationError.alreadyPassed);
     }
     if (isLastBidder(passedPlayers: passedPlayers, playerIndex: playerIndex, playerCount: playerCount) && currentHighest == null) {
-      return const BidValidationResult.invalid('must-bid');
+      return const BidValidationResult.invalid(BidValidationError.mustBid);
     }
     return const BidValidationResult.valid();
   }

@@ -222,7 +222,7 @@ void main() {
         currentHighest: null,
       );
       expect(result.isValid, isFalse);
-      expect(result.error, equals('must-bid'));
+      expect(result.error, equals(BidValidationError.mustBid));
     });
 
     test('Forced bid: last player can pass when a bid already exists', () {

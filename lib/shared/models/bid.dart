@@ -14,4 +14,15 @@ enum BidAmount {
     for (final bid in values) { if (bid.value == value) return bid; }
     return null;
   }
+
+  /// Returns the smallest [BidAmount] strictly above [current], or null if
+  /// [current] is already kout (the maximum). If [current] is null, returns
+  /// [bab] (the minimum bid).
+  static BidAmount? nextAbove(BidAmount? current) {
+    if (current == null) return BidAmount.bab;
+    for (final bid in values) {
+      if (bid.value > current.value) return bid;
+    }
+    return null;
+  }
 }

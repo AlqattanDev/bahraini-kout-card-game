@@ -18,6 +18,9 @@ enum Team {
 
 Team teamForSeat(int seatIndex) => seatIndex.isEven ? Team.a : Team.b;
 
+/// Truncates a UID to 6 characters for display.
+String shortUid(String uid) => uid.length <= 6 ? uid : uid.substring(0, 6);
+
 /// Next seat in counter-clockwise (right-to-left) order: 0→3→2→1.
 int nextSeat(int seatIndex, {int playerCount = 4}) =>
     (seatIndex - 1 + playerCount) % playerCount;

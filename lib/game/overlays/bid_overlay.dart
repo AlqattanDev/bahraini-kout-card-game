@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../shared/models/bid.dart';
 import '../../game/theme/kout_theme.dart';
 import 'overlay_animation_wrapper.dart';
+import 'overlay_styles.dart';
 
 class BidOverlay extends StatelessWidget {
   final void Function(int amount) onBid;
@@ -30,19 +31,8 @@ class BidOverlay extends StatelessWidget {
 
     return OverlayAnimationWrapper(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
-        decoration: BoxDecoration(
-          color: KoutTheme.primary.withValues(alpha: 0.97),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: KoutTheme.accent, width: 2),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.6),
-              blurRadius: 24,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
+        padding: OverlayStyles.panelPadding,
+        decoration: OverlayStyles.panelDecoration(),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -68,7 +58,7 @@ class BidOverlay extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 20),
+            OverlayStyles.sectionGap,
             // Bid buttons — only show bids higher than current
             Row(
               mainAxisSize: MainAxisSize.min,
@@ -88,16 +78,7 @@ class BidOverlay extends StatelessWidget {
               const SizedBox(height: 16),
               TextButton(
                 onPressed: onPass,
-                style: TextButton.styleFrom(
-                  foregroundColor: KoutTheme.textColor,
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 32, vertical: 10),
-                  side: const BorderSide(
-                      color: KoutTheme.textColor, width: 1),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
+                style: OverlayStyles.textButton(),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -133,22 +114,12 @@ class BidOverlay extends StatelessWidget {
   Widget _bidButton(String number, (String, String) label, int amount) {
     return ElevatedButton(
       onPressed: () => onBid(amount),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: KoutTheme.accent,
-        foregroundColor: const Color(0xFF3B1A1B),
-        minimumSize: const Size(68, 68),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
-        elevation: 4,
+      style: OverlayStyles.primaryButton(
+        borderRadius: 10.0,
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
       ).copyWith(
-        splashFactory: InkRipple.splashFactory,
-        overlayColor: WidgetStateProperty.resolveWith(
-          (states) => states.contains(WidgetState.pressed)
-              ? KoutTheme.accent.withValues(alpha: 0.4)
-              : null,
-        ),
+        minimumSize: WidgetStateProperty.all(const Size(68, 68)),
+        elevation: WidgetStateProperty.all(4),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,

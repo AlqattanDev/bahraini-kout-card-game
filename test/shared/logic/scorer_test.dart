@@ -68,9 +68,9 @@ void main() {
     test('poison joker → +10 to opponent regardless of bid', () {
       final result = Scorer.calculatePoisonJokerResult(
         biddingTeam: Team.a,
-        poisonTeam: Team.b,
+        jokerHolderTeam: Team.b,
       );
-      // poisonTeam.opponent = Team.a; the team that caught the poison joker
+      // jokerHolderTeam.opponent = Team.a; the team that caught the poison joker
       // loses, so the other team gets points
       expect(result.winningTeam, Team.a);
       expect(result.pointsAwarded, 10);
@@ -81,7 +81,7 @@ void main() {
       // Uses the same scoring path as poison joker.
       final result = Scorer.calculatePoisonJokerResult(
         biddingTeam: Team.b,
-        poisonTeam: Team.a, // Team A led the Joker
+        jokerHolderTeam: Team.a, // Team A led the Joker
       );
       expect(result.winningTeam, Team.b);
       expect(result.pointsAwarded, 10);

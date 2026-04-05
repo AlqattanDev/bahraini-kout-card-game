@@ -27,6 +27,7 @@ class LocalGameController {
   late FullGameState _state;
   final _stateController = StreamController<ClientGameState>.broadcast();
   bool _disposed = false;
+  bool _bidWasForced = false; // Track if winning bid was forced
 
   LocalGameController({
     required this.seats,
@@ -97,6 +98,17 @@ class LocalGameController {
     _state.hands = {
       for (int i = 0; i < 4; i++) i: dealt[i],
     };
+
+    // Validate all hands have exactly 8 cards
+    for (int i = 0; i < 4; i++) {
+      final handSize = _state.hands[i]?.length ?? 0;
+      if (handSize != 8) {
+        throw StateError(
+          'Invalid hand size for seat $i: expected 8, got $handSize',
+        );
+      }
+    }
+
     _state.trickCounts = {Team.a: 0, Team.b: 0};
     _state.trickWinners = [];
     _state.currentTrickPlays = [];
@@ -175,6 +187,7 @@ class LocalGameController {
         if (result.isValid) {
           _state.bid = action.amount;
           _state.bidderSeat = _state.currentSeat;
+          _bidWasForced = isForced; // Track forced bid for play phase
           _state.bidHistory = [
             ..._state.bidHistory,
             (seat: _state.currentSeat, action: '${action.amount.value}'),
@@ -248,51 +261,16 @@ class LocalGameController {
 
     for (int trick = 1; trick <= 8 && !_disposed; trick++) {
       _state.trickNumber = trick;
-      _state.currentTrickPlays = [];
-      _state.currentSeat = leaderSeat;
-      _emitState();
+      final trickPlays = await _playSingleTrick(trick, leaderSeat, tracker);
+      if (_disposed) return false;
+      if (trickPlays == null) return true; // poison joker
 
-      final trickPlays = <TrickPlay>[];
-
-      for (int play = 0; play < 4 && !_disposed; play++) {
-        final result = await _playSingleCard(
-          seat: _state.currentSeat,
-          isLead: play == 0,
-          isLastPlay: play == 3,
-          trickPlays: trickPlays,
-          tracker: tracker,
-        );
-        if (_disposed) return false;
-        if (result == _PlayResult.poisonJoker) return true;
-
-        if (play < 3) {
-          _state.currentSeat = nextSeat(_state.currentSeat);
-        }
-      }
-
+      // Resolve trick winner and update state
+      final winnerSeat = await _resolveTrick(trickPlays, leaderSeat);
       if (_disposed) return false;
 
-      // Resolve trick winner
-      final resolvedTrick = Trick(
-        leadPlayerIndex: leaderSeat,
-        plays: trickPlays,
-      );
-      final winnerSeat =
-          TrickResolver.resolve(resolvedTrick, trumpSuit: _state.trumpSuit!);
-      final winnerTeam = teamForSeat(winnerSeat);
-      _state.trickCounts[winnerTeam] =
-          (_state.trickCounts[winnerTeam] ?? 0) + 1;
-      _state.trickWinners = [..._state.trickWinners, winnerTeam];
-      _emitState();
-
-      // Early termination: round decided before all 8 tricks
-      if (Scorer.isRoundDecided(
-        bidValue: _state.bid!.value,
-        biddingTeam: teamForSeat(_state.bidderSeat!),
-        tricksWon: _state.trickCounts,
-      )) {
-        break;
-      }
+      // Early termination check
+      if (_checkEarlyTermination()) break;
 
       if (enableDelays) await Future.delayed(GameTiming.trickResolutionDelay);
 
@@ -301,6 +279,63 @@ class LocalGameController {
     }
 
     return false; // No poison joker
+  }
+
+  /// Play a single trick (all 4 cards). Returns the trick plays, or null if
+  /// poison joker was encountered.
+  Future<List<TrickPlay>?> _playSingleTrick(
+    int trickNumber,
+    int leaderSeat,
+    CardTracker tracker,
+  ) async {
+    _state.currentTrickPlays = [];
+    _state.currentSeat = leaderSeat;
+    _emitState();
+
+    final trickPlays = <TrickPlay>[];
+
+    for (int play = 0; play < 4 && !_disposed; play++) {
+      final result = await _playSingleCard(
+        seat: _state.currentSeat,
+        isLead: play == 0,
+        isLastPlay: play == 3,
+        trickPlays: trickPlays,
+        tracker: tracker,
+      );
+      if (_disposed) return null;
+      if (result == _PlayResult.poisonJoker) return null;
+
+      if (play < 3) {
+        _state.currentSeat = nextSeat(_state.currentSeat);
+      }
+    }
+
+    return trickPlays;
+  }
+
+  /// Resolve trick winner and update trick counts.
+  Future<int> _resolveTrick(List<TrickPlay> trickPlays, int leaderSeat) async {
+    final resolvedTrick = Trick(
+      leadPlayerIndex: leaderSeat,
+      plays: trickPlays,
+    );
+    final winnerSeat =
+        TrickResolver.resolve(resolvedTrick, trumpSuit: _state.trumpSuit!);
+    final winnerTeam = teamForSeat(winnerSeat);
+    _state.trickCounts[winnerTeam] =
+        (_state.trickCounts[winnerTeam] ?? 0) + 1;
+    _state.trickWinners = [..._state.trickWinners, winnerTeam];
+    _emitState();
+    return winnerSeat;
+  }
+
+  /// Check if round is decided before all 8 tricks are played.
+  bool _checkEarlyTermination() {
+    return Scorer.isRoundDecided(
+      bidValue: _state.bid!.value,
+      biddingTeam: teamForSeat(_state.bidderSeat!),
+      tricksWon: _state.trickCounts,
+    );
   }
 
   /// Play a single card for [seat]. Returns [_PlayResult.poisonJoker] if the
@@ -333,7 +368,7 @@ class LocalGameController {
     // Retry loop: bots always play valid cards; humans might tap invalid.
     while (!_disposed) {
       final clientState = _toClientState(_state, seat);
-      final context = PlayContext(ledSuit: ledSuit);
+      final context = PlayContext(ledSuit: ledSuit, isForced: _bidWasForced);
       final action = await controllers[seat]!
           .decideAction(clientState, context, tracker: tracker);
       if (_disposed) return _PlayResult.ok;
@@ -392,10 +427,10 @@ class LocalGameController {
 
     RoundResult result;
     if (poisonJoker) {
-      final poisonTeam = teamForSeat(_state.currentSeat);
+      final jokerHolderTeam = teamForSeat(_state.currentSeat);
       result = Scorer.calculatePoisonJokerResult(
         biddingTeam: teamForSeat(_state.bidderSeat!),
-        poisonTeam: poisonTeam,
+        jokerHolderTeam: jokerHolderTeam,
       );
     } else {
       result = Scorer.calculateRoundResult(

@@ -39,7 +39,7 @@ class BotPlayerController implements PlayerController {
             lengthWeight: difficulty.trumpLengthWeight,
             strengthWeight: difficulty.trumpStrengthWeight,
           )),
-      PlayContext(:final ledSuit) => PlayStrategy.selectCard(
+      PlayContext(:final ledSuit, :final isForced) => PlayStrategy.selectCard(
           hand: state.myHand,
           trickPlays: state.currentTrickPlays,
           trumpSuit: state.trumpSuit,
@@ -49,7 +49,7 @@ class BotPlayerController implements PlayerController {
           isKout: state.currentBid?.isKout ?? false,
           isFirstTrick: state.trickWinners.isEmpty,
           context: GameContext.fromClientState(state, seatIndex,
-              tracker: tracker, difficulty: difficulty),
+              tracker: tracker, isForcedBid: isForced, difficulty: difficulty),
         ),
     };
   }
@@ -57,10 +57,13 @@ class BotPlayerController implements PlayerController {
   static List<({int seat, String action})> _convertBidHistory(
       ClientGameState state) {
     return state.bidHistory
-        .map((e) => (
-              seat: state.playerUids.indexOf(e.playerUid),
-              action: e.action,
-            ))
+        .map((e) {
+          final seatIndex = state.playerUids.indexOf(e.playerUid);
+          if (seatIndex == -1) {
+            throw StateError('Unknown player UID in bid history: ${e.playerUid}');
+          }
+          return (seat: seatIndex, action: e.action);
+        })
         .toList();
   }
 }

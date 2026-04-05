@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import '../../shared/models/card.dart';
 import '../../game/theme/kout_theme.dart';
 import 'overlay_animation_wrapper.dart';
+import 'overlay_styles.dart';
 
 /// Flutter overlay shown during TRUMP_SELECTION phase for the winning bidder.
 ///
@@ -15,19 +17,8 @@ class TrumpSelectorOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     return OverlayAnimationWrapper(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
-        decoration: BoxDecoration(
-          color: KoutTheme.primary.withValues(alpha: 0.97),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: KoutTheme.accent, width: 2),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.6),
-              blurRadius: 24,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
+        padding: OverlayStyles.panelPadding,
+        decoration: OverlayStyles.panelDecoration(),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -40,17 +31,14 @@ class TrumpSelectorOverlay extends StatelessWidget {
                 letterSpacing: 1.2,
               ),
             ),
-            const SizedBox(height: 20),
+            OverlayStyles.sectionGap,
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _suitButton('♠', 'spades', isRed: false),
-                const SizedBox(width: 12),
-                _suitButton('♥', 'hearts', isRed: true),
-                const SizedBox(width: 12),
-                _suitButton('♣', 'clubs', isRed: false),
-                const SizedBox(width: 12),
-                _suitButton('♦', 'diamonds', isRed: true),
+                for (final suit in Suit.values) ...[
+                  if (suit != Suit.values.first) const SizedBox(width: 12),
+                  _suitButton(suit),
+                ],
               ],
             ),
           ],
@@ -59,31 +47,21 @@ class TrumpSelectorOverlay extends StatelessWidget {
     );
   }
 
-  Widget _suitButton(String symbol, String suit, {required bool isRed}) {
-    final symbolColor = isRed ? const Color(0xFFCC0000) : const Color(0xFF111111);
-
+  Widget _suitButton(Suit suit) {
     return ElevatedButton(
-      onPressed: () => onSelect(suit),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: KoutTheme.accent,
-        minimumSize: const Size(70, 70),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
-        elevation: 4,
+      onPressed: () => onSelect(suit.name),
+      style: OverlayStyles.primaryButton(
+        borderRadius: 10.0,
+        padding: EdgeInsets.zero,
       ).copyWith(
-        splashFactory: InkRipple.splashFactory,
-        overlayColor: WidgetStateProperty.resolveWith(
-          (states) => states.contains(WidgetState.pressed)
-              ? KoutTheme.accent.withValues(alpha: 0.4)
-              : null,
-        ),
+        minimumSize: WidgetStateProperty.all(const Size(70, 70)),
+        elevation: WidgetStateProperty.all(4),
       ),
       child: Text(
-        symbol,
+        suit.symbol,
         style: TextStyle(
           fontSize: 32,
-          color: symbolColor,
+          color: KoutTheme.suitCardColor(suit),
           fontWeight: FontWeight.bold,
         ),
       ),

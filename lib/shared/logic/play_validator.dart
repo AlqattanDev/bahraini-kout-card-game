@@ -35,6 +35,30 @@ class PlayValidator {
     return const PlayValidationResult.valid();
   }
 
+  /// Returns the set of cards in [hand] that are legal to play given the
+  /// current trick state. Single source of truth for playability — UI and bot
+  /// should both call through here.
+  static Set<GameCard> playableCards({
+    required List<GameCard> hand,
+    required Suit? ledSuit,
+    required bool isLeadPlay,
+    Suit? trumpSuit,
+    bool isKout = false,
+    bool isFirstTrick = false,
+  }) {
+    return hand
+        .where((card) => validatePlay(
+              card: card,
+              hand: hand,
+              ledSuit: ledSuit,
+              isLeadPlay: isLeadPlay,
+              trumpSuit: trumpSuit,
+              isKout: isKout,
+              isFirstTrick: isFirstTrick,
+            ).isValid)
+        .toSet();
+  }
+
   static bool detectPoisonJoker(List<GameCard> hand) {
     return hand.length == 1 && hand.first.isJoker;
   }

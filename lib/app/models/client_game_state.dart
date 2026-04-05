@@ -66,6 +66,26 @@ class ClientGameState {
   int get mySeatIndex => playerUids.indexOf(myUid);
   Team get myTeam => teamForSeat(mySeatIndex);
 
+  /// Resolves bidder UID to their team, or null if no bidder.
+  Team? get bidderTeam {
+    if (bidderUid == null) return null;
+    final seat = playerUids.indexOf(bidderUid!);
+    return seat >= 0 ? teamForSeat(seat) : null;
+  }
+
+  /// Tug-of-war: the single non-zero score (only one team ever has points).
+  int get tugScore {
+    final a = scores[Team.a] ?? 0;
+    return a > 0 ? a : (scores[Team.b] ?? 0);
+  }
+
+  /// Which team currently leads, or null if tied at 0.
+  Team? get leadingTeam {
+    if ((scores[Team.a] ?? 0) > 0) return Team.a;
+    if ((scores[Team.b] ?? 0) > 0) return Team.b;
+    return null;
+  }
+
   /// Creates a [ClientGameState] from a Worker WebSocket game state message
   /// plus the current player's hand (list of encoded card strings).
   factory ClientGameState.fromMap(
@@ -85,15 +105,15 @@ class ClientGameState {
     // Scores: Worker sends {teamA: N, teamB: N}, old Firestore used {a: N, b: N}
     final rawScores = gameData['scores'] as Map<String, dynamic>;
     final scores = <Team, int>{
-      Team.a: (rawScores['teamA'] ?? rawScores['a'] ?? 0 as num).toInt(),
-      Team.b: (rawScores['teamB'] ?? rawScores['b'] ?? 0 as num).toInt(),
+      Team.a: _parseIntField(rawScores['teamA'] ?? rawScores['a']),
+      Team.b: _parseIntField(rawScores['teamB'] ?? rawScores['b']),
     };
 
     // Tricks: same format as scores
     final rawTricks = gameData['tricks'] as Map<String, dynamic>;
     final tricks = <Team, int>{
-      Team.a: (rawTricks['teamA'] ?? rawTricks['a'] ?? 0 as num).toInt(),
-      Team.b: (rawTricks['teamB'] ?? rawTricks['b'] ?? 0 as num).toInt(),
+      Team.a: _parseIntField(rawTricks['teamA'] ?? rawTricks['a']),
+      Team.b: _parseIntField(rawTricks['teamB'] ?? rawTricks['b']),
     };
 
     // Current player: Worker sends "currentPlayer", old used "currentPlayerUid"
@@ -194,5 +214,14 @@ class ClientGameState {
       trickWinners: trickWinners,
       cardCounts: cardCounts,
     );
+  }
+
+  /// Defensive int parser: handles int, num, String, and null.
+  static int _parseIntField(dynamic value) {
+    if (value == null) return 0;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value) ?? 0;
+    return 0;
   }
 }

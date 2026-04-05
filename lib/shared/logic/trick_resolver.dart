@@ -4,7 +4,9 @@ import '../models/trick.dart';
 class TrickResolver {
   static int resolve(Trick trick, {required Suit trumpSuit}) {
     final plays = trick.plays;
-    assert(plays.length == 4, 'Trick must have exactly 4 plays');
+    if (plays.length != 4) {
+      throw ArgumentError('Trick must have exactly 4 plays, got ${plays.length}');
+    }
 
     // Rule 1: Joker always wins
     for (final play in plays) {

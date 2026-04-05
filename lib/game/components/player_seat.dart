@@ -1,10 +1,13 @@
 import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flame/components.dart';
+import '../../app/models/client_game_state.dart';
+import '../../shared/models/game_state.dart';
 import '../theme/kout_theme.dart';
 import '../theme/diwaniya_colors.dart';
 import '../theme/text_renderer.dart';
 import 'avatar_painter.dart';
+import 'painters/bid_label_painter.dart';
 
 /// Displays a player seat: avatar, name pill, gold rope border,
 /// and an active-turn team-colored ring.
@@ -12,7 +15,7 @@ class PlayerSeatComponent extends PositionComponent {
   String playerName;
   int cardCount;
   bool isActive;
-  bool isTeamA;
+  Team team;
   final int avatarSeed;
   String? bidAction;
   bool isBidder = false;
@@ -23,11 +26,14 @@ class PlayerSeatComponent extends PositionComponent {
 
   _GlowPulseComponent? _glowPulse;
 
+  final int seatIndex;
+
   PlayerSeatComponent({
+    required this.seatIndex,
     required this.playerName,
     required this.cardCount,
     required this.isActive,
-    required this.isTeamA,
+    required this.team,
     this.avatarSeed = 0,
     this.bidAction,
     this.timerProgress = 0.0,
@@ -45,10 +51,8 @@ class PlayerSeatComponent extends PositionComponent {
   void render(Canvas canvas) {
     final center = Offset(size.x / 2, size.y / 2 - 10);
 
-    // Gold rope border
     _drawRopeBorder(canvas, center);
 
-    // Bidder glow ring — static, behind everything else
     if (isBidder && bidderGlowColor != null) {
       final glowPaint = Paint()
         ..color = bidderGlowColor!.withValues(alpha: 0.5)
@@ -57,26 +61,22 @@ class PlayerSeatComponent extends PositionComponent {
       canvas.drawCircle(center, _radius + 6, glowPaint);
     }
 
-    // Crown above bidder's avatar
     if (isBidder) {
       _drawCrown(canvas, Offset(center.dx, center.dy - _radius - 20));
     }
 
-    // Character avatar
     AvatarPainter.paint(canvas, center, _radius - 3, AvatarTraits.fromSeed(avatarSeed));
 
-    // Active turn ring — team-colored, 5px
+    final teamColor = KoutTheme.teamColor(team);
     if (isActive) {
-      final activeColor = isTeamA ? KoutTheme.teamAColor : KoutTheme.teamBColor;
+      final activeColor = teamColor;
       if (timerProgress > 0.0) {
-        // Dim background ring
         final bgRingPaint = Paint()
           ..color = activeColor.withValues(alpha: 0.2)
           ..style = PaintingStyle.stroke
           ..strokeWidth = 5.0;
         canvas.drawCircle(center, _radius, bgRingPaint);
 
-        // Timer arc
         final sweepAngle = timerProgress * math.pi * 2;
         final timerPaint = Paint()
           ..color = activeColor
@@ -98,8 +98,6 @@ class PlayerSeatComponent extends PositionComponent {
         canvas.drawCircle(center, _radius, activePaint);
       }
     } else {
-      // Subtle team color ring when inactive
-      final teamColor = isTeamA ? KoutTheme.teamAColor : KoutTheme.teamBColor;
       final ringPaint = Paint()
         ..color = teamColor.withValues(alpha: 0.5)
         ..style = PaintingStyle.stroke
@@ -107,34 +105,32 @@ class PlayerSeatComponent extends PositionComponent {
       canvas.drawCircle(center, _radius, ringPaint);
     }
 
-    // Name pill below avatar
     final pillY = center.dy + _radius + 14;
-    final pillColor = isTeamA ? DiwaniyaColors.nameLabelTeamA : DiwaniyaColors.nameLabelTeamB;
+    final pillColor = team == Team.a ? DiwaniyaColors.nameLabelTeamA : DiwaniyaColors.nameLabelTeamB;
     final pillRect = RRect.fromRectAndRadius(
       Rect.fromCenter(center: Offset(center.dx, pillY), width: 80, height: 22),
       const Radius.circular(11),
     );
     canvas.drawRRect(pillRect, Paint()..color = pillColor);
-    final teamLetter = isTeamA ? 'A' : 'B';
+    final teamLetter = team == Team.a ? 'A' : 'B';
     final displayName = '$teamLetter  ${_truncateName(playerName)}';
     TextRenderer.drawCentered(canvas, displayName, DiwaniyaColors.pureWhite,
       Offset(center.dx, pillY), 10);
 
-    // Bid action label (during bidding)
-    if (bidAction != null) {
-      final isPass = bidAction == 'pass';
-      final label = isPass ? 'PASS' : 'BID $bidAction';
-      final labelColor = isPass ? DiwaniyaColors.passRed : DiwaniyaColors.goldAccent;
-      TextRenderer.drawCentered(canvas, label, labelColor,
-        Offset(center.dx, center.dy + _radius + 36), 9);
-    }
+    BidLabelPainter.paint(
+      canvas,
+      bidAction: bidAction,
+      offset: Offset(center.dx, center.dy + _radius + 36),
+    );
 
   }
 
   /// Draws a small geometric crown at [crownCenter].
   static void _drawCrown(Canvas canvas, Offset crownCenter) {
-    const double w = 18.0;  // total width
-    const double h = 12.0;  // total height
+    const double crownWidth = 18.0;
+    const double crownHeight = 12.0;
+    const double w = crownWidth;
+    const double h = crownHeight;
     final left = crownCenter.dx - w / 2;
     final top = crownCenter.dy - h / 2;
 
@@ -202,21 +198,27 @@ class PlayerSeatComponent extends PositionComponent {
     return '${name.substring(0, 5)}…';
   }
 
-  void updateState({
-    required String name,
-    required int cards,
-    required bool active,
-    required bool teamA,
-    String? bidAction,
-  }) {
+  void updateState(ClientGameState state) {
+    final uid = state.playerUids[seatIndex];
     final wasActive = isActive;
-    playerName = name;
-    cardCount = cards;
-    isActive = active;
-    isTeamA = teamA;
-    this.bidAction = bidAction;
+    playerName = shortUid(uid);
+    cardCount = state.cardCounts[seatIndex] ??
+        (seatIndex == state.mySeatIndex ? state.myHand.length : 8);
+    isActive = state.currentPlayerUid == uid;
+    team = teamForSeat(seatIndex);
 
-    if (wasActive != active && isMounted) {
+    // Determine bid action from bid history during bidding/trump phases
+    if (state.phase == GamePhase.bidding || state.phase == GamePhase.trumpSelection) {
+      String? action;
+      for (final entry in state.bidHistory) {
+        if (entry.playerUid == uid) action = entry.action;
+      }
+      bidAction = action;
+    } else {
+      bidAction = null;
+    }
+
+    if (wasActive != isActive && isMounted) {
       _updateGlowPulse();
     }
   }
@@ -308,7 +310,7 @@ class _GlowPulseComponent extends PositionComponent {
   void render(Canvas canvas) {
     final center = Offset(size.x / 2, size.y / 2);
     final parentSeat = parent as PlayerSeatComponent;
-    final teamColor = parentSeat.isTeamA ? KoutTheme.teamAColor : KoutTheme.teamBColor;
+    final teamColor = KoutTheme.teamColor(parentSeat.team);
     final glowPaint = Paint()
       ..color = teamColor.withValues(alpha: _opacity)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 20);

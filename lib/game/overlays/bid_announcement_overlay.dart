@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../app/models/client_game_state.dart';
-import '../../shared/models/enums.dart';
 import '../../game/theme/kout_theme.dart';
 import 'overlay_animation_wrapper.dart';
 import 'overlay_styles.dart';
@@ -17,8 +16,10 @@ class BidAnnouncementOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bidLabel = _bidLabel();
-    final suitSymbol = _suitSymbol(state.trumpSuit);
-    final suitColor = _suitColor(state.trumpSuit);
+    final suitSymbol = state.trumpSuit?.symbol ?? '?';
+    final suitColor = state.trumpSuit != null
+        ? KoutTheme.suitCardColor(state.trumpSuit!)
+        : const Color(0xFFE0E0E0);
     final bidderSeat = state.bidderUid != null
         ? state.playerUids.indexOf(state.bidderUid!)
         : -1;
@@ -31,6 +32,7 @@ class BidAnnouncementOverlay extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
         constraints: const BoxConstraints(minWidth: 260, maxWidth: 300),
         decoration: OverlayStyles.panelDecoration(),
+        // Note: padding uses 32H instead of standard 28H to fit 3-line content
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -94,17 +96,4 @@ class BidAnnouncementOverlay extends StatelessWidget {
     return 'Bid ${bid.value}';
   }
 
-  static String _suitSymbol(Suit? suit) => switch (suit) {
-        Suit.spades => '♠',
-        Suit.hearts => '♥',
-        Suit.clubs => '♣',
-        Suit.diamonds => '♦',
-        null => '?',
-      };
-
-  static Color _suitColor(Suit? suit) => switch (suit) {
-        Suit.hearts || Suit.diamonds => const Color(0xFFCC0000),
-        Suit.spades || Suit.clubs => const Color(0xFFE0E0E0),
-        null => const Color(0xFFE0E0E0),
-      };
 }

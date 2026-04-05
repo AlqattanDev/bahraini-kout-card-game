@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'dart:ui';
+import 'package:flutter/rendering.dart' show CustomPainter;
 import 'kout_theme.dart';
 
 /// Procedural Islamic geometric pattern renderer.
@@ -8,6 +9,9 @@ import 'kout_theme.dart';
 /// Uses [KoutTheme.cardBack] as fill and [KoutTheme.accent] as stroke
 /// to stay consistent with card-back art.
 class GeometricPatterns {
+  // Opacity multipliers for star patterns
+  static const double _fillOpacity = 0.6;
+  static const double _strokeOpacity = 0.5;
 
   /// Draws a repeating 8-point star pattern tiled across [bounds].
   ///
@@ -75,13 +79,13 @@ class GeometricPatterns {
 
     // Fill with burgundy
     final fillPaint = Paint()
-      ..color = KoutTheme.cardBack.withValues(alpha: opacity * 0.6)
+      ..color = KoutTheme.cardBack.withValues(alpha: opacity * _fillOpacity)
       ..style = PaintingStyle.fill;
     canvas.drawPath(path, fillPaint);
 
     // Stroke with gold
     final strokePaint = Paint()
-      ..color = KoutTheme.accent.withValues(alpha: opacity * 0.5)
+      ..color = KoutTheme.accent.withValues(alpha: opacity * _strokeOpacity)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 0.8;
     canvas.drawPath(path, strokePaint);
@@ -113,4 +117,27 @@ class GeometricPatterns {
       _drawEightPointStar(canvas, offset, maxRadius * 0.18, 0.5);
     }
   }
+
+  /// Returns a [CustomPainter] that draws the star tessellation at [opacity].
+  /// Use in `CustomPaint(painter: GeometricPatterns.overlayPainter(...))`.
+  static CustomPainter overlayPainter({double opacity = 0.08}) =>
+      _StarOverlayPainter(opacity: opacity);
+}
+
+/// Shared CustomPainter adapter for GeometricPatterns.drawStarTessellation.
+class _StarOverlayPainter extends CustomPainter {
+  const _StarOverlayPainter({required this.opacity});
+  final double opacity;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    GeometricPatterns.drawStarTessellation(
+      canvas,
+      Rect.fromLTWH(0, 0, size.width, size.height),
+      opacity: opacity,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_StarOverlayPainter old) => old.opacity != opacity;
 }

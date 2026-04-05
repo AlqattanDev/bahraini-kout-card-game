@@ -39,7 +39,8 @@ class TrumpContext extends ActionContext {}
 
 class PlayContext extends ActionContext {
   final Suit? ledSuit;
-  PlayContext({this.ledSuit});
+  final bool isForced;
+  PlayContext({this.ledSuit, this.isForced = false});
 }
 
 abstract class PlayerController {

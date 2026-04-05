@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flame/components.dart';
+import '../../app/models/client_game_state.dart';
 import '../../shared/models/game_state.dart';
 import '../../shared/models/card.dart';
 import '../theme/diwaniya_colors.dart';
@@ -48,37 +49,34 @@ class UnifiedHudComponent extends PositionComponent {
     }
   }
 
-  void updateState({
-    required GamePhase phase,
-    required int teamAScore,
-    required int teamBScore,
-    required int roundNumber,
-    int? bidValue,
-    Team? bidderTeam,
-    Suit? trumpSuit,
-    int bidderTricks = 0,
-    int opponentTricks = 0,
-    int opponentTarget = 0,
-  }) {
-    _phase = phase;
-    this.roundNumber = roundNumber;
-    this.bidValue = bidValue;
-    this.bidderTeam = bidderTeam;
-    this.trumpSuit = trumpSuit;
-    this.bidderTricks = bidderTricks;
-    this.opponentTricks = opponentTricks;
-    this.opponentTarget = opponentTarget;
+  void updateState(ClientGameState state) {
+    _phase = state.phase;
+    final teamAScore = state.scores[Team.a] ?? 0;
+    final teamBScore = state.scores[Team.b] ?? 0;
+    roundNumber = (state.trickWinners.length ~/ 8) + 1;
 
-    if (teamAScore > 0) {
-      score = teamAScore;
-      scoreColor = KoutTheme.teamAColor;
-    } else if (teamBScore > 0) {
-      score = teamBScore;
-      scoreColor = KoutTheme.teamBColor;
+    final bt = state.bidderTeam;
+    bidderTeam = bt;
+    trumpSuit = state.trumpSuit;
+
+    if (bt != null && state.currentBid != null) {
+      bidValue = state.currentBid!.value;
+      bidderTricks = state.tricks[bt] ?? 0;
+      opponentTricks = state.tricks[bt.opponent] ?? 0;
+      opponentTarget = 9 - bidValue!;
     } else {
-      score = 0;
-      scoreColor = DiwaniyaColors.cream;
+      bidValue = null;
+      bidderTricks = 0;
+      opponentTricks = 0;
+      opponentTarget = 0;
     }
+
+    score = teamAScore > 0 ? teamAScore : teamBScore;
+    scoreColor = teamAScore > 0
+        ? KoutTheme.teamAColor
+        : teamBScore > 0
+            ? KoutTheme.teamBColor
+            : DiwaniyaColors.cream;
   }
 
   void updateTimer(Duration elapsed) {
@@ -161,22 +159,19 @@ class UnifiedHudComponent extends PositionComponent {
     y += _dividerHeight + _rowGap;
 
     if (_showBidRow && bidValue != null) {
-      final bidTeamColor = bidderTeam == Team.a
-          ? KoutTheme.teamAColor
-          : bidderTeam == Team.b
-              ? KoutTheme.teamBColor
-              : DiwaniyaColors.cream;
+      final bidTeamColor = bidderTeam != null
+          ? KoutTheme.teamColor(bidderTeam!)
+          : DiwaniyaColors.cream;
 
       final bidText = bidValue == 8 ? 'KOUT' : 'BID $bidValue';
       TextRenderer.draw(canvas, bidText, bidTeamColor,
           Offset(_padding, y), 12, align: TextAlign.left, width: 80);
 
       if (trumpSuit != null) {
-        final suitSymbol = _suitSymbol(trumpSuit!);
-        final suitColor = (trumpSuit == Suit.hearts || trumpSuit == Suit.diamonds)
-            ? const Color(0xFFCC3333)
+        final suitColor = trumpSuit!.isRed
+            ? KoutTheme.suitCardColor(trumpSuit!)
             : DiwaniyaColors.pureWhite;
-        TextRenderer.draw(canvas, suitSymbol, suitColor,
+        TextRenderer.draw(canvas, trumpSuit!.symbol, suitColor,
             Offset(_hudWidth - _padding - 20, y - 2), 18,
             align: TextAlign.right, width: 20);
       }
@@ -184,12 +179,8 @@ class UnifiedHudComponent extends PositionComponent {
     }
 
     if (_showPips && bidValue != null) {
-      final bidTeamColor = bidderTeam == Team.a
-          ? KoutTheme.teamAColor
-          : KoutTheme.teamBColor;
-      final oppTeamColor = bidderTeam == Team.a
-          ? KoutTheme.teamBColor
-          : KoutTheme.teamAColor;
+      final bidTeamColor = KoutTheme.teamColor(bidderTeam ?? Team.a);
+      final oppTeamColor = KoutTheme.teamColor((bidderTeam ?? Team.a).opponent);
       final bidTeamLabel = bidderTeam == Team.a ? 'A' : 'B';
       final oppTeamLabel = bidderTeam == Team.a ? 'B' : 'A';
 
@@ -241,13 +232,4 @@ class UnifiedHudComponent extends PositionComponent {
     }
   }
 
-  static String _suitSymbol(Suit suit) {
-    const symbols = {
-      Suit.spades: '♠',
-      Suit.hearts: '♥',
-      Suit.clubs: '♣',
-      Suit.diamonds: '♦',
-    };
-    return symbols[suit] ?? '?';
-  }
 }

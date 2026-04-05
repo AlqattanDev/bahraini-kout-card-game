@@ -71,13 +71,9 @@ class CardComponent extends PositionComponent with TapCallbacks, HoverCallbacks 
     if (c.isJoker) {
       CardPainter.paintJoker(canvas, rect);
     } else {
-      final isRed = c.suit == Suit.hearts || c.suit == Suit.diamonds;
-      final suitColor =
-          isRed ? const Color(0xFFCC0000) : const Color(0xFF111111);
-      final rankLabel = _rankLabel(c.rank!);
-      final suitSymbol = _suitSymbol(c.suit!);
-
-      CardPainter.paintFace(canvas, rect, rankLabel, suitSymbol, suitColor);
+      CardPainter.paintFace(
+        canvas, rect, c.rank!.label, c.suit!.symbol, KoutTheme.suitCardColor(c.suit!),
+      );
     }
 
     // Highlight border overlay (gold when highlighted)
@@ -96,82 +92,50 @@ class CardComponent extends PositionComponent with TapCallbacks, HoverCallbacks 
     }
   }
 
-  @override
-  void onTapDown(TapDownEvent event) {
-    if (!isFaceUp || !isHighlighted) return;
-    _pressed = true;
+  void _applyLift() {
     _restPosition ??= position.clone();
     scale = Vector2.all(restScale * 1.1);
     position.y = (_restPosition?.y ?? position.y) - 8;
   }
 
-  @override
-  void onTapUp(TapUpEvent event) {
-    if (_pressed) {
-      _pressed = false;
-      scale = Vector2.all(restScale);
-      if (_restPosition != null) {
-        position = _restPosition!.clone();
-        _restPosition = null;
-      }
-      if (card != null && onTap != null) {
-        onTap!(card!);
-      }
+  void _resetLift() {
+    scale = Vector2.all(restScale);
+    if (_restPosition != null) {
+      position = _restPosition!.clone();
+      _restPosition = null;
     }
   }
 
   @override
+  void onTapDown(TapDownEvent event) {
+    if (!isFaceUp || !isHighlighted) return;
+    _pressed = true;
+    _applyLift();
+  }
+
+  @override
+  void onTapUp(TapUpEvent event) {
+    if (!_pressed) return;
+    _pressed = false;
+    _resetLift();
+    if (card != null && onTap != null) onTap!(card!);
+  }
+
+  @override
   void onTapCancel(TapCancelEvent event) {
-    if (_pressed) {
-      _pressed = false;
-      scale = Vector2.all(restScale);
-      if (_restPosition != null) {
-        position = _restPosition!.clone();
-        _restPosition = null;
-      }
-    }
+    if (!_pressed) return;
+    _pressed = false;
+    _resetLift();
   }
 
   @override
   void onHoverEnter() {
     if (!isFaceUp || !isHighlighted) return;
-    _restPosition ??= position.clone();
-    scale = Vector2.all(restScale * 1.1);
-    position.y = (_restPosition?.y ?? position.y) - 8;
+    _applyLift();
   }
 
   @override
   void onHoverExit() {
-    if (!_pressed) {
-      scale = Vector2.all(restScale);
-      if (_restPosition != null) {
-        position = _restPosition!.clone();
-        _restPosition = null;
-      }
-    }
-  }
-
-  String _rankLabel(Rank rank) {
-    const labels = {
-      Rank.ace: 'A',
-      Rank.king: 'K',
-      Rank.queen: 'Q',
-      Rank.jack: 'J',
-      Rank.ten: '10',
-      Rank.nine: '9',
-      Rank.eight: '8',
-      Rank.seven: '7',
-    };
-    return labels[rank] ?? '?';
-  }
-
-  String _suitSymbol(Suit suit) {
-    const symbols = {
-      Suit.spades: '♠',
-      Suit.hearts: '♥',
-      Suit.clubs: '♣',
-      Suit.diamonds: '♦',
-    };
-    return symbols[suit] ?? '?';
+    if (!_pressed) _resetLift();
   }
 }

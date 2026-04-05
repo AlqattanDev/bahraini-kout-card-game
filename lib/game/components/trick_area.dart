@@ -16,6 +16,10 @@ class TrickAreaComponent extends Component {
   final int mySeatIndex;
   final Random _random = Random();
 
+  /// Horizontal nudge factor for stacking cards toward center.
+  /// Each successive card drifts ~6% inward to make play order obvious.
+  static const double _nudgeFactor = 0.06;
+
   final List<CardComponent> _trickCards = [];
   /// Cached jitter angles keyed by playerUid so cards don't wiggle on each update.
   final Map<String, double> _cachedJitter = {};
@@ -32,7 +36,10 @@ class TrickAreaComponent extends Component {
       ..color = DiwaniyaColors.goldAccent.withValues(alpha: 0.12)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.0;
-    final radius = layout.isLandscape ? 40.0 : 60.0;
+    final base = layout.safeRect.width < layout.safeRect.height
+        ? layout.safeRect.width
+        : layout.safeRect.height;
+    final radius = layout.isLandscape ? base * 0.10 : 60.0;
     canvas.drawCircle(
       Offset(layout.trickCenter.x, layout.trickCenter.y),
       radius,
@@ -63,8 +70,8 @@ class TrickAreaComponent extends Component {
       // Nudge later cards toward center so they visually stack/overlap,
       // making play order obvious at a glance.
       final center = layout.trickCenter;
-      final nudgeFactor = i * 0.06; // each successive card drifts ~6% inward
-      final pos = basePos + (center - basePos) * nudgeFactor;
+      final nudge = i * _nudgeFactor;
+      final pos = basePos + (center - basePos) * nudge;
 
       // Base angle per seat + random jitter ±0.08 rad (≈ ±4.6°) for natural toss feel.
       // Jitter is cached per player so cards don't wiggle when new cards arrive.
@@ -76,7 +83,7 @@ class TrickAreaComponent extends Component {
 
       // Later cards get higher priority (z-order) so play order is
       // visually obvious — the most recent card renders on top.
-      final trickScale = layout.isLandscape ? layout.handCardScale : 1.0;
+      final trickScale = layout.isLandscape ? layout.trickCardScale : 1.0;
       final cardComp = CardComponent(
         card: play.card,
         isFaceUp: true,

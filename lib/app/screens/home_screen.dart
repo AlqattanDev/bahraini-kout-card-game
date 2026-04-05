@@ -210,19 +210,7 @@ class _HomeScreenState extends State<HomeScreen> {
       width: 220,
       child: ElevatedButton(
         onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: KoutTheme.primary,
-          foregroundColor: KoutTheme.accent,
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: const BorderSide(color: KoutTheme.accent, width: 1.5),
-          ),
-          textStyle: KoutTheme.bodyStyle.copyWith(
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-          ),
-        ),
+        style: KoutTheme.primaryButtonStyle,
         child: Text(label),
       ),
     );

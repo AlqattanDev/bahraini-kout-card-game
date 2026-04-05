@@ -93,22 +93,25 @@ void main() {
 
     test('left seat is on left side vertically centered', () {
       final ls = landscapeLayout.leftSeat;
-      expect(ls.x, closeTo(landscapeLayout.safeRect.left + 80, 1));
+      // Proportional: safeRect.left + safeW * 0.12
+      expect(ls.x, closeTo(landscapeLayout.safeRect.left + landscapeLayout.safeRect.width * 0.12, 1));
       final centerY = landscapeLayout.safeRect.center.dy;
-      expect(ls.y, closeTo(centerY, 10));
+      expect(ls.y, closeTo(centerY, 1));
     });
 
     test('right seat is on right side vertically centered', () {
       final rs = landscapeLayout.rightSeat;
-      expect(rs.x, closeTo(landscapeLayout.safeRect.right - 80, 1));
+      // Proportional: safeRect.right - safeW * 0.12
+      expect(rs.x, closeTo(landscapeLayout.safeRect.right - landscapeLayout.safeRect.width * 0.12, 1));
       final centerY = landscapeLayout.safeRect.center.dy;
-      expect(rs.y, closeTo(centerY, 10));
+      expect(rs.y, closeTo(centerY, 1));
     });
 
     test('partner seat is at top center', () {
       final ps = landscapeLayout.partnerSeat;
       expect(ps.x, closeTo(landscapeLayout.safeRect.center.dx, 1));
-      expect(ps.y, closeTo(landscapeLayout.safeRect.top + 25, 1));
+      // Proportional: safeRect.top + safeH * 0.08
+      expect(ps.y, closeTo(landscapeLayout.safeRect.top + landscapeLayout.safeRect.height * 0.08, 1));
     });
 
     test('trick center is within safe rect', () {
@@ -119,9 +122,22 @@ void main() {
       expect(tc.y, lessThan(landscapeLayout.safeRect.bottom));
     });
 
-    test('handCardScale is between 0.7 and 1.0 on landscape phone', () {
-      expect(landscapeLayout.handCardScale, lessThan(1.0));
-      expect(landscapeLayout.handCardScale, greaterThan(0.7));
+    test('handCardScale is proportional to safe height on landscape phone', () {
+      // 372 * 0.33 / 100 = 1.228, clamped to [1.0, 1.6]
+      expect(landscapeLayout.handCardScale, greaterThanOrEqualTo(1.0));
+      expect(landscapeLayout.handCardScale, lessThanOrEqualTo(1.6));
+      expect(landscapeLayout.handCardScale, closeTo(1.228, 0.01));
+    });
+
+    test('trickCardScale matches handCardScale in landscape', () {
+      expect(landscapeLayout.trickCardScale, closeTo(landscapeLayout.handCardScale, 0.01));
+    });
+
+    test('trickOffset is proportional (12% of shorter safe dimension)', () {
+      final shorter = landscapeLayout.safeRect.width < landscapeLayout.safeRect.height
+          ? landscapeLayout.safeRect.width
+          : landscapeLayout.safeRect.height;
+      expect(landscapeLayout.trickOffset, closeTo(shorter * 0.12, 0.1));
     });
 
     test('landscape card spacing is tighter than portrait', () {

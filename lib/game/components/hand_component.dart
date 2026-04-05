@@ -1,6 +1,8 @@
 import 'package:flame/components.dart';
 import '../../app/models/client_game_state.dart';
 import '../../shared/models/card.dart';
+import '../../shared/models/game_state.dart';
+import '../../shared/logic/play_validator.dart';
 import '../managers/layout_manager.dart';
 import 'card_component.dart';
 
@@ -13,7 +15,7 @@ class HandComponent extends Component {
   final void Function(String cardCode) onCardTap;
 
   /// Scale factor applied to hand cards for readability.
-  /// Dynamic: smaller on landscape phones, full 1.4x on portrait.
+  /// Dynamic: smaller on landscape phones, full 1.4x on portrait (default 1.4).
   double get handCardScale => layout.handCardScale;
 
   final List<CardComponent> _cards = [];
@@ -27,9 +29,7 @@ class HandComponent extends Component {
 
   HandComponent({required this.layout, required this.onCardTap});
 
-  /// Rebuilds hand cards based on updated game state.
   void updateState(ClientGameState state) {
-    // Remove existing card children
     for (final c in _cards) {
       c.removeFromParent();
     }
@@ -41,8 +41,7 @@ class HandComponent extends Component {
     final playable = _playableCards(state);
     final positions = layout.handCardPositions(hand.length);
 
-    // Snapshot previous positions before rebuilding so a just-played card's
-    // origin is still available for the fly-to-trick animation.
+    // Preserve previous positions so fly-to-trick animation knows the origin.
     previousCardPositions
       ..clear()
       ..addAll(cardPositions);
@@ -50,7 +49,7 @@ class HandComponent extends Component {
 
     final hasPlayableCards = playable.isNotEmpty;
     final isWaitingForOthers =
-        state.phase.name == 'playing' && !state.isMyTurn;
+        state.phase == GamePhase.playing && !state.isMyTurn;
 
     for (int i = 0; i < hand.length; i++) {
       final gameCard = hand[i];
@@ -127,35 +126,19 @@ class HandComponent extends Component {
   /// Determines which cards are playable in the current state.
   Set<GameCard> _playableCards(ClientGameState state) {
     if (!state.isMyTurn) return {};
-    if (state.phase.name != 'playing') return {};
+    if (state.phase != GamePhase.playing) return {};
 
-    // If a suit was led, player must follow suit if possible
-    if (state.currentTrickPlays.isEmpty) {
-      // Leading — Kout rule: must lead trump if holding trump
-      if (state.currentBid?.isKout == true && state.trumpSuit != null && state.trickWinners.isEmpty) {
-        final trumpCards = state.myHand
-            .where((c) => !c.isJoker && c.suit == state.trumpSuit)
-            .toSet();
-        if (trumpCards.isNotEmpty) {
-          final jokers = state.myHand.where((c) => c.isJoker).toSet();
-          return trumpCards.union(jokers);
-        }
-      }
-      return state.myHand.toSet();
-    }
+    final isLeadPlay = state.currentTrickPlays.isEmpty;
+    final ledSuit = isLeadPlay ? null : state.currentTrickPlays.first.card.suit;
+    final isFirstTrick = state.trickWinners.isEmpty;
 
-    final ledSuit = state.currentTrickPlays.first.card.suit;
-    if (ledSuit == null) return state.myHand.toSet(); // joker led
-
-    final followSuitCards =
-        state.myHand.where((c) => c.suit == ledSuit).toSet();
-    if (followSuitCards.isNotEmpty) {
-      // Joker is always playable
-      final jokers = state.myHand.where((c) => c.isJoker).toSet();
-      return followSuitCards.union(jokers);
-    }
-
-    // Can't follow suit — any card is playable
-    return state.myHand.toSet();
+    return PlayValidator.playableCards(
+      hand: state.myHand,
+      ledSuit: ledSuit,
+      isLeadPlay: isLeadPlay,
+      trumpSuit: state.trumpSuit,
+      isKout: state.currentBid?.isKout ?? false,
+      isFirstTrick: isFirstTrick,
+    );
   }
 }

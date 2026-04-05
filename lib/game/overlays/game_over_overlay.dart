@@ -80,14 +80,8 @@ class _GameOverOverlayState extends State<GameOverOverlay>
   @override
   Widget build(BuildContext context) {
     final myTeam = widget.state.myTeam;
-    final scoreA = widget.state.scores[Team.a] ?? 0;
-    final scoreB = widget.state.scores[Team.b] ?? 0;
-    final finalScore = scoreA > 0 ? scoreA : scoreB;
-    final Team? winner = scoreA >= 31
-        ? Team.a
-        : scoreB >= 31
-            ? Team.b
-            : null;
+    final finalScore = widget.state.tugScore;
+    final winner = widget.state.leadingTeam;
 
     final headlineText = _myTeamWon ? 'Victory!' : 'Defeat';
     final headlineColor = OverlayStyles.resultColor(_myTeamWon);

@@ -16,17 +16,17 @@ void main() {
       test('rejects bid equal to current', () {
         final result = BidValidator.validateBid(bidAmount: BidAmount.six, currentHighest: BidAmount.six, passedPlayers: [], playerIndex: 1);
         expect(result.isValid, false);
-        expect(result.error, 'bid-not-higher');
+        expect(result.error, BidValidationError.bidNotHigher);
       });
       test('rejects bid lower than current', () {
         final result = BidValidator.validateBid(bidAmount: BidAmount.bab, currentHighest: BidAmount.six, passedPlayers: [], playerIndex: 1);
         expect(result.isValid, false);
-        expect(result.error, 'bid-not-higher');
+        expect(result.error, BidValidationError.bidNotHigher);
       });
       test('rejects bid from player who already passed', () {
         final result = BidValidator.validateBid(bidAmount: BidAmount.seven, currentHighest: BidAmount.six, passedPlayers: [1], playerIndex: 1);
         expect(result.isValid, false);
-        expect(result.error, 'already-passed');
+        expect(result.error, BidValidationError.alreadyPassed);
       });
     });
 
@@ -38,12 +38,12 @@ void main() {
       test('rejects pass from player who already passed', () {
         final result = BidValidator.validatePass(passedPlayers: [1], playerIndex: 1, playerCount: 4);
         expect(result.isValid, false);
-        expect(result.error, 'already-passed');
+        expect(result.error, BidValidationError.alreadyPassed);
       });
       test('rejects pass when player is last remaining and no bid exists', () {
         final result = BidValidator.validatePass(passedPlayers: [0, 2, 3], playerIndex: 1, playerCount: 4, currentHighest: null);
         expect(result.isValid, false);
-        expect(result.error, 'must-bid');
+        expect(result.error, BidValidationError.mustBid);
       });
       test('allows pass when player is last remaining but a bid exists', () {
         final result = BidValidator.validatePass(passedPlayers: [0, 2, 3], playerIndex: 1, playerCount: 4, currentHighest: BidAmount.six);

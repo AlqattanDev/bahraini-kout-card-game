@@ -66,4 +66,33 @@ abstract final class OverlayStyles {
   /// Result headline color — green for win, red for loss.
   static Color resultColor(bool won) =>
       won ? KoutTheme.accent : KoutTheme.lossColor;
+
+  // ---------------------------------------------------------------------------
+  // Centralized spacing constants
+  // ---------------------------------------------------------------------------
+
+  /// Standard panel padding (used in overlay containers).
+  static const EdgeInsets panelPadding =
+      EdgeInsets.symmetric(horizontal: 28, vertical: 24);
+
+  /// Section/divider spacing between major content blocks.
+  static const SizedBox sectionGap = SizedBox(height: 20);
+
+  // ---------------------------------------------------------------------------
+  // Text button style (for Pass, etc.)
+  // ---------------------------------------------------------------------------
+
+  /// Text button with border (Pass button, dismissible actions).
+  static ButtonStyle textButton({
+    double borderRadius = 8.0,
+    EdgeInsets padding = const EdgeInsets.symmetric(horizontal: 32, vertical: 10),
+  }) =>
+      TextButton.styleFrom(
+        foregroundColor: KoutTheme.textColor,
+        padding: padding,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(borderRadius),
+        ),
+        side: const BorderSide(color: KoutTheme.textColor, width: 1),
+      );
 }

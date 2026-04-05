@@ -1,9 +1,12 @@
 import 'dart:ui';
 import 'package:flame/components.dart';
+import '../../app/models/client_game_state.dart';
+import '../../shared/models/game_state.dart';
 import '../theme/diwaniya_colors.dart';
 import '../theme/text_renderer.dart';
 import '../theme/kout_theme.dart';
-import '../theme/card_painter.dart';
+import 'painters/bid_label_painter.dart';
+import 'painters/card_fan_painter.dart';
 
 /// Where the label sits on screen — determines anchor and internal layout.
 enum OpponentLabelPlacement { top, left, right }
@@ -11,24 +14,26 @@ enum OpponentLabelPlacement { top, left, right }
 /// Lightweight landscape-mode label for an opponent: name, team dot,
 /// bid status, and a small face-down card fan.
 class OpponentNameLabel extends PositionComponent {
+  final int seatIndex;
   String playerName;
-  bool isTeamA;
+  Team team;
   String? bidAction;
   bool isBidder;
   bool isActive;
   int cardCount;
   OpponentLabelPlacement placement;
 
-  static const double _miniCardW = 30.0;
-  static const double _miniCardH = 42.0;
-  static const double _cardOverlap = 14.0;
+  static const double _miniCardW = 38.0;
+  static const double _miniCardH = 54.0;
+  static const double _cardOverlap = 18.0;
   static const int _fanDisplayCount = 5;
   static const double _scaleX = _miniCardW / KoutTheme.cardWidth;
   static const double _scaleY = _miniCardH / KoutTheme.cardHeight;
 
   OpponentNameLabel({
+    required this.seatIndex,
     required this.playerName,
-    required this.isTeamA,
+    required this.team,
     this.bidAction,
     this.isBidder = false,
     this.isActive = false,
@@ -42,8 +47,8 @@ class OpponentNameLabel extends PositionComponent {
 
   static Vector2 _sizeForPlacement(OpponentLabelPlacement p) {
     return switch (p) {
-      OpponentLabelPlacement.top => Vector2(160, 75),
-      OpponentLabelPlacement.left || OpponentLabelPlacement.right => Vector2(110, 110),
+      OpponentLabelPlacement.top => Vector2(180, 90),
+      OpponentLabelPlacement.left || OpponentLabelPlacement.right => Vector2(130, 130),
     };
   }
 
@@ -55,143 +60,106 @@ class OpponentNameLabel extends PositionComponent {
     };
   }
 
-  void updateState({
-    required String name,
-    required bool teamA,
-    required bool active,
-    required int cards,
-    String? bidAction,
-    bool isBidder = false,
-  }) {
-    playerName = name;
-    isTeamA = teamA;
-    isActive = active;
-    cardCount = cards;
-    this.bidAction = bidAction;
-    this.isBidder = isBidder;
+  void updateState(ClientGameState state) {
+    final uid = state.playerUids[seatIndex];
+    playerName = shortUid(uid);
+    team = teamForSeat(seatIndex);
+    isActive = state.currentPlayerUid == uid;
+    cardCount = state.cardCounts[seatIndex] ?? 8;
+
+    // Bid status
+    final showBid = state.phase == GamePhase.bidding ||
+        state.phase == GamePhase.trumpSelection;
+    if (showBid) {
+      String? action;
+      for (final entry in state.bidHistory) {
+        if (entry.playerUid == uid) action = entry.action;
+      }
+      bidAction = action;
+    } else {
+      bidAction = null;
+    }
+
+    // Bidder glow (shown outside bidding/waiting/dealing)
+    final showBidder = state.phase != GamePhase.bidding &&
+        state.phase != GamePhase.waiting &&
+        state.phase != GamePhase.dealing;
+    isBidder = showBidder && uid == state.bidderUid;
   }
 
   @override
   void render(Canvas canvas) {
-    if (placement == OpponentLabelPlacement.top) {
-      _renderTop(canvas);
-    } else {
-      _renderSide(canvas);
-    }
-  }
-
-  /// Top placement: name row on top, card fan below (for partner at top-center).
-  void _renderTop(Canvas canvas) {
+    final isTop = placement == OpponentLabelPlacement.top;
     final cx = size.x / 2;
 
-    // Team dot
-    final dotPaint = Paint()..color = (isTeamA ? KoutTheme.teamAColor : KoutTheme.teamBColor);
-    canvas.drawCircle(Offset(cx - 55, 10), 4, dotPaint);
+    canvas.drawCircle(
+      Offset(cx - (isTop ? 55 : 35), 10), 4,
+      Paint()..color = KoutTheme.teamColor(team),
+    );
 
-    // Active glow
     if (isActive) {
       final glowPaint = Paint()
         ..color = DiwaniyaColors.goldAccent.withValues(alpha: 0.4)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, isTop ? 6 : 5);
       canvas.drawRRect(
         RRect.fromRectAndRadius(
-          Rect.fromCenter(center: Offset(cx, 10), width: 120, height: 20),
-          const Radius.circular(10),
+          Rect.fromCenter(
+            center: Offset(cx, 10),
+            width: isTop ? 120 : 90,
+            height: isTop ? 20 : 18,
+          ),
+          Radius.circular(isTop ? 10 : 9),
         ),
         glowPaint,
       );
     }
 
-    // Name
+    final nameColor = isActive ? DiwaniyaColors.goldAccent : DiwaniyaColors.cream;
     TextRenderer.drawCentered(
-      canvas, playerName,
-      isActive ? DiwaniyaColors.goldAccent : DiwaniyaColors.cream,
-      Offset(cx - 10, 10), 11,
+      canvas, playerName, nameColor,
+      Offset(isTop ? cx - 10 : cx, 10), isTop ? 11.0 : 10.0,
     );
 
-    // Crown
-    if (isBidder) {
-      TextRenderer.drawCentered(canvas, '\u{1F451}', DiwaniyaColors.goldAccent, Offset(cx + 40, 10), 10);
-    }
+    // Bid action label + bidder crown — position differs by placement
+    _drawBidStatus(canvas, cx, isTop);
 
-    // Bid action
-    if (bidAction != null) {
-      final isPass = bidAction == 'pass';
-      final label = isPass ? 'PASS' : 'BID $bidAction';
-      final color = isPass ? DiwaniyaColors.passRed : DiwaniyaColors.goldAccent;
-      TextRenderer.drawCentered(canvas, label, color, Offset(cx + 60, 10), 9);
-    }
-
-    // Card fan
-    _renderFan(canvas, cx, 26.0);
+    _renderFan(canvas, cx, isTop ? 26.0 : 40.0);
   }
 
-  /// Side placement: name on top, card fan below, compact vertical stack.
-  void _renderSide(Canvas canvas) {
-    final cx = size.x / 2;
-
-    // Team dot
-    final dotPaint = Paint()..color = (isTeamA ? KoutTheme.teamAColor : KoutTheme.teamBColor);
-    canvas.drawCircle(Offset(cx - 35, 10), 4, dotPaint);
-
-    // Active glow
-    if (isActive) {
-      final glowPaint = Paint()
-        ..color = DiwaniyaColors.goldAccent.withValues(alpha: 0.4)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5);
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromCenter(center: Offset(cx, 10), width: 90, height: 18),
-          const Radius.circular(9),
-        ),
-        glowPaint,
-      );
-    }
-
-    // Name
-    TextRenderer.drawCentered(
-      canvas, playerName,
-      isActive ? DiwaniyaColors.goldAccent : DiwaniyaColors.cream,
-      Offset(cx, 10), 10,
+  void _drawBidStatus(Canvas canvas, double cx, bool isTop) {
+    final labelOffset = isTop ? Offset(cx + 60, 10) : Offset(cx, 26);
+    final crown = isTop ? Offset(cx + 40, 10) : Offset(cx, 26);
+    BidLabelPainter.paint(
+      canvas,
+      bidAction: bidAction,
+      offset: labelOffset,
+      showCrown: true,
+      isBidder: isBidder,
+      crownOffset: crown,
     );
-
-    // Bid action (below name)
-    if (bidAction != null) {
-      final isPass = bidAction == 'pass';
-      final label = isPass ? 'PASS' : 'BID $bidAction';
-      final color = isPass ? DiwaniyaColors.passRed : DiwaniyaColors.goldAccent;
-      TextRenderer.drawCentered(canvas, label, color, Offset(cx, 26), 9);
-    } else if (isBidder) {
-      TextRenderer.drawCentered(canvas, '\u{1F451}', DiwaniyaColors.goldAccent, Offset(cx, 26), 10);
-    }
-
-    // Card fan (below text)
-    _renderFan(canvas, cx, 40.0);
   }
+
+  static const double _fanAngle = 0.40;
+  static const double _fanArcBow = 8.0;
 
   void _renderFan(Canvas canvas, double centerX, double fanY) {
-    final displayCount = cardCount.clamp(0, 8);
+    final displayCount = cardCount.clamp(0, _fanDisplayCount);
     if (displayCount == 0) return;
 
-    final totalFanWidth = _miniCardW + (_fanDisplayCount - 1) * _cardOverlap;
-    final fanStartX = centerX - totalFanWidth / 2;
-
-    for (int i = 0; i < displayCount && i < _fanDisplayCount; i++) {
-      final t = _fanDisplayCount == 1 ? 0.0 : (i / (_fanDisplayCount - 1)) - 0.5;
-      final angle = t * 0.40;
-      final dx = fanStartX + i * _cardOverlap;
-      final dy = fanY - (0.25 - t * t) * 8;
-
-      canvas.save();
-      canvas.translate(dx + _miniCardW / 2, dy + _miniCardH / 2);
-      canvas.rotate(angle);
-      canvas.translate(-_miniCardW / 2, -_miniCardH / 2);
-      canvas.scale(_scaleX, _scaleY);
-      CardPainter.paintBack(
-        canvas,
-        Rect.fromLTWH(0, 0, KoutTheme.cardWidth, KoutTheme.cardHeight),
-      );
-      canvas.restore();
-    }
+    canvas.save();
+    canvas.translate(centerX, fanY + _miniCardH / 2);
+    CardFanPainter.paint(
+      canvas,
+      cardCount: displayCount,
+      fanAngle: _fanAngle,
+      arcBow: _fanArcBow,
+      scaleX: _scaleX,
+      scaleY: _scaleY,
+      cardOverlap: _cardOverlap,
+      miniWidth: _miniCardW,
+      miniHeight: _miniCardH,
+      drawShadow: false,
+    );
+    canvas.restore();
   }
 }

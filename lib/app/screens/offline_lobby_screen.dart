@@ -87,7 +87,7 @@ class _OfflineLobbyScreenState extends State<OfflineLobbyScreen> {
                               // Geometric pattern overlay at 8% opacity
                               Positioned.fill(
                                 child: CustomPaint(
-                                  painter: _GeometricOverlayPainter(opacity: 0.08),
+                                  painter: GeometricPatterns.overlayPainter(opacity: 0.08),
                                 ),
                               ),
                               // Centre Arabic text
@@ -146,7 +146,7 @@ class _OfflineLobbyScreenState extends State<OfflineLobbyScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text('Bot Style: ',
-                    style: TextStyle(color: KoutTheme.textColor, fontSize: 14)),
+                    style: KoutTheme.bodyStyle),
                 const SizedBox(width: 8),
                 ...BotDifficulty.values.map((d) => Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -186,17 +186,10 @@ class _OfflineLobbyScreenState extends State<OfflineLobbyScreen> {
                     arguments: OfflineGameMode(seats: seats),
                   );
                 },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: KoutTheme.primary,
-                  foregroundColor: KoutTheme.accent,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(color: KoutTheme.accent, width: 1.5),
-                  ),
-                ),
+                style: KoutTheme.primaryButtonStyle,
                 child: Text(
                   'Start Game',
-                  style: TextStyle(
+                  style: KoutTheme.bodyStyle.copyWith(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: KoutTheme.accent,
@@ -267,24 +260,4 @@ class _OfflineLobbyScreenState extends State<OfflineLobbyScreen> {
         BotDifficulty.balanced => 'Balanced',
         BotDifficulty.aggressive => 'Bold',
       };
-}
-
-/// CustomPainter that draws the 8-point star tessellation at a given opacity.
-class _GeometricOverlayPainter extends CustomPainter {
-  const _GeometricOverlayPainter({required this.opacity});
-
-  final double opacity;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    GeometricPatterns.drawStarTessellation(
-      canvas,
-      Rect.fromLTWH(0, 0, size.width, size.height),
-      opacity: opacity,
-    );
-  }
-
-  @override
-  bool shouldRepaint(_GeometricOverlayPainter oldDelegate) =>
-      oldDelegate.opacity != opacity;
 }

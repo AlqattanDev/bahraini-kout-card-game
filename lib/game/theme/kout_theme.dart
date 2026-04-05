@@ -1,5 +1,7 @@
 import 'dart:ui';
-import 'package:flutter/material.dart' show TextStyle, FontWeight;
+import 'package:flutter/material.dart' show TextStyle, FontWeight, ButtonStyle, ElevatedButton, EdgeInsets, RoundedRectangleBorder, BorderRadius, BorderSide;
+import '../../shared/models/card.dart';
+import '../../shared/models/game_state.dart';
 import 'diwaniya_colors.dart';
 
 class KoutTheme {
@@ -11,8 +13,17 @@ class KoutTheme {
   static const Color cardBack = Color(0xFF425944);
   static const Color cardFace = Color(0xFFFFFFFF);
   static const Color cardBorder = Color(0xFF2A2A2A);
+  static const Color cardWhite = Color(0xFFFFFFFF);
   static const Color teamAColor = Color(0xFF4A90D9);
   static const Color teamBColor = Color(0xFFD94A4A);
+
+  /// Suit color for card faces and similar on-light-background contexts.
+  static Color suitCardColor(Suit suit) =>
+      suit.isRed ? const Color(0xFFCC0000) : const Color(0xFF111111);
+
+  /// Team color lookup.
+  static Color teamColor(Team team) =>
+      team == Team.a ? teamAColor : teamBColor;
   static const double cardWidth = 70;
   static const double cardHeight = 100;
   static const double cardBorderRadius = 6;
@@ -44,18 +55,25 @@ class KoutTheme {
   static const Color progressBarBg = Color(0x33F5ECD7);
 
   // ---------------------------------------------------------------------------
+  // Typography — font families
+  // ---------------------------------------------------------------------------
+
+  static const String monoFontFamily = 'IBMPlexMono';
+  static const String arabicFontFamily = 'NotoKufiArabic';
+
+  // ---------------------------------------------------------------------------
   // Typography — Latin
   // ---------------------------------------------------------------------------
 
   static TextStyle get headingStyle => const TextStyle(
-        fontFamily: 'IBMPlexMono',
+        fontFamily: monoFontFamily,
         color: textColor,
         fontSize: 24,
         fontWeight: FontWeight.bold,
       );
 
   static TextStyle get bodyStyle => const TextStyle(
-        fontFamily: 'IBMPlexMono',
+        fontFamily: monoFontFamily,
         color: textColor,
         fontSize: 14,
       );
@@ -65,16 +83,47 @@ class KoutTheme {
   // ---------------------------------------------------------------------------
 
   static TextStyle get arabicHeadingStyle => const TextStyle(
-        fontFamily: 'NotoKufiArabic',
+        fontFamily: arabicFontFamily,
         color: textColor,
         fontSize: 22,
         fontWeight: FontWeight.bold,
       );
 
   static TextStyle get arabicBodyStyle => const TextStyle(
-        fontFamily: 'NotoKufiArabic',
+        fontFamily: arabicFontFamily,
         color: textColor,
         fontSize: 14,
+      );
+
+  // ---------------------------------------------------------------------------
+  // Shared button styles
+  // ---------------------------------------------------------------------------
+
+  /// Primary button: dark background, gold text/border, rounded.
+  static ButtonStyle get primaryButtonStyle => ElevatedButton.styleFrom(
+        backgroundColor: primary,
+        foregroundColor: accent,
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: const BorderSide(color: accent, width: 1.5),
+        ),
+        textStyle: bodyStyle.copyWith(
+          fontWeight: FontWeight.bold,
+          fontSize: 16,
+        ),
+      );
+
+  /// Secondary button: same shape, muted colors.
+  static ButtonStyle get secondaryButtonStyle => ElevatedButton.styleFrom(
+        backgroundColor: table,
+        foregroundColor: textColor,
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: const BorderSide(color: secondary, width: 1.5),
+        ),
+        textStyle: bodyStyle.copyWith(fontSize: 16),
       );
 
   // ---------------------------------------------------------------------------

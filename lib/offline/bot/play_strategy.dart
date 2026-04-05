@@ -1,4 +1,5 @@
 import 'package:koutbh/shared/models/card.dart';
+import 'package:koutbh/shared/logic/play_validator.dart';
 import 'package:koutbh/offline/player_controller.dart';
 import 'package:koutbh/offline/bot/game_context.dart';
 
@@ -40,28 +41,27 @@ class PlayStrategy {
     ));
   }
 
+  /// Returns legally playable cards, delegating to [PlayValidator] as the
+  /// single source of truth, then applying bot-specific filtering.
   static List<GameCard> _legalPlays(
       List<GameCard> hand, Suit? ledSuit, bool isLead,
       {Suit? trumpSuit, bool isKout = false, bool isFirstTrick = false}) {
+    final legal = PlayValidator.playableCards(
+      hand: hand,
+      ledSuit: ledSuit,
+      isLeadPlay: isLead,
+      trumpSuit: trumpSuit,
+      isKout: isKout,
+      isFirstTrick: isFirstTrick,
+    ).toList();
+
+    // Bot-specific: avoid leading with Joker (legal but triggers instant loss)
     if (isLead) {
-      // Kout rule: first trick lead must be trump if holding trump
-      if (isKout && isFirstTrick && trumpSuit != null) {
-        final trumpCards =
-            hand.where((c) => !c.isJoker && c.suit == trumpSuit).toList();
-        if (trumpCards.isNotEmpty) return trumpCards;
-      }
-      // Can't lead with joker
-      final nonJoker = hand.where((c) => !c.isJoker).toList();
-      return nonJoker.isEmpty ? hand.toList() : nonJoker;
+      final nonJoker = legal.where((c) => !c.isJoker).toList();
+      if (nonJoker.isNotEmpty) return nonJoker;
     }
 
-    if (ledSuit != null) {
-      final suitCards =
-          hand.where((c) => !c.isJoker && c.suit == ledSuit).toList();
-      if (suitCards.isNotEmpty) return suitCards;
-    }
-
-    return hand.toList();
+    return legal;
   }
 
   static GameCard _selectLead(List<GameCard> legalCards, Suit? trumpSuit,

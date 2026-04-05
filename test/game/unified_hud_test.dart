@@ -2,6 +2,38 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:koutbh/game/components/unified_hud.dart';
 import 'package:koutbh/shared/models/game_state.dart';
 import 'package:koutbh/shared/models/card.dart';
+import 'package:koutbh/shared/models/bid.dart';
+import 'package:koutbh/app/models/client_game_state.dart';
+
+ClientGameState _makeState({
+  GamePhase phase = GamePhase.playing,
+  int teamAScore = 0,
+  int teamBScore = 0,
+  BidAmount? bidAmount,
+  String? bidderUid,
+  Suit? trumpSuit,
+  Map<Team, int> tricks = const {Team.a: 0, Team.b: 0},
+  List<Team> trickWinners = const [],
+}) {
+  return ClientGameState(
+    playerUids: ['p0', 'p1', 'p2', 'p3'],
+    myUid: 'p0',
+    dealerUid: 'p0',
+    phase: phase,
+    myHand: const [],
+    currentPlayerUid: 'p0',
+    scores: {Team.a: teamAScore, Team.b: teamBScore},
+    tricks: tricks,
+    currentTrickPlays: const [],
+    passedPlayers: const [],
+    bidHistory: const [],
+    trickWinners: trickWinners,
+    cardCounts: const {0: 8, 1: 8, 2: 8, 3: 8},
+    currentBid: bidAmount,
+    bidderUid: bidderUid,
+    trumpSuit: trumpSuit,
+  );
+}
 
 void main() {
   group('UnifiedHudComponent', () {
@@ -27,20 +59,17 @@ void main() {
 
     test('updateState sets score and round from state', () {
       final hud = UnifiedHudComponent(screenWidth: 800);
-      hud.updateState(
+      hud.updateState(_makeState(
         phase: GamePhase.playing,
         teamAScore: 10,
         teamBScore: 0,
-        roundNumber: 3,
-        bidValue: 6,
-        bidderTeam: Team.a,
+        bidAmount: BidAmount.six,
+        bidderUid: 'p0',
         trumpSuit: Suit.hearts,
-        bidderTricks: 2,
-        opponentTricks: 1,
-        opponentTarget: 3,
-      );
+        tricks: {Team.a: 2, Team.b: 1},
+      ));
       expect(hud.score, 10);
-      expect(hud.roundNumber, 3);
+      expect(hud.roundNumber, 1);
       expect(hud.bidValue, 6);
       expect(hud.trumpSuit, Suit.hearts);
     });

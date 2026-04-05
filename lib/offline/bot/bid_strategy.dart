@@ -71,9 +71,8 @@ class BidStrategy {
       final naturalBid = maxBid ?? BidAmount.bab;
       if (currentHighBid == null) return BidAction(naturalBid);
       // Find smallest bid above current
-      for (final bid in BidAmount.values) {
-        if (bid.value > currentHighBid.value) return BidAction(bid);
-      }
+      final nextBid = BidAmount.nextAbove(currentHighBid);
+      if (nextBid != null) return BidAction(nextBid);
       return BidAction(BidAmount.bab);
     }
 
@@ -109,10 +108,9 @@ class BidStrategy {
 
     // Can we outbid?
     if (maxBid.value > currentHighBid.value) {
-      for (final bid in BidAmount.values) {
-        if (bid.value > currentHighBid.value && bid.value <= maxBid.value) {
-          return BidAction(bid);
-        }
+      final nextBid = BidAmount.nextAbove(currentHighBid);
+      if (nextBid != null && nextBid.value <= maxBid.value) {
+        return BidAction(nextBid);
       }
     }
 

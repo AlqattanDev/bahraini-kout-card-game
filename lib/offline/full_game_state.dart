@@ -3,6 +3,18 @@ import 'package:koutbh/shared/models/bid.dart';
 import 'package:koutbh/shared/models/game_state.dart';
 import 'package:koutbh/app/models/seat_config.dart';
 
+/// Offline game state holder for [LocalGameController].
+///
+/// MUTABILITY CONTRACT:
+/// This class intentionally uses mutable fields (not const, not immutable types)
+/// for offline engine performance. The [LocalGameController] modifies state in-place
+/// during game loops to avoid allocation overhead.
+///
+/// Safety guarantee: [LocalGameController._toClientState()] creates defensive copies
+/// (using spread operators and List.unmodifiable) before emitting to UI. Consumers
+/// of [ClientGameState] receive immutable snapshots and are safe from mutations.
+///
+/// Never expose [FullGameState] directly; always convert via [LocalGameController._toClientState()].
 class FullGameState {
   GamePhase phase;
   List<SeatConfig> players;

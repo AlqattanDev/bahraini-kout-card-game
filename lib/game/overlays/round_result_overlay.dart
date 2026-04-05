@@ -63,11 +63,7 @@ class _RoundResultOverlayState extends State<RoundResultOverlay>
     final myTricks = state.tricks[myTeam] ?? 0;
     final opponentTricks = state.tricks[opponentTeam] ?? 0;
 
-    // Determine if the bidding team is my team
-    final bidderSeat = state.bidderUid != null
-        ? state.playerUids.indexOf(state.bidderUid!)
-        : -1;
-    final bidderTeam = bidderSeat >= 0 ? teamForSeat(bidderSeat) : null;
+    final bidderTeam = state.bidderTeam;
     final isMyTeamBidder = bidderTeam == myTeam;
 
     // Evaluate result: bidder needs to win at least their bid in tricks
@@ -87,23 +83,15 @@ class _RoundResultOverlayState extends State<RoundResultOverlay>
     final bidStatusText = bidderWon ? 'Made' : 'Missed';
     final bidderLabel = isMyTeamBidder ? 'Your Team' : 'Opponent';
 
-    // Tug-of-war: compute previous and current single score
-    final prevScoreA = widget.previousScoreA;
-    final prevScoreB = widget.previousScoreB;
-    final prevTug = prevScoreA > 0 ? prevScoreA : prevScoreB;
-
-    final curScoreA = state.scores[Team.a] ?? 0;
-    final curScoreB = state.scores[Team.b] ?? 0;
-    final curTug = curScoreA > 0 ? curScoreA : curScoreB;
-    final Team? curLeader = curScoreA > 0
-        ? Team.a
-        : curScoreB > 0
-            ? Team.b
-            : null;
+    final prevTug = widget.previousScoreA > 0
+        ? widget.previousScoreA
+        : widget.previousScoreB;
+    final curTug = state.tugScore;
+    final curLeader = state.leadingTeam;
 
     return OverlayAnimationWrapper(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+        padding: OverlayStyles.panelPadding,
         constraints: const BoxConstraints(minWidth: 300, maxWidth: 340),
         decoration: OverlayStyles.panelDecoration(),
         child: Column(
@@ -119,7 +107,7 @@ class _RoundResultOverlayState extends State<RoundResultOverlay>
                 letterSpacing: 1.5,
               ),
             ),
-            const SizedBox(height: 20),
+            OverlayStyles.sectionGap,
 
             // 2. Trick breakdown box
             Container(

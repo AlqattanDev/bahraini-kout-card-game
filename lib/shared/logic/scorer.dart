@@ -27,9 +27,9 @@ class Scorer {
 
   static RoundResult calculatePoisonJokerResult({
     required Team biddingTeam,
-    required Team poisonTeam,
+    required Team jokerHolderTeam,
   }) {
-    return RoundResult(winningTeam: poisonTeam.opponent, pointsAwarded: 10);
+    return RoundResult(winningTeam: jokerHolderTeam.opponent, pointsAwarded: 10);
   }
 
   /// Tug-of-war scoring: points first reduce the opponent's score,

@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'kout_theme.dart';
 
 /// Shared text rendering utility for all Flame canvas components.
 ///
@@ -20,7 +21,7 @@ class TextRenderer {
     double fontSize, {
     TextAlign align = TextAlign.center,
     double width = 80.0,
-    String fontFamily = 'IBMPlexMono',
+    String fontFamily = KoutTheme.monoFontFamily,
     FontWeight fontWeight = FontWeight.bold,
   }) {
     final builder = ParagraphBuilder(
@@ -53,9 +54,17 @@ class TextRenderer {
     Offset center,
     double fontSize, {
     double width = 80.0,
-    String fontFamily = 'IBMPlexMono',
+    String fontFamily = KoutTheme.monoFontFamily,
     FontWeight fontWeight = FontWeight.bold,
+    double scale = 1.0,
   }) {
+    if (scale != 1.0) {
+      canvas.save();
+      canvas.translate(center.dx, center.dy);
+      canvas.scale(scale);
+      canvas.translate(-center.dx, -center.dy);
+    }
+
     draw(
       canvas,
       text,
@@ -67,5 +76,9 @@ class TextRenderer {
       fontFamily: fontFamily,
       fontWeight: fontWeight,
     );
+
+    if (scale != 1.0) {
+      canvas.restore();
+    }
   }
 }
