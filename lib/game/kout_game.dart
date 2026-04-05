@@ -90,6 +90,8 @@ class KoutGame extends FlameGame {
       layout = LayoutManager(size, safeArea: _safeArea);
       _unifiedHud?.updateWidth(size.x);
       _perspectiveTable?.updateLayout(layout);
+      _hand?.layout = layout;
+      _trickArea?.layout = layout;
     }
   }
 
@@ -149,6 +151,8 @@ class KoutGame extends FlameGame {
     layout = LayoutManager(size, safeArea: _safeArea);
     _unifiedHud?.updateWidth(size.x);
     _perspectiveTable?.updateLayout(layout);
+    _hand?.layout = layout;
+    _trickArea?.layout = layout;
     // Sync landscape flag with new layout (handles macOS window resize)
     if (currentState != null) _updateLandscapeVisibility();
   }

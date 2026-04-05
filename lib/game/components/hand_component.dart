@@ -9,7 +9,7 @@ import 'card_component.dart';
 /// Uses [LayoutManager.handCardPositions] to position cards in an arc.
 /// Playable cards are highlighted; non-playable cards are greyed out.
 class HandComponent extends Component {
-  final LayoutManager layout;
+  LayoutManager layout;
   final void Function(String cardCode) onCardTap;
 
   /// Scale factor applied to hand cards for readability.

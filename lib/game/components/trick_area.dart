@@ -12,7 +12,7 @@ import 'card_component.dart';
 /// Each card gets a base rotation per seat plus random jitter (±4.6°) for a
 /// natural "tossed on table" feel.
 class TrickAreaComponent extends Component {
-  final LayoutManager layout;
+  LayoutManager layout;
   final int mySeatIndex;
   final Random _random = Random();
 
@@ -103,7 +103,6 @@ class TrickAreaComponent extends Component {
   }
 
   void updateLayout(LayoutManager newLayout) {
-    // Re-position existing cards if layout changes (e.g. resize)
-    // Simple approach: trigger a full rebuild on next updateState call
+    layout = newLayout;
   }
 }
