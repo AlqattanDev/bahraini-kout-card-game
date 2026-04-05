@@ -77,12 +77,14 @@ class OverlayAnimationWrapperState extends State<OverlayAnimationWrapper>
       builder: (context, child) {
         return Container(
           color: Colors.black.withValues(alpha: _opacityAnimation.value * 0.4),
-          child: Center(
-            child: Transform.scale(
-              scale: _scaleAnimation.value,
-              child: Opacity(
-                opacity: _opacityAnimation.value,
-                child: child,
+          child: SafeArea(
+            child: Center(
+              child: Transform.scale(
+                scale: _scaleAnimation.value,
+                child: Opacity(
+                  opacity: _opacityAnimation.value,
+                  child: child,
+                ),
               ),
             ),
           ),
