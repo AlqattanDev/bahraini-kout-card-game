@@ -49,8 +49,11 @@ class GameCard {
     return Object.hash(suit, rank);
   }
 
-  /// The full 32-card koutbh deck as a set.
-  static Set<GameCard> fullDeck() {
+  // ⚡ Bolt: Cache full deck creation to prevent allocation of 32 cards
+  // every time it's called. CardTracker was calling this on every play.
+  static final Set<GameCard> _fullDeck = _buildFullDeck();
+
+  static Set<GameCard> _buildFullDeck() {
     final cards = <GameCard>{};
     const fullSuits = [Suit.spades, Suit.hearts, Suit.clubs];
     for (final suit in fullSuits) {
@@ -65,8 +68,13 @@ class GameCard {
       }
     }
     cards.add(GameCard.joker());
-    return cards;
+    // ⚡ Bolt: Return unmodifiable set to prevent accidental mutation of the cache
+    return Set.unmodifiable(cards);
   }
+
+  /// The full 32-card koutbh deck as a set.
+  // ⚡ Bolt: Return the cached deck
+  static Set<GameCard> fullDeck() => _fullDeck;
 
   @override
   String toString() => isJoker ? 'Joker' : '${rank!.name} of ${suit!.name}';
