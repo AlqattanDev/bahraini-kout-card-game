@@ -106,7 +106,9 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
   }
 
   void _shareCode() {
-    Clipboard.setData(ClipboardData(text: 'Join my Kout game! Code: $_roomCode'));
+    Clipboard.setData(
+      ClipboardData(text: 'Join my Kout game! Code: $_roomCode'),
+    );
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Share text copied to clipboard!'),
@@ -135,6 +137,7 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
         ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: KoutTheme.accent),
+          tooltip: 'Back',
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -143,20 +146,31 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             // Room code display — tap to copy
-            GestureDetector(
-              onTap: _copyCode,
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                decoration: BoxDecoration(
-                  color: KoutTheme.primary,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: KoutTheme.accent, width: 2),
-                ),
-                child: Text(
-                  _roomCode,
-                  style: KoutTheme.headingStyle
-                      .copyWith(fontSize: 36, letterSpacing: 8),
+            Tooltip(
+              message: 'Copy room code',
+              child: Semantics(
+                button: true,
+                label: 'Tap to copy room code',
+                child: GestureDetector(
+                  onTap: _copyCode,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 16,
+                    ),
+                    decoration: BoxDecoration(
+                      color: KoutTheme.primary,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: KoutTheme.accent, width: 2),
+                    ),
+                    child: Text(
+                      _roomCode,
+                      style: KoutTheme.headingStyle.copyWith(
+                        fontSize: 36,
+                        letterSpacing: 8,
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -176,10 +190,7 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
 
             // Action buttons
             if (_isHost) ...[
-              _buildActionButton(
-                label: 'Share Code',
-                onPressed: _shareCode,
-              ),
+              _buildActionButton(label: 'Share Code', onPressed: _shareCode),
               const SizedBox(height: 12),
               _buildActionButton(
                 label: _starting ? 'Starting...' : 'Start Game',
@@ -229,8 +240,7 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
         padding: const EdgeInsets.symmetric(vertical: 4),
         child: Container(
           width: 220,
-          padding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
             color: KoutTheme.primary,
             borderRadius: BorderRadius.circular(8),
@@ -253,10 +263,7 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
     }).toList();
   }
 
-  Widget _buildActionButton({
-    required String label,
-    VoidCallback? onPressed,
-  }) {
+  Widget _buildActionButton({required String label, VoidCallback? onPressed}) {
     return SizedBox(
       width: 220,
       child: ElevatedButton(
@@ -264,10 +271,8 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
         style: ElevatedButton.styleFrom(
           backgroundColor: KoutTheme.primary,
           foregroundColor: KoutTheme.accent,
-          disabledBackgroundColor:
-              KoutTheme.primary.withValues(alpha: 0.5),
-          disabledForegroundColor:
-              KoutTheme.accent.withValues(alpha: 0.3),
+          disabledBackgroundColor: KoutTheme.primary.withValues(alpha: 0.5),
+          disabledForegroundColor: KoutTheme.accent.withValues(alpha: 0.3),
           padding: const EdgeInsets.symmetric(vertical: 14),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
