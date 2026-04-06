@@ -135,6 +135,7 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
         ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: KoutTheme.accent),
+          tooltip: 'Back',
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -143,20 +144,27 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             // Room code display — tap to copy
-            GestureDetector(
-              onTap: _copyCode,
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                decoration: BoxDecoration(
-                  color: KoutTheme.primary,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: KoutTheme.accent, width: 2),
-                ),
-                child: Text(
-                  _roomCode,
-                  style: KoutTheme.headingStyle
-                      .copyWith(fontSize: 36, letterSpacing: 8),
+            Tooltip(
+              message: 'Copy room code',
+              child: Semantics(
+                button: true,
+                label: 'Copy room code',
+                child: GestureDetector(
+                  onTap: _copyCode,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24, vertical: 16),
+                    decoration: BoxDecoration(
+                      color: KoutTheme.primary,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: KoutTheme.accent, width: 2),
+                    ),
+                    child: Text(
+                      _roomCode,
+                      style: KoutTheme.headingStyle
+                          .copyWith(fontSize: 36, letterSpacing: 8),
+                    ),
+                  ),
                 ),
               ),
             ),
