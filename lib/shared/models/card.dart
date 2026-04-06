@@ -49,8 +49,7 @@ class GameCard {
     return Object.hash(suit, rank);
   }
 
-  /// The full 32-card koutbh deck as a set.
-  static Set<GameCard> fullDeck() {
+  static final Set<GameCard> _cachedFullDeck = Set.unmodifiable(() {
     final cards = <GameCard>{};
     const fullSuits = [Suit.spades, Suit.hearts, Suit.clubs];
     for (final suit in fullSuits) {
@@ -66,7 +65,10 @@ class GameCard {
     }
     cards.add(GameCard.joker());
     return cards;
-  }
+  }());
+
+  /// The full 32-card koutbh deck as an unmodifiable set.
+  static Set<GameCard> fullDeck() => _cachedFullDeck;
 
   @override
   String toString() => isJoker ? 'Joker' : '${rank!.name} of ${suit!.name}';
