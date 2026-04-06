@@ -239,7 +239,9 @@ void main() {
       final firstBids = actionFirst is BidAction;
       final lastBids = actionLast is BidAction;
       // If last passes, first must also pass
-      if (!lastBids) expect(firstBids, isFalse);
+      if (!lastBids) {
+        expect(firstBids, isFalse);
+      }
     });
   });
 

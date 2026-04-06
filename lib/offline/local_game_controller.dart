@@ -15,7 +15,6 @@ import 'package:koutbh/shared/logic/scorer.dart';
 import 'package:koutbh/shared/constants/timing.dart';
 import 'package:koutbh/offline/full_game_state.dart';
 import 'package:koutbh/offline/player_controller.dart';
-import 'package:koutbh/offline/human_player_controller.dart';
 import 'package:koutbh/offline/bot/card_tracker.dart';
 
 class LocalGameController {
@@ -124,7 +123,7 @@ class LocalGameController {
 
   /// Context-aware bot delay for bidding / trump selection phases.
   Future<void> _botBidDelay(int seat, {bool isPassing = false, bool isForced = false, BidAmount? amount}) async {
-    if (controllers[seat] is! HumanPlayerController && enableDelays) {
+    if (enableDelays) {
       await Future.delayed(GameTiming.botThinkingDelay(
         legalMoves: 1,
         trickNumber: 0,
@@ -138,7 +137,7 @@ class LocalGameController {
 
   /// Context-aware bot delay for card play phase.
   Future<void> _botPlayDelay(int seat, {required int legalMoves}) async {
-    if (controllers[seat] is! HumanPlayerController && enableDelays) {
+    if (enableDelays) {
       await Future.delayed(GameTiming.botThinkingDelay(
         legalMoves: legalMoves,
         trickNumber: _state.trickNumber,
@@ -177,42 +176,45 @@ class LocalGameController {
           .decideAction(clientState, context);
       if (_disposed) return false;
 
-      if (action is BidAction) {
-        final result = BidValidator.validateBid(
-          bidAmount: action.amount,
-          currentHighest: _state.bid,
-          passedPlayers: _state.passedPlayers,
-          playerIndex: _state.currentSeat,
-        );
-        if (result.isValid) {
-          _state.bid = action.amount;
-          _state.bidderSeat = _state.currentSeat;
-          _bidWasForced = isForced; // Track forced bid for play phase
-          _state.bidHistory = [
-            ..._state.bidHistory,
-            (seat: _state.currentSeat, action: '${action.amount.value}'),
-          ];
-          _emitState();
+      switch (action) {
+        case BidAction():
+          final result = BidValidator.validateBid(
+            bidAmount: action.amount,
+            currentHighest: _state.bid,
+            passedPlayers: _state.passedPlayers,
+            playerIndex: _state.currentSeat,
+          );
+          if (result.isValid) {
+            _state.bid = action.amount;
+            _state.bidderSeat = _state.currentSeat;
+            _bidWasForced = isForced; // Track forced bid for play phase
+            _state.bidHistory = [
+              ..._state.bidHistory,
+              (seat: _state.currentSeat, action: '${action.amount.value}'),
+            ];
+            _emitState();
 
-          // Kout ends bidding immediately
-          if (action.amount == BidAmount.kout) {
-            return true;
+            // Kout ends bidding immediately
+            if (action.amount == BidAmount.kout) {
+              return true;
+            }
           }
-        }
-      } else if (action is PassAction) {
-        final result = BidValidator.validatePass(
-          passedPlayers: _state.passedPlayers,
-          playerIndex: _state.currentSeat,
-          currentHighest: _state.bid,
-        );
-        if (result.isValid) {
-          _state.passedPlayers = [..._state.passedPlayers, _state.currentSeat];
-          _state.bidHistory = [
-            ..._state.bidHistory,
-            (seat: _state.currentSeat, action: 'pass'),
-          ];
-          _emitState();
-        }
+        case PassAction():
+          final result = BidValidator.validatePass(
+            passedPlayers: _state.passedPlayers,
+            playerIndex: _state.currentSeat,
+            currentHighest: _state.bid,
+          );
+          if (result.isValid) {
+            _state.passedPlayers = [..._state.passedPlayers, _state.currentSeat];
+            _state.bidHistory = [
+              ..._state.bidHistory,
+              (seat: _state.currentSeat, action: 'pass'),
+            ];
+            _emitState();
+          }
+        default:
+          break; // Ignore invalid actions in bidding phase
       }
 
       // Check if bidding complete (3 passed, 1 bidder with a bid)
@@ -373,26 +375,29 @@ class LocalGameController {
           .decideAction(clientState, context, tracker: tracker);
       if (_disposed) return _PlayResult.ok;
 
-      if (action is! PlayCardAction) continue;
+      switch (action) {
+        case PlayCardAction():
+          final validation = PlayValidator.validatePlay(
+            card: action.card,
+            hand: hand,
+            ledSuit: ledSuit,
+            isLeadPlay: isLead,
+            trumpSuit: _state.trumpSuit,
+            isKout: _state.bid?.isKout ?? false,
+            isFirstTrick: _state.trickNumber == 1,
+          );
+          if (!validation.isValid) continue;
 
-      final validation = PlayValidator.validatePlay(
-        card: action.card,
-        hand: hand,
-        ledSuit: ledSuit,
-        isLeadPlay: isLead,
-        trumpSuit: _state.trumpSuit,
-        isKout: _state.bid?.isKout ?? false,
-        isFirstTrick: _state.trickNumber == 1,
-      );
-      if (!validation.isValid) continue;
-
-      // Valid play — commit it
-      _state.hands[seat]!.remove(action.card);
-      _state.currentTrickPlays = [
-        ..._state.currentTrickPlays,
-        (seat: seat, card: action.card),
-      ];
-      trickPlays.add(TrickPlay(playerIndex: seat, card: action.card));
+          // Valid play — commit it
+          _state.hands[seat]!.remove(action.card);
+          _state.currentTrickPlays = [
+            ..._state.currentTrickPlays,
+            (seat: seat, card: action.card),
+          ];
+          trickPlays.add(TrickPlay(playerIndex: seat, card: action.card));
+        default:
+          continue;
+      }
 
       // Track play and infer voids
       tracker.recordPlay(seat, action.card);

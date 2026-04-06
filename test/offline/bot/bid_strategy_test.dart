@@ -52,10 +52,13 @@ void main() {
 
       // If current high bid is 7, bot should only bid if it can bid 8
       final action = BidStrategy.decideBid(hand, BidAmount.seven);
-      if (action is BidAction) {
-        expect(action.amount.value, greaterThan(BidAmount.seven.value));
-      } else {
-        expect(action, isA<PassAction>());
+      switch (action) {
+        case BidAction():
+          expect(action.amount.value, greaterThan(BidAmount.seven.value));
+        case PassAction():
+          expect(action, isA<PassAction>());
+        default:
+          fail('Unexpected action type');
       }
     });
 

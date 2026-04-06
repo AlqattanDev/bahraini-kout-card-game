@@ -291,13 +291,8 @@ class _TrickWinFlashComponent extends Component {
 
   @override
   void render(Canvas canvas) {
-    final parent = this.parent;
-    final Offset center;
-    if (parent is PlayerSeatComponent) {
-      center = Offset(parent.size.x / 2, parent.size.y / 2 - 10);
-    } else {
-      center = Offset.zero;
-    }
+    final parentSeat = parent as PlayerSeatComponent;
+    final Offset center = Offset(parentSeat.size.x / 2, parentSeat.size.y / 2 - 10);
 
     final alpha = (_life / 0.4).clamp(0.0, 1.0) * 0.7;
     canvas.drawCircle(
