@@ -15,7 +15,7 @@ export function decidePlay(ctx: BotContext, tracker: CardTracker): string {
 }
 
 function getLegalPlays(
-  hand: string[], trick: TrickPlay[], trumpSuit: SuitName | undefined, isLead: boolean,
+  hand: string[], trick: TrickPlay[], _trumpSuit: SuitName | undefined, isLead: boolean,
 ): string[] {
   if (isLead) {
     const nonJoker = hand.filter(c => c !== 'JO');
@@ -85,7 +85,7 @@ function selectLead(legal: string[], ctx: BotContext, tracker: CardTracker): str
   return leadFromLongestSuit(legal, trumpSuit);
 }
 
-function selectFollow(legal: string[], ctx: BotContext, tracker: CardTracker): string {
+function selectFollow(legal: string[], ctx: BotContext, _tracker: CardTracker): string {
   const { trumpSuit, currentTrick, hand, partnerSeat, players } = ctx;
   if (currentTrick.length === 0) return legal[0];
 

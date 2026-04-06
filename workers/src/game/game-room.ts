@@ -554,7 +554,7 @@ export class GameRoom extends DurableObject<Env> {
       return leadCard.isJoker ? null : leadCard.suit;
     })();
 
-    const validation = validatePlay(card, hand, ledSuit, isLeadPlay, game.trumpSuit, game.currentBid === 8, (game.trickWinners ?? []).length === 0);
+    const validation = validatePlay(card, hand, ledSuit, isLeadPlay, game.trumpSuit, game.bid?.amount === 8, (game.trickWinners ?? []).length === 0);
     if (!validation.valid) throw new Error(validation.error!);
 
     const newHand = hand.filter((c) => c !== card);
