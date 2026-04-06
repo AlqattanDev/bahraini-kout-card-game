@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../app/models/client_game_state.dart';
+import '../../shared/constants.dart';
 import '../../shared/models/game_state.dart';
 import '../../game/theme/kout_theme.dart';
 import 'overlay_animation_wrapper.dart';
@@ -245,9 +246,8 @@ class _RoundResultOverlayState extends State<RoundResultOverlay>
     required double t,
     required Color color,
   }) {
-    const maxScore = 31;
-    final fromRatio = (fromScore / maxScore).clamp(0.0, 1.0);
-    final toRatio = (toScore / maxScore).clamp(0.0, 1.0);
+    final fromRatio = (fromScore / targetScore).clamp(0.0, 1.0);
+    final toRatio = (toScore / targetScore).clamp(0.0, 1.0);
     final currentRatio = fromRatio + (toRatio - fromRatio) * t;
     final displayScore = (fromScore + (toScore - fromScore) * t).round();
 
@@ -266,7 +266,7 @@ class _RoundResultOverlayState extends State<RoundResultOverlay>
               ),
             ),
             Text(
-              '$displayScore / $maxScore',
+              '$displayScore / $targetScore',
               style: const TextStyle(
                 color: KoutTheme.textColor,
                 fontSize: 11,

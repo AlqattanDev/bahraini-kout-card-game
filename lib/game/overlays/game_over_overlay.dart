@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../app/models/client_game_state.dart';
+import '../../shared/constants.dart';
 import '../../shared/models/game_state.dart';
 import '../../game/theme/kout_theme.dart';
 import 'overlay_animation_wrapper.dart';
@@ -44,7 +45,7 @@ class _GameOverOverlayState extends State<GameOverOverlay>
 
     final myTeam = widget.state.myTeam;
     final myScore = widget.state.scores[myTeam] ?? 0;
-    _myTeamWon = myScore >= 31;
+    _myTeamWon = myScore >= targetScore;
 
     if (_myTeamWon) {
       _glowController = AnimationController(

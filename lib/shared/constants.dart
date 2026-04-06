@@ -1,5 +1,25 @@
 import 'package:koutbh/shared/models/enums.dart';
 
+// ---------------------------------------------------------------------------
+// Game rules — single source of truth for domain constants
+// ---------------------------------------------------------------------------
+
+/// Score a team must reach to win the game.
+const int targetScore = 31;
+
+/// Total tricks played per round (32 cards / 4 players).
+const int tricksPerRound = 8;
+
+/// Number of players in a standard game.
+const int playerCount = 4;
+
+/// Penalty points awarded when Poison Joker rule triggers.
+const int poisonJokerPenalty = 10;
+
+// ---------------------------------------------------------------------------
+// Card encoding maps
+// ---------------------------------------------------------------------------
+
 const Map<Suit, String> suitInitial = {
   Suit.spades: 'S',
   Suit.hearts: 'H',

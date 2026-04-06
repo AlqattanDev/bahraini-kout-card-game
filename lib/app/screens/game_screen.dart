@@ -3,7 +3,6 @@ import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import '../models/game_mode.dart';
 import '../services/game_service.dart';
-import '../services/presence_service.dart';
 import '../../game/kout_game.dart';
 import '../../game/overlays/bid_overlay.dart';
 import '../../game/overlays/trump_selector.dart';
@@ -27,7 +26,6 @@ class GameScreen extends StatefulWidget {
 
 class _GameScreenState extends State<GameScreen> {
   GameService? _gameService;
-  PresenceService? _presenceService;
   LocalGameController? _localController;
   KoutGame? _koutGame;
   GameMode? _gameMode;
@@ -60,7 +58,6 @@ class _GameScreenState extends State<GameScreen> {
       case OnlineGameMode(:final gameId, :final myUid, :final token):
       case RoomGameMode(:final gameId, :final myUid, :final token):
         _gameService = GameService(gameId: gameId, myUid: myUid, token: token);
-        _presenceService = PresenceService();
 
         _koutGame = KoutGame(
           stateStream: _gameService!.stateStream,
@@ -69,7 +66,6 @@ class _GameScreenState extends State<GameScreen> {
         );
 
         _gameService!.startListening();
-        _presenceService!.start();
 
         _errorSub = _gameService!.errorStream.listen((error) {
           if (mounted) {
@@ -111,7 +107,6 @@ class _GameScreenState extends State<GameScreen> {
   @override
   void dispose() {
     _errorSub?.cancel();
-    _presenceService?.dispose();
     _gameService?.dispose();
     _localController?.dispose();
     super.dispose();

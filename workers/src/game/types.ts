@@ -58,7 +58,11 @@ export const RANK_VALUES: Record<RankName, number> = {
   ace: 14, king: 13, queen: 12, jack: 11, ten: 10, nine: 9, eight: 8, seven: 7,
 };
 
-export const BID_SUCCESS_POINTS: Record<number, number> = { 5: 5, 6: 6, 7: 7, 8: 31 };
-export const BID_FAILURE_POINTS: Record<number, number> = { 5: 10, 6: 12, 7: 14, 8: 16 };
+// Game rules — single source of truth
 export const TARGET_SCORE = 31;
+export const TRICKS_PER_ROUND = 8;
+export const PLAYER_COUNT = 4;
 export const POISON_JOKER_PENALTY = 10;
+
+export const BID_SUCCESS_POINTS: Record<number, number> = { 5: 5, 6: 6, 7: 7, 8: TARGET_SCORE };
+export const BID_FAILURE_POINTS: Record<number, number> = { 5: 10, 6: 12, 7: 14, 8: 16 };

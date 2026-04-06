@@ -1,4 +1,4 @@
-import { TeamName, BID_SUCCESS_POINTS, BID_FAILURE_POINTS, TARGET_SCORE, POISON_JOKER_PENALTY } from './types';
+import { TeamName, BID_SUCCESS_POINTS, BID_FAILURE_POINTS, TARGET_SCORE, POISON_JOKER_PENALTY, TRICKS_PER_ROUND } from './types';
 
 export interface RoundResult {
   winningTeam: TeamName;
@@ -68,5 +68,5 @@ export function isRoundDecided(
   const bidderTricks = tricksWon[biddingTeam] ?? 0;
   const opponent: TeamName = biddingTeam === 'teamA' ? 'teamB' : 'teamA';
   const opponentTricks = tricksWon[opponent] ?? 0;
-  return bidderTricks >= bid || opponentTricks > 8 - bid;
+  return bidderTricks >= bid || opponentTricks > TRICKS_PER_ROUND - bid;
 }

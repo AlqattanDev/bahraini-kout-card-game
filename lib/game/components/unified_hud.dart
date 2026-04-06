@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flame/components.dart';
 import '../../app/models/client_game_state.dart';
+import '../../shared/constants.dart';
 import '../../shared/models/game_state.dart';
 import '../../shared/models/card.dart';
 import '../theme/diwaniya_colors.dart';
@@ -57,7 +58,7 @@ class UnifiedHudComponent extends PositionComponent {
     _phase = state.phase;
     final teamAScore = state.scores[Team.a] ?? 0;
     final teamBScore = state.scores[Team.b] ?? 0;
-    roundNumber = (state.trickWinners.length ~/ 8) + 1;
+    roundNumber = (state.trickWinners.length ~/ tricksPerRound) + 1;
 
     final bt = state.bidderTeam;
     bidderTeam = bt;
@@ -67,7 +68,7 @@ class UnifiedHudComponent extends PositionComponent {
       bidValue = state.currentBid!.value;
       bidderTricks = state.tricks[bt] ?? 0;
       opponentTricks = state.tricks[bt.opponent] ?? 0;
-      opponentTarget = 9 - bidValue!;
+      opponentTarget = (tricksPerRound + 1) - bidValue!;
     } else {
       bidValue = null;
       bidderTricks = 0;
@@ -162,7 +163,7 @@ class UnifiedHudComponent extends PositionComponent {
         align: TextAlign.left, width: 50);
     TextRenderer.draw(
         canvas,
-        '/ 31',
+        '/ $targetScore',
         DiwaniyaColors.cream.withValues(alpha: 0.4),
         Offset(_padding + 48, y + 8),
         11,

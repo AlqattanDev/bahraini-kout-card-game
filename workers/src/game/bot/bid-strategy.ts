@@ -1,6 +1,7 @@
 import { evaluateHand } from './hand-evaluator';
 import type { BotContext } from './types';
 import type { TeamName } from '../types';
+import { TARGET_SCORE } from '../types';
 
 export function decideBid(ctx: BotContext): { action: 'bid'; amount: number } | { action: 'pass' } {
   const strength = evaluateHand(ctx.hand);
@@ -9,8 +10,8 @@ export function decideBid(ctx: BotContext): { action: 'bid'; amount: number } | 
   const oppScore = ctx.scores[ctx.myTeam === 'teamA' ? 'teamB' : 'teamA'];
   let thresholdAdjust = 0;
 
-  if (myScore + 5 - oppScore >= 31) thresholdAdjust += 1.0;
-  else if (myScore + 5 >= 31) thresholdAdjust += 0.8;
+  if (myScore + 5 - oppScore >= TARGET_SCORE) thresholdAdjust += 1.0;
+  else if (myScore + 5 >= TARGET_SCORE) thresholdAdjust += 0.8;
   else if (oppScore >= 25 && myScore <= 5) thresholdAdjust += 1.0;
   else if (myScore >= 26) thresholdAdjust += 0.5;
   else if (oppScore >= 26) thresholdAdjust += 0.5;

@@ -1,3 +1,4 @@
+import '../constants.dart';
 import '../models/bid.dart';
 import '../models/game_state.dart';
 
@@ -29,7 +30,7 @@ class Scorer {
     required Team biddingTeam,
     required Team jokerHolderTeam,
   }) {
-    return RoundResult(winningTeam: jokerHolderTeam.opponent, pointsAwarded: 10);
+    return RoundResult(winningTeam: jokerHolderTeam.opponent, pointsAwarded: poisonJokerPenalty);
   }
 
   /// Tug-of-war scoring: points first reduce the opponent's score,
@@ -49,14 +50,14 @@ class Scorer {
     }
   }
 
-  /// Kout instant win: sets the winning team to 31 regardless of current score.
+  /// Kout instant win: sets the winning team to [targetScore] regardless of current score.
   static Map<Team, int> applyKout({required Team winningTeam}) {
-    return {winningTeam: 31, winningTeam.opponent: 0};
+    return {winningTeam: targetScore, winningTeam.opponent: 0};
   }
 
   static Team? checkGameOver(Map<Team, int> scores) {
     for (final team in Team.values) {
-      if ((scores[team] ?? 0) >= 31) return team;
+      if ((scores[team] ?? 0) >= targetScore) return team;
     }
     return null;
   }
@@ -70,6 +71,6 @@ class Scorer {
   }) {
     final bidderTricks = tricksWon[biddingTeam] ?? 0;
     final opponentTricks = tricksWon[biddingTeam.opponent] ?? 0;
-    return bidderTricks >= bidValue || opponentTricks > 8 - bidValue;
+    return bidderTricks >= bidValue || opponentTricks > tricksPerRound - bidValue;
   }
 }

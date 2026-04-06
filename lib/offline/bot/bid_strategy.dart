@@ -1,3 +1,4 @@
+import 'package:koutbh/shared/constants.dart';
 import 'package:koutbh/shared/models/card.dart';
 import 'package:koutbh/shared/models/bid.dart';
 import 'package:koutbh/shared/models/game_state.dart';
@@ -23,10 +24,10 @@ class BidStrategy {
     if (scores != null && myTeam != null) {
       final my = scores[myTeam] ?? 0;
       final opp = scores[myTeam.opponent] ?? 0;
-      if (my + 5 - opp >= 31) {
+      if (my + 5 - opp >= targetScore) {
         thresholdAdjust += 1.0; // any bid wins the game
-      } else if (my + 5 >= 31) {
-        thresholdAdjust += 0.8; // Bab alone reaches 31
+      } else if (my + 5 >= targetScore) {
+        thresholdAdjust += 0.8; // Bab alone reaches target
       } else if (opp >= 25 && my <= 5) {
         thresholdAdjust += 1.0; // desperate — must bid to survive
       } else if (my >= 26) {
