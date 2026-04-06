@@ -28,25 +28,25 @@ class OpponentHandFan extends PositionComponent {
   // Layout constants
   // ---------------------------------------------------------------------------
 
-  /// Miniature card dimensions (60% of full card size).
-  static const double _miniWidth = KoutTheme.cardWidth * 0.60; // ~42
-  static const double _miniHeight = KoutTheme.cardHeight * 0.60; // ~60
+  /// Miniature card dimensions (50% of full card size — readable but secondary).
+  static const double _miniWidth = KoutTheme.cardWidth * 0.50; // ~35
+  static const double _miniHeight = KoutTheme.cardHeight * 0.50; // ~50
 
   /// Horizontal overlap between adjacent cards in the fan.
-  static const double _fanOverlap = 14.0;
+  static const double _fanOverlap = 10.0;
 
-  /// Total angular spread of the fan (radians).
-  static const double _maxFanAngle = 0.55;
+  /// Total angular spread of the fan (radians) — tighter for compact look.
+  static const double _maxFanAngle = 0.40;
 
-  /// Vertical arc bow amount — higher = more curved fan.
-  static const double _arcBow = 16.0;
+  /// Vertical arc bow amount — subtle curve, not dramatic.
+  static const double _arcBow = 10.0;
 
   /// Scale factors to transform full-size card rect → mini card.
   static const double _scaleX = _miniWidth / KoutTheme.cardWidth;
   static const double _scaleY = _miniHeight / KoutTheme.cardHeight;
 
   /// Bounding box padding to accommodate rotated cards + arc.
-  static const double _boundsPadding = 20.0;
+  static const double _boundsPadding = 16.0;
 
   OpponentHandFan({
     required this.cardCount,

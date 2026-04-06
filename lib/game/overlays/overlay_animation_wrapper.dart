@@ -82,11 +82,14 @@ class OverlayAnimationWrapperState extends State<OverlayAnimationWrapper>
           color: Colors.black.withValues(alpha: _opacityAnimation.value * 0.4),
           child: SafeArea(
             child: Center(
-              child: Transform.scale(
-                scale: _scaleAnimation.value * landscapeScale,
-                child: Opacity(
-                  opacity: _opacityAnimation.value,
-                  child: child,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Transform.scale(
+                  scale: _scaleAnimation.value * landscapeScale,
+                  child: Opacity(
+                    opacity: _opacityAnimation.value,
+                    child: child,
+                  ),
                 ),
               ),
             ),

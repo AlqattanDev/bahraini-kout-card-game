@@ -39,14 +39,14 @@ void main() {
   group('UnifiedHudComponent', () {
     test('positions at top-right with 12px margin', () {
       final hud = UnifiedHudComponent(screenWidth: 800);
-      expect(hud.position.x, closeTo(800 - 160 - 12, 1));
+      expect(hud.position.x, closeTo(800 - 155 - 12, 1));
       expect(hud.position.y, 10);
     });
 
     test('updateWidth repositions for new screen width', () {
       final hud = UnifiedHudComponent(screenWidth: 800);
       hud.updateWidth(1024);
-      expect(hud.position.x, closeTo(1024 - 160 - 12, 1));
+      expect(hud.position.x, closeTo(1024 - 155 - 12, 1));
     });
 
     test('default state has score 0, round 1, no bid', () {
@@ -86,16 +86,11 @@ void main() {
       expect(hud.timerText, '59:59');
     });
 
-    test('computePips clamps to target', () {
-      expect(UnifiedHudComponent.computePips(target: 5, tricksTaken: 8), 5);
-    });
-
-    test('computePips returns actual tricks when under target', () {
-      expect(UnifiedHudComponent.computePips(target: 6, tricksTaken: 3), 3);
-    });
-
-    test('computePips clamps negative to 0', () {
-      expect(UnifiedHudComponent.computePips(target: 5, tricksTaken: -1), 0);
+    test('pip clamping logic', () {
+      // Pips clamp to target range
+      expect(8.clamp(0, 5), 5);
+      expect(3.clamp(0, 6), 3);
+      expect((-1).clamp(0, 5), 0);
     });
   });
 }

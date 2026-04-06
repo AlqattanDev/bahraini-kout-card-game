@@ -11,7 +11,7 @@ class TextureGenerator {
       ..shader = Gradient.radial(
         bounds.center,
         bounds.longestSide * 0.6,
-        [const Color(0xFF3A4F4D), const Color(0xFF2F403E), const Color(0xFF1F2D2B)],
+        [DiwaniyaColors.darkWood, const Color(0xFF2E1A0E), const Color(0xFF1A0F08)],
         [0.0, 0.5, 1.0],
       );
   }

@@ -7,14 +7,13 @@ import '../theme/diwaniya_colors.dart';
 import '../theme/kout_theme.dart';
 import '../theme/text_renderer.dart';
 
-/// Unified top-right HUD panel combining score, round, bid/trump, trick pips, and game timer.
+/// Compact HUD: score+round, bid+trump, trick pips (both teams on one line), timer.
 class UnifiedHudComponent extends PositionComponent {
-  static const double _hudWidth = 160.0;
-  static const double _pipRadius = 4.5;
-  static const double _pipSpacing = 13.0;
-  static const double _dividerHeight = 1.0;
-  static const double _padding = 12.0;
-  static const double _rowGap = 6.0;
+  static const double _hudWidth = 155.0;
+  static const double _padding = 10.0;
+  static const double _rowGap = 4.0;
+  static const double _pipRadius = 3.5;
+  static const double _pipSpacing = 10.0;
 
   // Public state — set via updateState() and updateTimer()
   int score = 0;
@@ -41,10 +40,13 @@ class UnifiedHudComponent extends PositionComponent {
     position = Vector2(newWidth - _hudWidth - 12, 10);
   }
 
-  void updateLayout(double screenWidth, {double rightInset = 0, double topInset = 0, bool landscape = false, double leftInset = 0}) {
+  void updateLayout(double screenWidth,
+      {double rightInset = 0,
+      double topInset = 0,
+      bool landscape = false,
+      double leftInset = 0}) {
     _isLandscape = landscape;
     if (landscape) {
-      // Top-left in landscape to avoid right opponent overlap
       position = Vector2(leftInset + 12, 10 + topInset);
     } else {
       position = Vector2(screenWidth - _hudWidth - 12 - rightInset, 10 + topInset);
@@ -88,10 +90,6 @@ class UnifiedHudComponent extends PositionComponent {
     timerText = '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
   }
 
-  static int computePips({required int target, required int tricksTaken}) {
-    return tricksTaken.clamp(0, target);
-  }
-
   bool get _showBidRow =>
       _phase == GamePhase.trumpSelection ||
       _phase == GamePhase.bidAnnouncement ||
@@ -103,23 +101,18 @@ class UnifiedHudComponent extends PositionComponent {
 
   double _computeHeight() {
     double h = _padding;
-    h += 10; // SCORE label
-    h += 30; // score number
-    h += _rowGap;
-    h += _dividerHeight;
-    h += _rowGap;
+    h += 24; // score + round row
+    h += _rowGap + 1 + _rowGap; // divider
     if (_showBidRow) {
-      h += 18;
+      h += 18; // bid + trump row
       h += _rowGap;
     }
     if (_showPips) {
-      h += 16 + 16;
-      h += _rowGap;
-      h += _dividerHeight;
-      h += _rowGap;
+      h += 14; // pip rows (both teams, one line)
+      h += _rowGap + 1 + _rowGap; // divider
     }
-    h += 16;
-    h += _padding;
+    h += 14; // timer
+    h += 8; // bottom padding
     return h;
   }
 
@@ -128,113 +121,132 @@ class UnifiedHudComponent extends PositionComponent {
     final hudHeight = _computeHeight();
     size = Vector2(_hudWidth, hudHeight);
 
-    // Background — use green-tinted bg in landscape for felt harmony
-    final bgColor = _isLandscape
-        ? DiwaniyaColors.hudBgLandscape
-        : DiwaniyaColors.scoreHudBg;
-    final borderColor = _isLandscape
-        ? DiwaniyaColors.hudBorderLandscape
-        : DiwaniyaColors.scoreHudBorder;
+    // --- Background ---
+    final bgColor =
+        _isLandscape ? DiwaniyaColors.hudBgLandscape : DiwaniyaColors.scoreHudBg;
+    final borderColor =
+        _isLandscape ? DiwaniyaColors.hudBorderLandscape : DiwaniyaColors.scoreHudBorder;
 
     final bgRect = RRect.fromRectAndRadius(
       Rect.fromLTWH(0, 0, _hudWidth, hudHeight),
       const Radius.circular(12),
     );
+
+    canvas.drawRRect(
+      bgRect.shift(const Offset(0, 2)),
+      Paint()
+        ..color = const Color(0x44000000)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
+    );
     canvas.drawRRect(bgRect, Paint()..color = bgColor);
+
+    final highlightRect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(1, 1, _hudWidth - 2, hudHeight * 0.35),
+      const Radius.circular(11),
+    );
+    canvas.drawRRect(highlightRect, Paint()..color = const Color(0x08FFFFFF));
+
     canvas.drawRRect(
       bgRect,
       Paint()
         ..color = borderColor
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.5,
+        ..strokeWidth = 1.0,
     );
 
     double y = _padding;
+    final rightEdge = _hudWidth - _padding;
 
-    // --- Score section with label ---
-    TextRenderer.draw(canvas, 'SCORE', DiwaniyaColors.hudLabelMuted,
-        Offset(_padding, y), 8, align: TextAlign.left, width: 50);
-    TextRenderer.draw(canvas, 'R$roundNumber',
-        DiwaniyaColors.hudLabelMuted,
-        Offset(_hudWidth - _padding - 20, y), 8,
-        align: TextAlign.right, width: 20);
-    y += 10;
-
-    // Large score number
-    TextRenderer.draw(canvas, '$score', scoreColor,
-        Offset(_padding, y), 28, align: TextAlign.left, width: 60);
-    TextRenderer.draw(canvas, '/ 31',
+    // --- Row 1: Score + Round (one line) ---
+    TextRenderer.draw(canvas, '$score', scoreColor, Offset(_padding, y), 22,
+        align: TextAlign.left, width: 50);
+    TextRenderer.draw(
+        canvas,
+        '/ 31',
         DiwaniyaColors.cream.withValues(alpha: 0.4),
-        Offset(_padding + 50, y + 10), 11, align: TextAlign.left, width: 40);
-    y += 30 + _rowGap;
+        Offset(_padding + 48, y + 8),
+        11,
+        align: TextAlign.left,
+        width: 30);
+    TextRenderer.draw(canvas, 'R$roundNumber', DiwaniyaColors.hudLabelMuted,
+        Offset(rightEdge - 20, y + 2), 9,
+        align: TextAlign.right, width: 20);
+    y += 24 + _rowGap;
 
     // Divider
-    canvas.drawLine(
-      Offset(_padding, y),
-      Offset(_hudWidth - _padding, y),
-      Paint()..color = DiwaniyaColors.goldAccent.withValues(alpha: 0.25),
-    );
-    y += _dividerHeight + _rowGap;
+    _drawDivider(canvas, y);
+    y += 1 + _rowGap;
 
-    // --- Bid + Trump section ---
+    // --- Row 2: Bidder team + BID value + Trump suit ---
     if (_showBidRow && bidValue != null) {
-      final bidTeamColor = bidderTeam != null
-          ? KoutTheme.teamColor(bidderTeam!)
-          : DiwaniyaColors.cream;
+      final bidTeamColor =
+          bidderTeam != null ? KoutTheme.teamColor(bidderTeam!) : DiwaniyaColors.cream;
+      final bidTeamLetter = bidderTeam == Team.a ? 'A' : 'B';
 
-      final bidText = bidValue == 8 ? 'KOUT' : 'BID $bidValue';
-      TextRenderer.draw(canvas, bidText, bidTeamColor,
-          Offset(_padding, y), 12, align: TextAlign.left, width: 80);
+      // "A BID 5" or "B KOUT" in team color
+      final bidText = bidValue == 8 ? '$bidTeamLetter KOUT' : '$bidTeamLetter BID $bidValue';
+      TextRenderer.draw(canvas, bidText, bidTeamColor, Offset(_padding, y), 12,
+          align: TextAlign.left, width: 90);
 
+      // Trump suit — large and colored
       if (trumpSuit != null) {
-        // Use HUD-safe suit color — gold for black suits, red for red suits
         final suitColor = KoutTheme.suitHudColor(trumpSuit!);
         TextRenderer.draw(canvas, trumpSuit!.symbol, suitColor,
-            Offset(_hudWidth - _padding - 20, y - 2), 18,
-            align: TextAlign.right, width: 20);
+            Offset(rightEdge - 22, y - 3), 20,
+            align: TextAlign.right, width: 22);
       }
       y += 18 + _rowGap;
     }
 
-    // --- Trick progress pips with labels ---
+    // --- Row 3: Both pip rows on ONE line ---
     if (_showPips && bidValue != null) {
       final bidTeamColor = KoutTheme.teamColor(bidderTeam ?? Team.a);
       final oppTeamColor = KoutTheme.teamColor((bidderTeam ?? Team.a).opponent);
       final bidTeamLabel = bidderTeam == Team.a ? 'A' : 'B';
       final oppTeamLabel = bidderTeam == Team.a ? 'B' : 'A';
 
-      // Bidder pip row: label + pips
-      TextRenderer.draw(canvas, bidTeamLabel, bidTeamColor,
-          Offset(_padding, y + 1), 10, align: TextAlign.left, width: 12);
-      _drawPipRow(canvas, y + 4, bidValue!, bidderTricks, bidTeamColor);
-      y += 16;
+      // Bidder pips on left half
+      double x = _padding;
+      TextRenderer.draw(canvas, bidTeamLabel, bidTeamColor, Offset(x, y), 9,
+          align: TextAlign.left, width: 10);
+      x += 14;
+      _drawPipsInline(canvas, x, y + 4, bidValue!, bidderTricks, bidTeamColor);
+      x += bidValue! * _pipSpacing + 4;
 
-      // Opponent pip row
-      TextRenderer.draw(canvas, oppTeamLabel, oppTeamColor,
-          Offset(_padding, y + 1), 10, align: TextAlign.left, width: 12);
-      _drawPipRow(canvas, y + 4, opponentTarget, opponentTricks, oppTeamColor);
-      y += 16 + _rowGap;
+      // Opponent pips on right half
+      TextRenderer.draw(canvas, oppTeamLabel, oppTeamColor, Offset(x, y), 9,
+          align: TextAlign.left, width: 10);
+      x += 14;
+      _drawPipsInline(canvas, x, y + 4, opponentTarget, opponentTricks, oppTeamColor);
 
-      canvas.drawLine(
-        Offset(_padding, y),
-        Offset(_hudWidth - _padding, y),
-        Paint()..color = DiwaniyaColors.goldAccent.withValues(alpha: 0.25),
-      );
-      y += _dividerHeight + _rowGap;
+      y += 14 + _rowGap;
+
+      _drawDivider(canvas, y);
+      y += 1 + _rowGap;
     }
 
-    // --- Timer with label ---
-    TextRenderer.draw(canvas, timerText,
-        DiwaniyaColors.cream.withValues(alpha: 0.5),
-        Offset(_hudWidth / 2, y), 11,
-        align: TextAlign.center, width: _hudWidth);
+    // --- Row 4: Timer ---
+    TextRenderer.draw(
+        canvas,
+        timerText,
+        DiwaniyaColors.cream.withValues(alpha: 0.45),
+        Offset(_hudWidth / 2, y),
+        10,
+        align: TextAlign.center,
+        width: _hudWidth);
   }
 
-  void _drawPipRow(Canvas canvas, double y, int total, int filled, Color color) {
-    final clamped = filled.clamp(0, total);
-    final totalWidth = (total - 1) * _pipSpacing;
-    final startX = (_hudWidth - totalWidth) / 2 + 8; // shifted right for team label
+  void _drawDivider(Canvas canvas, double y) {
+    canvas.drawLine(
+      Offset(_padding, y),
+      Offset(_hudWidth - _padding, y),
+      Paint()..color = DiwaniyaColors.goldAccent.withValues(alpha: 0.20),
+    );
+  }
 
+  void _drawPipsInline(
+      Canvas canvas, double startX, double y, int total, int filled, Color color) {
+    final clamped = filled.clamp(0, total);
     for (int i = 0; i < total; i++) {
       final cx = startX + i * _pipSpacing;
       if (i < clamped) {
@@ -251,5 +263,4 @@ class UnifiedHudComponent extends PositionComponent {
       }
     }
   }
-
 }

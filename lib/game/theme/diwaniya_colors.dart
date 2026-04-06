@@ -4,14 +4,14 @@ import 'dart:ui';
 class DiwaniyaColors {
   DiwaniyaColors._();
 
-  // Background
-  static const Color backgroundTile = Color(0xFF3D5A6E);
-  static const Color backgroundTileDark = Color(0xFF263845);
-  static const Color vignette = Color(0xFF0F1A22);
+  // Background — warm Diwaniya tones (dark wood-green, not cold blue)
+  static const Color backgroundTile = Color(0xFF2B3428);
+  static const Color backgroundTileDark = Color(0xFF1E2820);
+  static const Color vignette = Color(0xFF0A0F08);
 
-  // Table surface (3D perspective trapezoid)
-  static const Color tableSurfaceCenter = Color(0xFF5A5A5A);  // neutral gray
-  static const Color tableSurfaceEdge = Color(0xFF3A3A3A);    // dark gray
+  // Table surface (3D perspective trapezoid) — warm felt green
+  static const Color tableSurfaceCenter = Color(0xFF2A5438);
+  static const Color tableSurfaceEdge = Color(0xFF1E3F2A);
   static const Color tableFelt = Color(0xFF3A4D3A);
   static const Color tableBorder = Color(0xFF3B2314);
 
@@ -27,17 +27,17 @@ class DiwaniyaColors {
   static const Color cream = Color(0xFFF5ECD7);
   static const Color darkWood = Color(0xFF3B2314);
 
-  // Name label pill backgrounds
-  static const Color nameLabelTeamA = Color(0xCC2A5FAA);
-  static const Color nameLabelTeamB = Color(0xCCAA2A2A);
+  // Name label pill backgrounds — semi-transparent, not harsh
+  static const Color nameLabelTeamA = Color(0xBB2A5FAA);
+  static const Color nameLabelTeamB = Color(0xBB9A2A2A);
 
   // Score HUD
   static const Color scoreHudBg = Color(0xE62A1A14);      // dark wood-brown
   static const Color scoreHudBorder = Color(0xFF6B5A3A);   // muted gold-brown
 
-  // HUD landscape — translucent dark that blends with blue tiles
-  static const Color hudBgLandscape = Color(0xDD1A2535);     // dark blue-tinted
-  static const Color hudBorderLandscape = Color(0xFF3A5A6E); // matching tile blue
+  // HUD landscape — warm translucent dark matching wood tones
+  static const Color hudBgLandscape = Color(0xDD1F1A14);     // dark warm brown
+  static const Color hudBorderLandscape = Color(0xFF5A4A3A); // muted gold-brown
   static const Color hudLabelMuted = Color(0x99F5ECD7);      // cream at 60%
 
   // Card enhancements

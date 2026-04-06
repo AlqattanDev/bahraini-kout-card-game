@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flame/components.dart';
 import 'package:flutter/painting.dart' show EdgeInsets;
+import '../theme/kout_theme.dart';
 
 /// Calculates positions and angles for all game elements based on screen size.
 /// Seat indices: 0=bottom (me), 1=left, 2=top (partner), 3=right.
@@ -41,21 +42,23 @@ class LayoutManager {
   /// Scale factor for hand cards. Smaller on landscape phones, 1.4x on portrait.
   double get handCardScale {
     if (!isLandscape) return 1.4;
-    // Cards are ~100px tall at scale 1.0. Target 35% of safe height:
-    // (safeHeight * 0.35) / cardBaseHeight → scale factor.
-    return (safeRect.height * 0.35 / 100).clamp(1.0, 1.6);
+    // Target 35% of safe height relative to actual card base height (70px).
+    return (safeRect.height * 0.35 / KoutTheme.cardHeight).clamp(1.0, 1.6);
   }
 
-  /// Trick cards match hand scale in ALL orientations for visual consistency.
-  /// Hierarchy comes from position/rotation, not size difference.
-  double get trickCardScale => handCardScale;
+  /// Trick cards noticeably smaller than hand cards so 4 cards don't overwhelm
+  /// the table. ~65% of hand scale in landscape, 0.85x in portrait.
+  double get trickCardScale {
+    if (!isLandscape) return handCardScale * 0.85;
+    return (handCardScale * 0.60).clamp(0.8, 1.1);
+  }
 
-  /// Proportional trick card offset (12% of shorter safe dimension).
+  /// Proportional trick card offset (11% of shorter safe dimension).
   double get trickOffset {
     final base = safeRect.width < safeRect.height
         ? safeRect.width
         : safeRect.height;
-    return base * 0.12;
+    return base * 0.11;
   }
 
   // ---------------------------------------------------------------------------
@@ -91,32 +94,32 @@ class LayoutManager {
   /// Hand at bottom-center, pushed below screen edge so cards bleed off-screen.
   /// 20% of scaled card height hidden below edge.
   Vector2 get _landscapeHandCenter {
-    final bleedAmount = 100 * handCardScale * _handBleedRatio;
+    final bleedAmount = KoutTheme.cardHeight * handCardScale * _handBleedRatio;
     return Vector2(safeRect.center.dx, height + bleedAmount);
   }
 
-  /// Partner: top-center, above table
+  /// Partner: top-center, with gap above table
   Vector2 get _landscapePartnerSeat => Vector2(
         safeRect.center.dx,
         safeRect.top + safeRect.height * 0.14,
       );
 
-  /// Left opponent: left side, mid-height
+  /// Left opponent: near left edge, lowered into bottom half of table
   Vector2 get _landscapeLeftSeat => Vector2(
-        safeRect.left + safeRect.width * 0.09,
-        safeRect.top + safeRect.height * 0.44,
+        safeRect.left + safeRect.width * 0.10,
+        safeRect.top + safeRect.height * 0.64,
       );
 
-  /// Right opponent: right side, mid-height (further from edge than mySeat to avoid HUD overlap)
+  /// Right opponent: near right edge, lowered into bottom half of table
   Vector2 get _landscapeRightSeat => Vector2(
-        safeRect.right - safeRect.width * 0.12,
-        safeRect.top + safeRect.height * 0.44,
+        safeRect.right - safeRect.width * 0.10,
+        safeRect.top + safeRect.height * 0.64,
       );
 
-  /// Human player: bottom-right, to the right of hand cards
+  /// Human player: bottom-right, near the hand cards
   Vector2 get _landscapeMySeat => Vector2(
-        safeRect.right - safeRect.width * 0.07,
-        safeRect.bottom - safeRect.height * 0.18,
+        safeRect.right - safeRect.width * 0.12,
+        safeRect.bottom - safeRect.height * 0.12,
       );
 
   /// Trick area: centroid of the table surface
@@ -151,11 +154,11 @@ class LayoutManager {
   }
 
   List<Offset> get _landscapeTableVertices {
-    final playTop = safeRect.top + safeRect.height * 0.20;
-    final playBot = safeRect.bottom - safeRect.height * 0.32;
+    final playTop = safeRect.top + safeRect.height * 0.26;
+    final playBot = safeRect.bottom - safeRect.height * 0.18;
     final cx = safeRect.center.dx;
-    final topHalf = safeRect.width * 0.22;
-    final botHalf = safeRect.width * 0.30;
+    final topHalf = safeRect.width * 0.24;
+    final botHalf = safeRect.width * 0.35;
     return [
       Offset(cx - topHalf, playTop),
       Offset(cx + topHalf, playTop),

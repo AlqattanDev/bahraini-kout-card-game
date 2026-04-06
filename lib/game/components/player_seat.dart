@@ -21,6 +21,7 @@ class PlayerSeatComponent extends PositionComponent {
   bool isBidder = false;
   Color? bidderGlowColor;
   double timerProgress;
+  // Card count badge removed — not needed in current layout
 
   static const double _radius = 36.0;
 
@@ -39,7 +40,7 @@ class PlayerSeatComponent extends PositionComponent {
     this.timerProgress = 0.0,
     super.position,
     super.anchor = Anchor.center,
-  }) : super(size: Vector2(_radius * 2 + 24, _radius * 2 + 48));
+  }) : super(size: Vector2(_radius * 2 + 24, _radius * 2 + 32));
 
   @override
   void onMount() {
@@ -62,7 +63,7 @@ class PlayerSeatComponent extends PositionComponent {
     }
 
     if (isBidder) {
-      _drawCrown(canvas, Offset(center.dx, center.dy - _radius - 20));
+      _drawCrown(canvas, Offset(center.dx, center.dy - _radius - 24));
     }
 
     AvatarPainter.paint(canvas, center, _radius - 3, AvatarTraits.fromSeed(avatarSeed));
@@ -105,30 +106,45 @@ class PlayerSeatComponent extends PositionComponent {
       canvas.drawCircle(center, _radius, ringPaint);
     }
 
-    final pillY = center.dy + _radius + 14;
+    final pillY = center.dy + _radius - 2;
     final pillColor = team == Team.a ? DiwaniyaColors.nameLabelTeamA : DiwaniyaColors.nameLabelTeamB;
     final pillRect = RRect.fromRectAndRadius(
-      Rect.fromCenter(center: Offset(center.dx, pillY), width: 80, height: 22),
-      const Radius.circular(11),
+      Rect.fromCenter(center: Offset(center.dx, pillY), width: 80, height: 20),
+      const Radius.circular(10),
+    );
+    // Subtle shadow behind pill
+    canvas.drawRRect(
+      pillRect.shift(const Offset(0, 1)),
+      Paint()
+        ..color = const Color(0x44000000)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3),
     );
     canvas.drawRRect(pillRect, Paint()..color = pillColor);
+    // Thin highlight border
+    canvas.drawRRect(
+      pillRect,
+      Paint()
+        ..color = const Color(0x15FFFFFF)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.5,
+    );
     final teamLetter = team == Team.a ? 'A' : 'B';
     final displayName = '$teamLetter  ${_truncateName(playerName)}';
     TextRenderer.drawCentered(canvas, displayName, DiwaniyaColors.pureWhite,
-      Offset(center.dx, pillY), 10);
+      Offset(center.dx, pillY), 9);
 
     BidLabelPainter.paint(
       canvas,
       bidAction: bidAction,
-      offset: Offset(center.dx, center.dy + _radius + 36),
+      offset: Offset(center.dx, center.dy + _radius + 16),
     );
 
   }
 
-  /// Draws a small geometric crown at [crownCenter].
+  /// Draws a geometric crown at [crownCenter] with gold glow.
   static void _drawCrown(Canvas canvas, Offset crownCenter) {
-    const double crownWidth = 18.0;
-    const double crownHeight = 12.0;
+    const double crownWidth = 28.0;
+    const double crownHeight = 18.0;
     const double w = crownWidth;
     const double h = crownHeight;
     final left = crownCenter.dx - w / 2;
@@ -154,15 +170,31 @@ class PlayerSeatComponent extends PositionComponent {
       ..lineTo(left, top + h * 0.4)
       ..close();
 
+    // Gold glow behind crown
+    canvas.drawCircle(
+      crownCenter,
+      crownWidth * 0.6,
+      Paint()
+        ..color = DiwaniyaColors.goldAccent.withValues(alpha: 0.25)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10),
+    );
     // Gold fill
     canvas.drawPath(path, Paint()..color = DiwaniyaColors.goldAccent);
-    // Darker stroke
+    // Gold highlight on top portion
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = DiwaniyaColors.goldHighlight.withValues(alpha: 0.4)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.8,
+    );
+    // Darker stroke outline
     canvas.drawPath(
       path,
       Paint()
         ..color = DiwaniyaColors.darkWood
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.0,
+        ..strokeWidth = 1.2,
     );
   }
 
@@ -192,10 +224,10 @@ class PlayerSeatComponent extends PositionComponent {
     }
   }
 
-  /// Truncates names longer than 6 characters with an ellipsis.
+  /// Truncates names longer than 8 characters with an ellipsis.
   static String _truncateName(String name) {
-    if (name.length <= 6) return name;
-    return '${name.substring(0, 5)}…';
+    if (name.length <= 8) return name;
+    return '${name.substring(0, 7)}…';
   }
 
   void updateState(ClientGameState state) {
@@ -267,13 +299,13 @@ class _TrickWinFlashComponent extends Component {
       center = Offset.zero;
     }
 
-    final alpha = (_life / 0.4 * 180).toInt().clamp(0, 180);
+    final alpha = (_life / 0.4).clamp(0.0, 1.0) * 0.7;
     canvas.drawCircle(
       center,
-      radius + 4,
+      radius + 6,
       Paint()
-        ..color = DiwaniyaColors.goldAccent.withAlpha(alpha)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
+        ..color = DiwaniyaColors.goldAccent.withValues(alpha: alpha)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12),
     );
   }
 }
@@ -283,9 +315,9 @@ class _GlowPulseComponent extends PositionComponent {
   double _opacity = 0.4;
   double _elapsed = 0;
 
-  static const double _minOpacity = 0.20;
-  static const double _maxOpacity = 0.65;
-  static const double _cycleDuration = 1.6;
+  static const double _minOpacity = 0.30;
+  static const double _maxOpacity = 0.80;
+  static const double _cycleDuration = 1.4;
 
   _GlowPulseComponent({required this.radius}) : super(anchor: Anchor.center);
 
@@ -313,7 +345,7 @@ class _GlowPulseComponent extends PositionComponent {
     final teamColor = KoutTheme.teamColor(parentSeat.team);
     final glowPaint = Paint()
       ..color = teamColor.withValues(alpha: _opacity)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 20);
-    canvas.drawCircle(center, radius + 8, glowPaint);
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 28);
+    canvas.drawCircle(center, radius + 12, glowPaint);
   }
 }

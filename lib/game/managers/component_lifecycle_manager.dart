@@ -26,6 +26,7 @@ class ComponentLifecycleManager {
 
   bool _isLandscape = false;
   bool get isLandscape => _isLandscape;
+  int _mySeatIndex = 0;
 
   ComponentLifecycleManager({required this.game});
 
@@ -37,6 +38,25 @@ class ComponentLifecycleManager {
 
     // Only ambient decoration is portrait-only
     _toggleVisibility(ambientDecoration, showInPortrait: true);
+
+    // Hide player's own seat in landscape
+    if (seats.length > _mySeatIndex) {
+      final mySeat = seats[_mySeatIndex];
+      if (landscape && mySeat.isMounted) {
+        mySeat.removeFromParent();
+      } else if (!landscape && !mySeat.isMounted) {
+        game.add(mySeat);
+      }
+    }
+
+    // Hide opponent card fans in landscape (replaced by count badges)
+    for (final fan in opponentFans.values) {
+      if (landscape && fan.isMounted) {
+        fan.removeFromParent();
+      } else if (!landscape && !fan.isMounted) {
+        game.add(fan);
+      }
+    }
 
     // Update table background
     final tableBg =
@@ -51,9 +71,11 @@ class ComponentLifecycleManager {
   /// Creates seats, fans, and ambient decoration on first state update.
   void initSeats(ClientGameState state, LayoutManager layout) {
     if (seats.isNotEmpty) return;
+    _mySeatIndex = state.mySeatIndex;
 
     for (int i = 0; i < 4; i++) {
       final pos = layout.seatPosition(i, state.mySeatIndex);
+      final isMe = i == state.mySeatIndex;
       final seat = PlayerSeatComponent(
         seatIndex: i,
         playerName: shortUid(state.playerUids[i]),
@@ -64,7 +86,10 @@ class ComponentLifecycleManager {
         position: pos,
       );
       seats.add(seat);
-      game.add(seat);
+      // Don't add player's own seat in landscape
+      if (!(_isLandscape && isMe)) {
+        game.add(seat);
+      }
     }
 
     ambientDecoration = AmbientDecorationComponent(
@@ -74,6 +99,7 @@ class ComponentLifecycleManager {
     );
     if (!_isLandscape) game.add(ambientDecoration!);
 
+    // Only create card fans (for portrait mode)
     for (int i = 0; i < 4; i++) {
       if (i == state.mySeatIndex) continue;
       final relativeSeat = layout.toRelativeSeat(i, state.mySeatIndex);
@@ -101,7 +127,10 @@ class ComponentLifecycleManager {
         baseRotation: rotation,
       );
       opponentFans[i] = fan;
-      game.add(fan);
+      // Don't add fans in landscape — badges replace them
+      if (!_isLandscape) {
+        game.add(fan);
+      }
     }
   }
 
@@ -111,9 +140,14 @@ class ComponentLifecycleManager {
 
     for (int i = 0; i < state.playerUids.length && i < seats.length; i++) {
       final uid = state.playerUids[i];
+      final isMe = i == state.mySeatIndex;
 
       seats[i].updateState(state);
-      seats[i].position = layout.seatPosition(i, state.mySeatIndex);
+
+      // Skip positioning player's own seat in landscape (it's hidden)
+      if (!(_isLandscape && isMe)) {
+        seats[i].position = layout.seatPosition(i, state.mySeatIndex);
+      }
 
       final showGlow = state.phase != GamePhase.bidding &&
           state.phase != GamePhase.waiting &&
@@ -124,7 +158,8 @@ class ComponentLifecycleManager {
         seats[i].setBidderGlow(false, null);
       }
 
-      if (opponentFans.containsKey(i)) {
+      // Only update fans in portrait
+      if (!_isLandscape && opponentFans.containsKey(i)) {
         opponentFans[i]!.updateCardCount(state.cardCounts[i] ?? 8);
         final relativeSeat = layout.toRelativeSeat(i, state.mySeatIndex);
         final seatPos = layout.seatPosition(i, state.mySeatIndex);
@@ -134,11 +169,10 @@ class ComponentLifecycleManager {
   }
 
   Vector2 _fanOffset(int relativeSeat) {
-    const offset = 70.0;
     return switch (relativeSeat) {
-      1 => Vector2(offset, -10),
-      2 => Vector2(0, offset),
-      3 => Vector2(-offset, -10),
+      1 => Vector2(50, 0),   // left → push right toward table, less aggressively
+      2 => Vector2(0, 40),   // partner → push down, less overlap with table
+      3 => Vector2(-50, 0),  // right → push left toward table
       _ => Vector2.zero(),
     };
   }

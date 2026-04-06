@@ -33,26 +33,51 @@ class PerspectiveTableComponent extends PositionComponent {
       ..close();
 
     final center = layout.tableCenter;
-    final tableRect = Rect.fromPoints(verts[0], verts[3]);
+    // Proper bounding rect from all 4 vertices
+    final allX = verts.map((v) => v.dx);
+    final allY = verts.map((v) => v.dy);
+    final tableRect = Rect.fromLTRB(
+      allX.reduce((a, b) => a < b ? a : b),
+      allY.reduce((a, b) => a < b ? a : b),
+      allX.reduce((a, b) => a > b ? a : b),
+      allY.reduce((a, b) => a > b ? a : b),
+    );
     final radius = tableRect.longestSide * 0.6;
 
+    // 3-stop radial gradient for depth: bright center → mid → dark edge
     final feltShader = Gradient.radial(
       center,
       radius,
-      [DiwaniyaColors.tableSurfaceCenter, DiwaniyaColors.tableSurfaceEdge],
-      [0.0, 1.0],
+      [
+        DiwaniyaColors.tableSurfaceCenter,
+        DiwaniyaColors.tableSurfaceEdge,
+        const Color(0xFF252525),
+      ],
+      [0.0, 0.6, 1.0],
     );
 
     canvas.drawPath(bodyPath, Paint()..shader = feltShader);
 
+    // Subtle inner shadow for recessed feel
+    final innerShadowPaint = Paint()
+      ..shader = Gradient.radial(
+        center,
+        radius * 1.1,
+        [const Color(0x00000000), const Color(0x00000000), const Color(0x40000000)],
+        [0.0, 0.7, 1.0],
+      );
+    canvas.drawPath(bodyPath, innerShadowPaint);
+
+    // Outer border — dark wood
     final borderPaint = Paint()
       ..color = DiwaniyaColors.tableBorder
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 4.0
+      ..strokeWidth = 5.0
       ..strokeJoin = StrokeJoin.round;
     canvas.drawPath(bodyPath, borderPaint);
 
-    final insetVerts = _insetVertices(verts, 8.0);
+    // Inner accent border — gold, more visible
+    final insetVerts = _insetVertices(verts, 10.0);
     final insetPath = Path()
       ..moveTo(insetVerts[0].dx, insetVerts[0].dy)
       ..lineTo(insetVerts[1].dx, insetVerts[1].dy)
@@ -61,17 +86,25 @@ class PerspectiveTableComponent extends PositionComponent {
       ..close();
 
     final accentPaint = Paint()
-      ..color = DiwaniyaColors.goldAccent.withValues(alpha: 0.3)
+      ..color = DiwaniyaColors.goldAccent.withValues(alpha: 0.4)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.5;
     canvas.drawPath(insetPath, accentPaint);
 
-    // Decorative geometric motif along the top edge of the table
+    // Decorative geometric motif along the top edge — larger, more visible
     GeometricPatterns.drawStarTessellation(
       canvas,
-      Rect.fromLTWH(verts[0].dx, verts[0].dy - 2, verts[1].dx - verts[0].dx, 12),
+      Rect.fromLTWH(verts[0].dx, verts[0].dy - 2, verts[1].dx - verts[0].dx, 16),
+      opacity: 0.22,
+      cellSize: 20.0,
+    );
+
+    // Geometric motif along bottom edge too
+    GeometricPatterns.drawStarTessellation(
+      canvas,
+      Rect.fromLTWH(verts[2].dx, verts[2].dy - 14, verts[3].dx - verts[2].dx, 16),
       opacity: 0.15,
-      cellSize: 24.0,
+      cellSize: 20.0,
     );
   }
 

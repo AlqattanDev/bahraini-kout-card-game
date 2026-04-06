@@ -16,9 +16,8 @@ class TrickAreaComponent extends Component {
   final int mySeatIndex;
   final Random _random = Random();
 
-  /// Horizontal nudge factor for stacking cards toward center.
-  /// Each successive card drifts ~6% inward to make play order obvious.
-  static const double _nudgeFactor = 0.06;
+  /// Inward nudge per successive card — keeps play order visible.
+  static const double _nudgeFactor = 0.04;
 
   final List<CardComponent> _trickCards = [];
   /// Cached jitter angles keyed by playerUid so cards don't wiggle on each update.
@@ -95,13 +94,13 @@ class TrickAreaComponent extends Component {
   double _seatBaseAngle(int relativeSeat) {
     switch (relativeSeat) {
       case 1:
-        return 0.10;
+        return 0.18;   // left player → rotated clockwise
       case 2:
-        return 0.05;
+        return 0.10;   // partner → subtle tilt (not upside-down)
       case 3:
-        return -0.10;
+        return -0.18;  // right player → rotated counter-clockwise
       default:
-        return 0.0;
+        return 0.0;    // me → upright
     }
   }
 
