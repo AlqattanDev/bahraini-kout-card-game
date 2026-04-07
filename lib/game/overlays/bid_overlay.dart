@@ -4,6 +4,92 @@ import '../../game/theme/kout_theme.dart';
 import 'overlay_animation_wrapper.dart';
 import 'overlay_styles.dart';
 
+class AnimatedBidButton extends StatefulWidget {
+  final String number;
+  final (String, String) label;
+  final VoidCallback onPressed;
+
+  const AnimatedBidButton({
+    super.key,
+    required this.number,
+    required this.label,
+    required this.onPressed,
+  });
+
+  @override
+  State<AnimatedBidButton> createState() => _AnimatedBidButtonState();
+}
+
+class _AnimatedBidButtonState extends State<AnimatedBidButton> {
+  bool _isPressed = false;
+
+  void _handleTapDown(TapDownDetails details) {
+    setState(() => _isPressed = true);
+  }
+
+  void _handleTapUp(TapUpDetails details) {
+    setState(() => _isPressed = false);
+    widget.onPressed();
+  }
+
+  void _handleTapCancel() {
+    setState(() => _isPressed = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: _handleTapDown,
+      onTapUp: _handleTapUp,
+      onTapCancel: _handleTapCancel,
+      child: AnimatedScale(
+        scale: _isPressed ? 0.95 : 1.0,
+        duration: const Duration(milliseconds: 100),
+        curve: Curves.easeOutBack,
+        child: ElevatedButton(
+          onPressed: () {},
+          style: OverlayStyles.primaryButton(
+            borderRadius: 10.0,
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+          ).copyWith(
+            minimumSize: WidgetStateProperty.all(const Size(68, 68)),
+            elevation: WidgetStateProperty.all(4),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                widget.number,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                widget.label.$1,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Text(
+                widget.label.$2,
+                textAlign: TextAlign.center,
+                textDirection: TextDirection.rtl,
+                style: const TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class BidOverlay extends StatelessWidget {
   final void Function(int amount) onBid;
   final VoidCallback onPass;
@@ -59,6 +145,16 @@ class BidOverlay extends StatelessWidget {
               ],
             ),
             OverlayStyles.sectionGap,
+            if (currentHighBid != null) ...[
+              Text(
+                'Current High Bid: ${currentHighBid!.value}',
+                style: KoutTheme.bodyStyle.copyWith(
+                  color: KoutTheme.cream.withValues(alpha: 0.5),
+                  fontSize: 12,
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
             // Bid buttons — only show bids higher than current
             Row(
               mainAxisSize: MainAxisSize.min,
@@ -112,44 +208,10 @@ class BidOverlay extends StatelessWidget {
   }
 
   Widget _bidButton(String number, (String, String) label, int amount) {
-    return ElevatedButton(
+    return AnimatedBidButton(
+      number: number,
+      label: label,
       onPressed: () => onBid(amount),
-      style: OverlayStyles.primaryButton(
-        borderRadius: 10.0,
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-      ).copyWith(
-        minimumSize: WidgetStateProperty.all(const Size(68, 68)),
-        elevation: WidgetStateProperty.all(4),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            number,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          Text(
-            label.$1,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          Text(
-            label.$2,
-            textAlign: TextAlign.center,
-            textDirection: TextDirection.rtl,
-            style: const TextStyle(
-              fontSize: 9,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

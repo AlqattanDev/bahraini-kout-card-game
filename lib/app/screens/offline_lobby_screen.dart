@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../models/game_mode.dart';
 import '../models/seat_config.dart';
 import '../../offline/bot/bot_difficulty.dart';
@@ -178,27 +179,37 @@ class _OfflineLobbyScreenState extends State<OfflineLobbyScreen> {
             child: SizedBox(
               width: double.infinity,
               height: 56,
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pushNamed(
-                    context,
-                    '/game',
-                    arguments: OfflineGameMode(seats: seats),
-                  );
-                },
-                style: KoutTheme.primaryButtonStyle,
-                child: Text(
-                  'Start Game',
-                  style: KoutTheme.bodyStyle.copyWith(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: KoutTheme.accent,
-                  ),
-                ),
-              ),
+              child: _buildStartGameButton(seats),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+
+  Widget _buildStartGameButton(List<SeatConfig> seats) {
+    return SizedBox(
+      width: double.infinity,
+      height: 56,
+      child: ElevatedButton(
+        onPressed: () {
+          HapticFeedback.mediumImpact();
+          Navigator.pushNamed(
+            context,
+            '/game',
+            arguments: OfflineGameMode(seats: seats),
+          );
+        },
+        style: KoutTheme.primaryButtonStyle,
+        child: Text(
+          'Start Game',
+          style: KoutTheme.bodyStyle.copyWith(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: KoutTheme.accent,
+          ),
+        ),
       ),
     );
   }

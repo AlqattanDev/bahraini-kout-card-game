@@ -14,7 +14,7 @@ class RoomLobbyScreen extends StatefulWidget {
   State<RoomLobbyScreen> createState() => _RoomLobbyScreenState();
 }
 
-class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
+class _RoomLobbyScreenState extends State<RoomLobbyScreen> with SingleTickerProviderStateMixin {
   GameService? _gameService;
   RoomService? _roomService;
   LobbyState? _lobbyState;
@@ -27,6 +27,18 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
   String _myUid = '';
   String _token = '';
   bool _isHost = false;
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat(reverse: true);
+    _pulseAnimation = Tween<double>(begin: 0.3, end: 1.0).animate(_pulseController);
+  }
 
   @override
   void didChangeDependencies() {
@@ -117,6 +129,7 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
 
   @override
   void dispose() {
+    _pulseController.dispose();
     _lobbySub?.cancel();
     _stateSub?.cancel();
     _gameService?.dispose();
@@ -224,18 +237,18 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
             ? 'You'
             : (seat.seat == 0 ? 'Host' : 'Friend');
         icon = Icons.person;
-        color = Colors.green;
+        color = KoutTheme.accent;
       } else if (seat.uid != null && !seat.connected) {
         label = 'Disconnected';
         icon = Icons.person_off;
-        color = Colors.orange;
+        color = KoutTheme.lossColor;
       } else {
         label = 'Waiting...';
         icon = Icons.hourglass_empty;
-        color = KoutTheme.accent.withValues(alpha: 0.3);
+        color = KoutTheme.textColor;
       }
 
-      return Padding(
+      final seatWidget = Padding(
         padding: const EdgeInsets.symmetric(vertical: 4),
         child: Container(
           width: 220,
@@ -260,6 +273,21 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> {
           ),
         ),
       );
+
+      if (label == 'Waiting...') {
+        return AnimatedBuilder(
+          animation: _pulseAnimation,
+          builder: (context, child) {
+            return Opacity(
+              opacity: _pulseAnimation.value,
+              child: child,
+            );
+          },
+          child: seatWidget,
+        );
+      }
+
+      return seatWidget;
     }).toList();
   }
 

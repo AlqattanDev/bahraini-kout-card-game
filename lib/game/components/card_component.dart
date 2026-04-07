@@ -1,6 +1,9 @@
 import 'dart:ui';
 import 'package:flame/components.dart';
 import 'package:flame/events.dart';
+import 'package:flame/effects.dart';
+import 'package:flutter/animation.dart';
+import 'package:flutter/services.dart';
 import '../../shared/models/card.dart';
 import '../theme/card_painter.dart';
 import '../theme/kout_theme.dart';
@@ -23,6 +26,10 @@ class CardComponent extends PositionComponent with TapCallbacks, HoverCallbacks 
 
   bool _pressed = false;
   Vector2? _restPosition;
+  bool _isLifted = false;
+
+  ScaleEffect? _liftScaleEffect;
+  MoveEffect? _liftMoveEffect;
 
   CardComponent({
     this.card,
@@ -49,12 +56,15 @@ class CardComponent extends PositionComponent with TapCallbacks, HoverCallbacks 
 
     // Drop shadow — drawn FIRST so it's behind the card
     if (showShadow) {
+      final double offsetY = _isLifted ? KoutTheme.cardShadowOffsetY + 2.0 : KoutTheme.cardShadowOffsetY;
+      final double blur = _isLifted ? KoutTheme.cardShadowBlur + 4.0 : KoutTheme.cardShadowBlur;
+
       final shadowRect = rrect.shift(
-        const Offset(KoutTheme.cardShadowOffsetX, KoutTheme.cardShadowOffsetY),
+        Offset(KoutTheme.cardShadowOffsetX, offsetY),
       );
       final shadowPaint = Paint()
         ..color = KoutTheme.cardShadowColor
-        ..maskFilter = MaskFilter.blur(BlurStyle.normal, KoutTheme.cardShadowBlur);
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, blur);
       canvas.drawRRect(shadowRect, shadowPaint);
     }
 
@@ -94,21 +104,53 @@ class CardComponent extends PositionComponent with TapCallbacks, HoverCallbacks 
 
   void _applyLift() {
     _restPosition ??= position.clone();
-    scale = Vector2.all(restScale * 1.1);
-    position.y = (_restPosition?.y ?? position.y) - 8;
+    _isLifted = true;
+
+    _liftScaleEffect?.removeFromParent();
+    _liftMoveEffect?.removeFromParent();
+
+    _liftScaleEffect = ScaleEffect.to(
+      Vector2.all(restScale * 1.1),
+      EffectController(duration: 0.15, curve: Curves.easeOutCubic),
+    );
+    _liftMoveEffect = MoveEffect.to(
+      _restPosition! + Vector2(0, -8),
+      EffectController(duration: 0.15, curve: Curves.easeOutCubic),
+    );
+
+    add(_liftScaleEffect!);
+    add(_liftMoveEffect!);
   }
 
   void _resetLift() {
-    scale = Vector2.all(restScale);
+    _isLifted = false;
+
+    _liftScaleEffect?.removeFromParent();
+    _liftMoveEffect?.removeFromParent();
+
+    _liftScaleEffect = ScaleEffect.to(
+      Vector2.all(restScale),
+      EffectController(duration: 0.15, curve: Curves.easeOutCubic),
+    );
+
     if (_restPosition != null) {
-      position = _restPosition!.clone();
-      _restPosition = null;
+      _liftMoveEffect = MoveEffect.to(
+        _restPosition!.clone(),
+        EffectController(duration: 0.15, curve: Curves.easeOutCubic),
+        onComplete: () {
+          _restPosition = null;
+        },
+      );
+      add(_liftMoveEffect!);
     }
+
+    add(_liftScaleEffect!);
   }
 
   @override
   void onTapDown(TapDownEvent event) {
     if (!isFaceUp || !isHighlighted) return;
+    HapticFeedback.selectionClick();
     _pressed = true;
     _applyLift();
   }

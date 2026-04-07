@@ -1,4 +1,5 @@
 import 'package:flame/components.dart';
+import 'package:flame/effects.dart';
 import '../../app/models/client_game_state.dart';
 import '../../shared/models/card.dart';
 import '../../shared/models/game_state.dart';
@@ -30,14 +31,7 @@ class HandComponent extends Component {
   HandComponent({required this.layout, required this.onCardTap});
 
   void updateState(ClientGameState state) {
-    for (final c in _cards) {
-      c.removeFromParent();
-    }
-    _cards.clear();
-
     final hand = _sortHand(state.myHand, state.trumpSuit);
-    if (hand.isEmpty) return;
-
     final playable = _playableCards(state);
     final positions = layout.handCardPositions(hand.length);
 
@@ -51,6 +45,9 @@ class HandComponent extends Component {
     final isWaitingForOthers =
         state.phase == GamePhase.playing && !state.isMyTurn;
 
+    // Track cards we've kept so we can remove stale ones
+    final Set<CardComponent> keptCards = {};
+
     for (int i = 0; i < hand.length; i++) {
       final gameCard = hand[i];
       final posData = positions[i];
@@ -58,24 +55,64 @@ class HandComponent extends Component {
 
       cardPositions[gameCard.encode()] = posData.position.clone();
 
-      final cardComp = CardComponent(
-        card: gameCard,
-        isFaceUp: true,
-        isHighlighted: highlight,
-        isDimmed: isWaitingForOthers || (hasPlayableCards && !highlight),
-        showShadow: true,
-        restScale: handCardScale,
-        position: posData.position,
-        angle: posData.angle,
-        onTap: (c) => onCardTap(c.encode()),
-      )
-        ..scale = Vector2.all(handCardScale)
-        ..priority = i; // Flame renders lower priority first → card 0 behind card 1, etc.
-                        // This means rightmost cards render ON TOP, making shadows between
-                        // overlapping cards visible. Do NOT reverse this.
+      // Find if this card already exists in the hand
+      CardComponent? existingCard;
+      for (final c in _cards) {
+        if (c.card?.encode() == gameCard.encode()) {
+          existingCard = c;
+          break;
+        }
+      }
 
-      _cards.add(cardComp);
-      add(cardComp);
+      final isDimmed = isWaitingForOthers || (hasPlayableCards && !highlight);
+
+      if (existingCard != null) {
+        // Update properties and animate reposition
+        existingCard.isHighlighted = highlight;
+        existingCard.isDimmed = isDimmed;
+        existingCard.priority = i;
+        
+        // Remove old MoveEffects and RotateEffects to prevent conflicting animations
+        existingCard.children.whereType<MoveEffect>().forEach((e) => e.removeFromParent());
+        existingCard.children.whereType<RotateEffect>().forEach((e) => e.removeFromParent());
+
+        existingCard.add(MoveEffect.to(
+          posData.position,
+          EffectController(duration: 0.2),
+        ));
+        existingCard.add(RotateEffect.to(
+          posData.angle,
+          EffectController(duration: 0.2),
+        ));
+
+        keptCards.add(existingCard);
+      } else {
+        // Create new card
+        final cardComp = CardComponent(
+          card: gameCard,
+          isFaceUp: true,
+          isHighlighted: highlight,
+          isDimmed: isDimmed,
+          showShadow: true,
+          restScale: handCardScale,
+          position: posData.position,
+          angle: posData.angle,
+          onTap: (c) => onCardTap(c.encode()),
+        )
+          ..scale = Vector2.all(handCardScale)
+          ..priority = i;
+
+        _cards.add(cardComp);
+        add(cardComp);
+        keptCards.add(cardComp);
+      }
+    }
+
+    // Remove any cards that are no longer in hand
+    final staleCards = _cards.where((c) => !keptCards.contains(c)).toList();
+    for (final c in staleCards) {
+      c.removeFromParent();
+      _cards.remove(c);
     }
   }
 

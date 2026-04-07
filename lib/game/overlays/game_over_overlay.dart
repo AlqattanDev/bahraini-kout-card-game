@@ -50,7 +50,7 @@ class _GameOverOverlayState extends State<GameOverOverlay>
     if (_myTeamWon) {
       _glowController = AnimationController(
         vsync: this,
-        duration: const Duration(milliseconds: 1200),
+        duration: const Duration(milliseconds: 800),
       );
       _glowAnimation = Tween<double>(begin: 4.0, end: 16.0).animate(
         CurvedAnimation(parent: _glowController!, curve: Curves.easeInOut),
@@ -137,6 +137,17 @@ class _GameOverOverlayState extends State<GameOverOverlay>
                     style: const TextStyle(
                       color: KoutTheme.textColor,
                       fontSize: 14,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    finalScore >= targetScore && widget.state.currentBid?.isKout == true
+                        ? 'Won by Kout'
+                        : 'Won by $finalScore points',
+                    style: const TextStyle(
+                      color: KoutTheme.textColor,
+                      fontSize: 12,
+                      fontStyle: FontStyle.italic,
                     ),
                   ),
                 ],

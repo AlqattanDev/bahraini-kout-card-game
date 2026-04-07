@@ -1,4 +1,6 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../game/theme/kout_theme.dart';
 import '../services/auth_service.dart';
 import '../services/room_service.dart';
@@ -43,33 +45,52 @@ class _HomeScreenState extends State<HomeScreen> {
               style: KoutTheme.arabicHeadingStyle,
             ),
             const SizedBox(height: 48),
-            _isLoading
-                ? CircularProgressIndicator(
+            if (_isLoading)
+              Column(
+                children: [
+                  CircularProgressIndicator(
                     color: KoutTheme.accent,
-                  )
-                : _buildButton(
-                    label: 'Play Online',
-                    onPressed: () {
-                      Navigator.pushNamed(
-                        context,
-                        '/matchmaking',
-                        arguments: {
-                          'uid': _authService.currentUid,
-                          'token': _authService.token,
-                        },
-                      );
-                    },
                   ),
-            const SizedBox(height: 16),
-            if (!_isLoading)
-              _buildButton(
-                label: 'Play with Friend',
-                onPressed: _showRoomOptions,
+                  const SizedBox(height: 16),
+                  Text(
+                    'Signing in...',
+                    style: KoutTheme.bodyStyle.copyWith(color: KoutTheme.accent),
+                  ),
+                ],
               ),
-            const SizedBox(height: 16),
-            _buildButton(
-              label: 'Play Offline',
-              onPressed: () => Navigator.pushNamed(context, '/offline-lobby'),
+            AnimatedOpacity(
+              opacity: _isLoading ? 0.0 : 1.0,
+              duration: const Duration(milliseconds: 400),
+              child: Column(
+                children: [
+                  if (!_isLoading)
+                    _buildButton(
+                      label: 'Play Online',
+                      onPressed: () {
+                        Navigator.pushNamed(
+                          context,
+                          '/matchmaking',
+                          arguments: {
+                            'uid': _authService.currentUid,
+                            'token': _authService.token,
+                          },
+                        );
+                      },
+                    ),
+                  const SizedBox(height: 16),
+                  if (!_isLoading)
+                    _buildButton(
+                      label: 'Play with Friend',
+                      onPressed: _showRoomOptions,
+                    ),
+                  const SizedBox(height: 16),
+                  if (!_isLoading)
+                    _buildButton(
+                      label: 'Play Offline',
+                      onPressed: () => Navigator.pushNamed(context, '/offline-lobby'),
+                    ),
+                ],
+              ),
             ),
           ],
         ),
@@ -207,9 +228,12 @@ class _HomeScreenState extends State<HomeScreen> {
     required VoidCallback onPressed,
   }) {
     return SizedBox(
-      width: 220,
+      width: min(220.0, MediaQuery.sizeOf(context).width * 0.6),
       child: ElevatedButton(
-        onPressed: onPressed,
+        onPressed: () {
+          HapticFeedback.lightImpact();
+          onPressed();
+        },
         style: KoutTheme.primaryButtonStyle,
         child: Text(label),
       ),

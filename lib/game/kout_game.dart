@@ -253,8 +253,8 @@ class KoutGame extends FlameGame {
   void spawnVictoryParticles() {
     _animationManager.animateTrickWin(
       layout.trickCenter,
-      particleCount: 24,
-      durationSeconds: 1.0,
+      particleCount: 60,
+      durationSeconds: 2.0,
     );
   }
 

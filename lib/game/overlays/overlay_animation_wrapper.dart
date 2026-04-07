@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 
 /// Wraps overlay content with scale+fade entry/exit animation.
@@ -14,7 +16,7 @@ class OverlayAnimationWrapper extends StatefulWidget {
     required this.child,
     this.onDismissed,
     this.entryDuration = const Duration(milliseconds: 250),
-    this.exitDuration = const Duration(milliseconds: 150),
+    this.exitDuration = const Duration(milliseconds: 200),
     this.entryCurve = Curves.easeOutBack,
     this.exitCurve = Curves.easeIn,
   });
@@ -73,7 +75,7 @@ class OverlayAnimationWrapperState extends State<OverlayAnimationWrapper>
   @override
   Widget build(BuildContext context) {
     final isLandscape = MediaQuery.orientationOf(context) == Orientation.landscape;
-    final landscapeScale = isLandscape ? 0.75 : 1.0;
+    final landscapeScale = isLandscape ? min(1.0, MediaQuery.sizeOf(context).height / 500) : 1.0;
 
     return AnimatedBuilder(
       animation: _controller,
