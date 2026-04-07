@@ -126,25 +126,9 @@ void main() {
 
     test('trickCardScale is smaller than handCardScale in landscape', () {
       expect(landscapeLayout.trickCardScale, lessThan(landscapeLayout.handCardScale));
-      // 60% of hand scale, clamped to [0.8, 1.1]
-      final expected = (landscapeLayout.handCardScale * 0.60).clamp(0.8, 1.1);
+      // 70% of hand scale, clamped to [0.85, 1.2]
+      final expected = (landscapeLayout.handCardScale * 0.70).clamp(0.85, 1.2);
       expect(landscapeLayout.trickCardScale, closeTo(expected, 0.01));
-    });
-
-    test('trickOffset is proportional (11% of shorter safe dimension)', () {
-      final shorter = landscapeLayout.safeRect.width < landscapeLayout.safeRect.height
-          ? landscapeLayout.safeRect.width
-          : landscapeLayout.safeRect.height;
-      expect(landscapeLayout.trickOffset, closeTo(shorter * 0.11, 0.1));
-    });
-
-    test('landscape card spacing is tighter than portrait', () {
-      final lPos = landscapeLayout.handCardPositions(8);
-      final pLayout = LayoutManager(Vector2(600, 800));
-      final pPos = pLayout.handCardPositions(8);
-      final lSpacing = (lPos[1].position.x - lPos[0].position.x).abs();
-      final pSpacing = (pPos[1].position.x - pPos[0].position.x).abs();
-      expect(lSpacing, lessThan(pSpacing));
     });
 
     test('portrait layout is unchanged when no safe area', () {

@@ -122,26 +122,16 @@ class LocalGameController {
     if (enableDelays) await Future.delayed(GameTiming.dealDelay);
   }
 
-  /// Context-aware bot delay for bidding / trump selection phases.
-  Future<void> _botBidDelay(int seat, {bool isPassing = false, bool isForced = false, BidAmount? amount}) async {
-    if (controllers[seat] is! HumanPlayerController && enableDelays) {
-      await Future.delayed(GameTiming.botThinkingDelay(
-        legalMoves: 1,
-        trickNumber: 0,
-        isBidding: true,
-        isPassing: isPassing,
-        isForcedBid: isForced,
-        bidAmount: amount,
-      ));
-    }
-  }
-
-  /// Context-aware bot delay for card play phase.
-  Future<void> _botPlayDelay(int seat, {required int legalMoves}) async {
+  /// Context-aware bot delay for any phase.
+  Future<void> _botDelay(int seat, {bool isBidding = false, bool isPassing = false, bool isForced = false, BidAmount? amount, int legalMoves = 1}) async {
     if (controllers[seat] is! HumanPlayerController && enableDelays) {
       await Future.delayed(GameTiming.botThinkingDelay(
         legalMoves: legalMoves,
-        trickNumber: _state.trickNumber,
+        trickNumber: isBidding ? 0 : _state.trickNumber,
+        isBidding: isBidding,
+        isPassing: isPassing,
+        isForcedBid: isForced,
+        bidAmount: amount,
       ));
     }
   }
@@ -165,7 +155,7 @@ class LocalGameController {
 
       _emitState();
 
-      await _botBidDelay(_state.currentSeat, isForced: isForced);
+      await _botDelay(_state.currentSeat, isBidding: true, isForced: isForced);
 
       final clientState = _toClientState(_state, _state.currentSeat);
       final context = BidContext(
@@ -233,7 +223,7 @@ class LocalGameController {
     _state.currentSeat = _state.bidderSeat!;
     _emitState();
 
-    await _botBidDelay(_state.bidderSeat!, amount: _state.bid);
+    await _botDelay(_state.bidderSeat!, isBidding: true, amount: _state.bid);
 
     final clientState = _toClientState(_state, _state.bidderSeat!);
     final action = await controllers[_state.bidderSeat!]!
@@ -363,14 +353,14 @@ class LocalGameController {
         ? hand.where((c) => !c.isJoker && c.suit == ledSuit).toList()
         : <GameCard>[];
     final legalMoves = suitCards.isNotEmpty ? suitCards.length : hand.length;
-    await _botPlayDelay(seat, legalMoves: legalMoves);
+    await _botDelay(seat, legalMoves: legalMoves);
 
     // Retry loop: bots always play valid cards; humans might tap invalid.
     while (!_disposed) {
       final clientState = _toClientState(_state, seat);
       final context = PlayContext(ledSuit: ledSuit, isForced: _bidWasForced);
       final action = await controllers[seat]!
-          .decideAction(clientState, context, tracker: tracker);
+          .decideAction(clientState, context);
       if (_disposed) return _PlayResult.ok;
 
       if (action is! PlayCardAction) continue;

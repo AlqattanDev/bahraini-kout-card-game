@@ -1,7 +1,6 @@
 import 'package:koutbh/app/models/client_game_state.dart';
 import 'package:koutbh/shared/models/game_state.dart';
 import 'player_controller.dart';
-import 'bot/card_tracker.dart';
 import 'bot/game_context.dart';
 import 'bot/bot_difficulty.dart';
 import 'bot/bid_strategy.dart';
@@ -19,8 +18,7 @@ class BotPlayerController implements PlayerController {
 
   @override
   Future<GameAction> decideAction(
-      ClientGameState state, ActionContext context,
-      {CardTracker? tracker}) async {
+      ClientGameState state, ActionContext context) async {
     return switch (context) {
       BidContext(:final currentHighBid, :final isForced) =>
         BidStrategy.decideBid(
@@ -49,7 +47,7 @@ class BotPlayerController implements PlayerController {
           isKout: state.currentBid?.isKout ?? false,
           isFirstTrick: state.trickWinners.isEmpty,
           context: GameContext.fromClientState(state, seatIndex,
-              tracker: tracker, isForcedBid: isForced, difficulty: difficulty),
+              isForcedBid: isForced, difficulty: difficulty),
         ),
     };
   }

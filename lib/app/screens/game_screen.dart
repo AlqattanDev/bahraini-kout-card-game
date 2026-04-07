@@ -138,7 +138,6 @@ class _GameScreenState extends State<GameScreen> {
               currentHighBid: state?.currentBid,
               isForced: koutGame.isHumanForced,
               onBid: (amount) {
-                koutGame.soundManager?.playBidSound();
                 koutGame.overlays.remove('bid');
                 final bidAmount = BidAmount.fromValue(amount);
                 if (bidAmount != null) {
@@ -146,7 +145,6 @@ class _GameScreenState extends State<GameScreen> {
                 }
               },
               onPass: () {
-                koutGame.soundManager?.playBidSound();
                 koutGame.overlays.remove('bid');
                 koutGame.inputSink.pass();
               },
@@ -156,7 +154,6 @@ class _GameScreenState extends State<GameScreen> {
             final koutGame = game as KoutGame;
             return TrumpSelectorOverlay(
               onSelect: (suit) {
-                koutGame.soundManager?.playTrumpSound();
                 koutGame.overlays.remove('trump');
                 koutGame.inputSink.selectTrump(
                   Suit.values.firstWhere((e) => e.name == suit),

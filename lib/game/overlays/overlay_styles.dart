@@ -33,6 +33,25 @@ abstract final class OverlayStyles {
         borderRadius: BorderRadius.circular(borderRadius),
       );
 
+  /// Banner decoration (used for connection status).
+  static BoxDecoration bannerDecoration({bool isFailed = false}) {
+    return BoxDecoration(
+      color: KoutTheme.primary.withValues(alpha: isFailed ? 0.97 : 0.95),
+      borderRadius: BorderRadius.circular(isFailed ? 12.0 : 10.0),
+      border: Border.all(
+        color: isFailed ? KoutTheme.lossColor : KoutTheme.accent.withValues(alpha: 0.5),
+        width: 1.5,
+      ),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: isFailed ? 0.5 : 0.4),
+          blurRadius: isFailed ? 16.0 : 12.0,
+          offset: const Offset(0, 4),
+        ),
+      ],
+    );
+  }
+
   /// Primary filled button style (Continue, Play Again).
   static ButtonStyle primaryButton({
     double borderRadius = 8.0,
@@ -66,6 +85,14 @@ abstract final class OverlayStyles {
   /// Result headline color — green for win, red for loss.
   static Color resultColor(bool won) =>
       won ? KoutTheme.accent : KoutTheme.lossColor;
+
+  // ---------------------------------------------------------------------------
+  // Centralized animation constants
+  // ---------------------------------------------------------------------------
+
+  static const Duration animFast = Duration(milliseconds: 100);
+  static const Duration animNormal = Duration(milliseconds: 200);
+  static const Duration animSlow = Duration(milliseconds: 300);
 
   // ---------------------------------------------------------------------------
   // Centralized spacing constants

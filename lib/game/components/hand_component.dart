@@ -1,6 +1,4 @@
 import 'package:flame/components.dart';
-import 'package:flame/effects.dart';
-import 'package:flutter/animation.dart';
 import '../../app/models/client_game_state.dart';
 import '../../shared/models/card.dart';
 import '../../shared/models/game_state.dart';
@@ -36,8 +34,6 @@ class HandComponent extends Component {
     final playable = _playableCards(state);
     final positions = layout.handCardPositions(hand.length);
 
-    final isDeal = _cards.isEmpty && hand.isNotEmpty;
-
     // Preserve previous positions so fly-to-trick animation knows the origin.
     previousCardPositions
       ..clear()
@@ -70,27 +66,18 @@ class HandComponent extends Component {
       final isDimmed = isWaitingForOthers || (hasPlayableCards && !highlight);
 
       if (existingCard != null) {
-        // Update properties and animate reposition
+        // Update properties and snap to position
         existingCard.isHighlighted = highlight;
         existingCard.isDimmed = isDimmed;
         existingCard.priority = i;
-        
-        // Remove old MoveEffects and RotateEffects to prevent conflicting animations
-        existingCard.children.whereType<MoveEffect>().forEach((e) => e.removeFromParent());
-        existingCard.children.whereType<RotateEffect>().forEach((e) => e.removeFromParent());
-
-        existingCard.add(MoveEffect.to(
-          posData.position,
-          EffectController(duration: 0.2),
-        ));
-        existingCard.add(RotateEffect.to(
-          posData.angle,
-          EffectController(duration: 0.2),
-        ));
+        existingCard.position.setFrom(posData.position);
+        existingCard.angle = posData.angle;
+        existingCard.scale = Vector2.all(handCardScale);
+        existingCard.opacity = 1.0;
 
         keptCards.add(existingCard);
       } else {
-        // Create new card
+        // Create new card at final position
         final cardComp = CardComponent(
           card: gameCard,
           isFaceUp: true,
@@ -98,56 +85,13 @@ class HandComponent extends Component {
           isDimmed: isDimmed,
           showShadow: true,
           restScale: handCardScale,
-          position: isDeal ? Vector2(layout.handCenter.x, layout.handCenter.y + 100) : posData.position,
-          angle: isDeal ? 0 : posData.angle,
+          position: posData.position,
+          angle: posData.angle,
           onTap: (c) => onCardTap(c.encode()),
         )
-          ..scale = isDeal ? Vector2.all(0.5) : Vector2.all(handCardScale)
-          ..opacity = isDeal ? 0.0 : 1.0
+          ..scale = Vector2.all(handCardScale)
           ..priority = i;
 
-        if (isDeal) {
-          cardComp.add(
-            MoveEffect.to(
-              posData.position,
-              EffectController(
-                duration: 0.3,
-                curve: Curves.easeOutCubic,
-                startDelay: 0.08 * i,
-              ),
-            ),
-          );
-          cardComp.add(
-            ScaleEffect.to(
-              Vector2.all(handCardScale),
-              EffectController(
-                duration: 0.3,
-                curve: Curves.easeOutCubic,
-                startDelay: 0.08 * i,
-              ),
-            ),
-          );
-          cardComp.add(
-            RotateEffect.to(
-              posData.angle,
-              EffectController(
-                duration: 0.3,
-                curve: Curves.easeOutCubic,
-                startDelay: 0.08 * i,
-              ),
-            ),
-          );
-          cardComp.add(
-            OpacityEffect.to(
-              1.0,
-              EffectController(
-                duration: 0.3,
-                curve: Curves.easeOutCubic,
-                startDelay: 0.08 * i,
-              ),
-            ),
-          );
-        }
         _cards.add(cardComp);
         add(cardComp);
         keptCards.add(cardComp);
@@ -158,38 +102,8 @@ class HandComponent extends Component {
     final staleCards = _cards.where((c) => !keptCards.contains(c)).toList();
     for (final c in staleCards) {
       _cards.remove(c);
-      _playCardOut(c);
+      c.removeFromParent();
     }
-  }
-
-  void _playCardOut(CardComponent card) {
-    // Remove existing effects
-    card.children.whereType<MoveEffect>().forEach((e) => e.removeFromParent());
-    card.children.whereType<ScaleEffect>().forEach((e) => e.removeFromParent());
-    card.children.whereType<RotateEffect>().forEach((e) => e.removeFromParent());
-
-    // Play card out toward trick center
-    card.add(
-      MoveEffect.to(
-        layout.trickCenter,
-        EffectController(duration: 0.25, curve: Curves.easeInCubic),
-        onComplete: () {
-          card.removeFromParent();
-        },
-      ),
-    );
-    card.add(
-      ScaleEffect.to(
-        Vector2.all(layout.trickCardScale),
-        EffectController(duration: 0.25),
-      ),
-    );
-    card.add(
-      RotateEffect.to(
-        0,
-        EffectController(duration: 0.25),
-      ),
-    );
   }
 
   /// Sorts the hand with alternating black-red suit colors.

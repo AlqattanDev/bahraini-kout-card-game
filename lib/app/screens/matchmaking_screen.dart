@@ -43,7 +43,7 @@ class _MatchmakingScreenState extends State<MatchmakingScreen> with SingleTicker
     _uid = args['uid'] as String;
     _token = args['token'] as String;
 
-    _matchmakingService = MatchmakingService(token: _token, myUid: _uid);
+    _matchmakingService = MatchmakingService(token: _token);
     _startMatchmaking();
   }
 

@@ -47,7 +47,7 @@ class _RoundResultOverlayState extends State<RoundResultOverlay>
       curve: Curves.easeOut,
     );
     // Start the animation after a brief delay so the overlay entry finishes
-    Future.delayed(const Duration(milliseconds: 300), () {
+    Future.delayed(OverlayStyles.animSlow, () {
       if (mounted) _controller.forward();
     });
   }

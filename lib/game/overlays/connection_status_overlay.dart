@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../app/services/game_service.dart';
 import '../theme/kout_theme.dart';
+import 'overlay_styles.dart';
 
 /// Banner overlay showing connection status during online games.
 ///
@@ -57,18 +58,7 @@ class ConnectionStatusOverlay extends StatelessWidget {
   Widget _banner(String text, Widget leading) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      decoration: BoxDecoration(
-        color: KoutTheme.primary.withValues(alpha: 0.95),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: KoutTheme.accent.withValues(alpha: 0.5)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.4),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+      decoration: OverlayStyles.bannerDecoration(),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -90,18 +80,7 @@ class ConnectionStatusOverlay extends StatelessWidget {
   Widget _failedBanner() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-      decoration: BoxDecoration(
-        color: KoutTheme.primary.withValues(alpha: 0.97),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: KoutTheme.lossColor),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.5),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+      decoration: OverlayStyles.bannerDecoration(isFailed: true),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -123,13 +102,9 @@ class ConnectionStatusOverlay extends StatelessWidget {
           const SizedBox(height: 10),
           ElevatedButton(
             onPressed: onReturnToMenu,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: KoutTheme.accent,
-              foregroundColor: KoutTheme.buttonForeground,
+            style: OverlayStyles.primaryButton(
+              borderRadius: 8.0,
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
             ),
             child: const Text(
               'Return to Menu',

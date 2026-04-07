@@ -1,5 +1,7 @@
 import 'package:koutbh/shared/models/card.dart';
 import 'package:koutbh/shared/logic/play_validator.dart';
+import 'package:koutbh/shared/logic/trick_resolver.dart';
+import 'package:koutbh/shared/logic/card_utils.dart';
 import 'package:koutbh/offline/player_controller.dart';
 import 'package:koutbh/offline/bot/game_context.dart';
 
@@ -146,6 +148,7 @@ class PlayStrategy {
         : legalCards.where((c) => !c.isJoker).toList();
 
     if (nonTrump.isNotEmpty) {
+      final counts = countBySuit(nonTrump);
       final suitGroups = <Suit, List<GameCard>>{};
       for (final c in nonTrump) {
         suitGroups.putIfAbsent(c.suit!, () => []).add(c);
@@ -153,7 +156,7 @@ class PlayStrategy {
 
       final sortedSuits = suitGroups.entries.toList()
         ..sort((a, b) {
-          final lenCmp = b.value.length.compareTo(a.value.length);
+          final lenCmp = counts[b.key]!.compareTo(counts[a.key]!);
           if (lenCmp != 0) return lenCmp;
           final aMax = a.value
               .map((c) => c.rank!.value)
@@ -407,39 +410,17 @@ class PlayStrategy {
       if (play.card.isJoker) return play;
     }
 
-    var best = plays.first;
+    if (ledSuit == null && plays.isNotEmpty && !plays.first.card.isJoker) {
+      ledSuit = plays.first.card.suit;
+    }
+
+    var bestPlay = plays.first;
     for (int i = 1; i < plays.length; i++) {
-      if (_beats(plays[i].card, best.card, trumpSuit, ledSuit)) {
-        best = plays[i];
+      if (TrickResolver.beats(plays[i].card, bestPlay.card, trumpSuit, ledSuit)) {
+        bestPlay = plays[i];
       }
     }
-    return best;
-  }
-
-  static bool _beats(
-      GameCard a, GameCard b, Suit? trumpSuit, Suit? ledSuit) {
-    if (a.isJoker) return true;
-    if (b.isJoker) return false;
-
-    // Trump beats non-trump
-    if (trumpSuit != null) {
-      if (a.suit == trumpSuit && b.suit != trumpSuit) return true;
-      if (a.suit != trumpSuit && b.suit == trumpSuit) return false;
-      if (a.suit == trumpSuit && b.suit == trumpSuit) {
-        return a.rank!.value > b.rank!.value;
-      }
-    }
-
-    // Same suit comparison
-    if (a.suit == b.suit) return a.rank!.value > b.rank!.value;
-
-    // Led suit beats non-led, non-trump
-    if (ledSuit != null) {
-      if (a.suit == ledSuit && b.suit != ledSuit) return true;
-      if (a.suit != ledSuit && b.suit == ledSuit) return false;
-    }
-
-    return false;
+    return bestPlay;
   }
 
   static List<GameCard> _cardsBeating(
@@ -452,7 +433,7 @@ class PlayStrategy {
     if (best == null) return candidates;
 
     return candidates
-        .where((c) => _beats(c, best.card, trumpSuit, ledSuit))
+        .where((c) => TrickResolver.beats(c, best.card, trumpSuit, ledSuit))
         .toList();
   }
 }

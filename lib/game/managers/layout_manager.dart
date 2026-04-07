@@ -154,11 +154,11 @@ class LayoutManager {
   }
 
   List<Offset> get _landscapeTableVertices {
-    final playTop = safeRect.top + safeRect.height * 0.26;
-    final playBot = safeRect.bottom - safeRect.height * 0.18;
+    final playTop = safeRect.top + safeRect.height * 0.30;
+    final playBot = safeRect.bottom - safeRect.height * 0.24;
     final cx = safeRect.center.dx;
-    final topHalf = safeRect.width * 0.24;
-    final botHalf = safeRect.width * 0.35;
+    final topHalf = safeRect.width * 0.20;
+    final botHalf = safeRect.width * 0.28;
     return [
       Offset(cx - topHalf, playTop),
       Offset(cx + topHalf, playTop),
@@ -176,19 +176,28 @@ class LayoutManager {
   }
 
   /// Position for a trick card played by relative seat index.
+  /// Cards are offset toward their player's side so it's clear who played what.
   Vector2 trickCardPosition(int relativeSeat) {
-    final offset = isLandscape ? trickOffset : _portraitTrickOffset;
+    if (isLandscape) {
+      // Landscape: wider horizontal spread, moderate vertical
+      final h = safeRect.height * 0.08;
+      final w = safeRect.width * 0.06;
+      switch (relativeSeat) {
+        case 0: return trickCenter + Vector2(0, h);       // me — below
+        case 1: return trickCenter + Vector2(-w, h * 0.3);  // left — left & slightly down
+        case 2: return trickCenter + Vector2(0, -h);      // partner — above
+        case 3: return trickCenter + Vector2(w, h * 0.3);   // right — right & slightly down
+        default: return trickCenter;
+      }
+    }
+    // Portrait
+    final offset = _portraitTrickOffset;
     switch (relativeSeat) {
-      case 0:
-        return trickCenter + Vector2(0, offset);
-      case 1:
-        return trickCenter + Vector2(-offset, 0);
-      case 2:
-        return trickCenter + Vector2(0, -offset);
-      case 3:
-        return trickCenter + Vector2(offset, 0);
-      default:
-        return trickCenter;
+      case 0: return trickCenter + Vector2(0, offset);
+      case 1: return trickCenter + Vector2(-offset, 0);
+      case 2: return trickCenter + Vector2(0, -offset);
+      case 3: return trickCenter + Vector2(offset, 0);
+      default: return trickCenter;
     }
   }
 

@@ -2,7 +2,6 @@ import 'dart:math';
 import 'dart:ui';
 import 'package:flame/components.dart';
 import 'package:flame/effects.dart';
-import 'package:flutter/animation.dart';
 import '../../app/models/client_game_state.dart';
 import '../managers/layout_manager.dart';
 import '../theme/diwaniya_colors.dart';
@@ -111,13 +110,8 @@ class TrickAreaComponent extends Component {
           ..scale = Vector2.all(trickScale)
           ..priority = 10 + i;
 
-        // Fly-in from seat direction
-        final startPos = targetPos + (basePos - center).normalized() * 50;
-        cardComp.position = startPos;
-        cardComp.add(MoveEffect.to(
-          targetPos,
-          EffectController(duration: 0.25, curve: Curves.easeOut),
-        ));
+        // Place directly at target — kout_game temp card handles fly-in visual
+        cardComp.position = targetPos;
 
         _trickCards.add(cardComp);
         add(cardComp);

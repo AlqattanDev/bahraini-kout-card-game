@@ -33,7 +33,7 @@ class _BidAnnouncementOverlayState extends State<BidAnnouncementOverlay>
     Future.delayed(const Duration(milliseconds: 150), () {
       if (mounted) setState(() => _showBidValue = true);
     });
-    Future.delayed(const Duration(milliseconds: 300), () {
+    Future.delayed(OverlayStyles.animSlow, () {
       if (mounted) setState(() => _showTrumpSuit = true);
     });
 
@@ -94,7 +94,7 @@ class _BidAnnouncementOverlayState extends State<BidAnnouncementOverlay>
             // Bid Value (150ms)
             AnimatedOpacity(
               opacity: _showBidValue ? 1.0 : 0.0,
-              duration: const Duration(milliseconds: 300),
+              duration: OverlayStyles.animSlow,
               child: isKout
                   ? AnimatedBuilder(
                       animation: _pulseAnimation,
@@ -133,7 +133,7 @@ class _BidAnnouncementOverlayState extends State<BidAnnouncementOverlay>
             // Trump suit display (300ms)
             AnimatedOpacity(
               opacity: _showTrumpSuit ? 1.0 : 0.0,
-              duration: const Duration(milliseconds: 300),
+              duration: OverlayStyles.animSlow,
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 decoration: OverlayStyles.infoBoxDecoration(),

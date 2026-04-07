@@ -13,7 +13,6 @@ class KoutTheme {
   static const Color cardBack = Color(0xFF425944);
   static const Color cardFace = Color(0xFFFFFFFF);
   static const Color cardBorder = Color(0xFF2A2A2A);
-  static const Color cardWhite = Color(0xFFFFFFFF);
   static const Color teamAColor = Color(0xFF4A90D9);
   static const Color teamBColor = Color(0xFFD94A4A);
 
@@ -45,11 +44,6 @@ class KoutTheme {
   static const Color goldAccent = DiwaniyaColors.goldAccent;
   static const Color goldHighlight = DiwaniyaColors.goldHighlight;
   static const Color cream = DiwaniyaColors.cream;
-
-  // Increased card dimensions for better readability
-  static const double cardWidthLarge = 80;
-  static const double cardHeightLarge = 114;
-  static const double cardCenterSuitSizeLarge = 42.0;
 
   // ---------------------------------------------------------------------------
   // Semantic colors
@@ -84,23 +78,6 @@ class KoutTheme {
       );
 
   // ---------------------------------------------------------------------------
-  // Typography — Arabic
-  // ---------------------------------------------------------------------------
-
-  static TextStyle get arabicHeadingStyle => const TextStyle(
-        fontFamily: arabicFontFamily,
-        color: textColor,
-        fontSize: 22,
-        fontWeight: FontWeight.bold,
-      );
-
-  static TextStyle get arabicBodyStyle => const TextStyle(
-        fontFamily: arabicFontFamily,
-        color: textColor,
-        fontSize: 14,
-      );
-
-  // ---------------------------------------------------------------------------
   // Shared button styles
   // ---------------------------------------------------------------------------
 
@@ -118,31 +95,4 @@ class KoutTheme {
           fontSize: 16,
         ),
       );
-
-  /// Secondary button: same shape, muted colors.
-  static ButtonStyle get secondaryButtonStyle => ElevatedButton.styleFrom(
-        backgroundColor: table,
-        foregroundColor: textColor,
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: const BorderSide(color: secondary, width: 1.5),
-        ),
-        textStyle: bodyStyle.copyWith(fontSize: 16),
-      );
-
-  // ---------------------------------------------------------------------------
-  // Bilingual game terms
-  //
-  // Each entry is (englishLabel, arabicLabel).
-  // ---------------------------------------------------------------------------
-
-  static const Map<String, (String, String)> gameTerms = {
-    'bab': ('Bab', 'باب'),
-    'kout': ('Kout', 'كوت'),
-    'malzoom': ('Malzoom', 'ملزوم'),
-    'pass': ('Pass', 'باس'),
-    'trump': ('Trump', 'حكم'),
-    'yourTurn': ('Your turn', 'دورك'),
-  };
 }

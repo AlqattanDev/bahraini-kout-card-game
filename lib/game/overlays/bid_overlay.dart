@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../../shared/models/bid.dart';
 import '../../game/theme/kout_theme.dart';
+import 'animated_press_button.dart';
 import 'overlay_animation_wrapper.dart';
 import 'overlay_styles.dart';
 
-class _BidChip extends StatefulWidget {
+class _BidChip extends StatelessWidget {
   final int value;
   final bool isKout;
   final VoidCallback onPressed;
@@ -17,59 +17,39 @@ class _BidChip extends StatefulWidget {
   });
 
   @override
-  State<_BidChip> createState() => _BidChipState();
-}
-
-class _BidChipState extends State<_BidChip> {
-  bool _isPressed = false;
-
-  @override
   Widget build(BuildContext context) {
-    final isKout = widget.isKout;
-
-    return GestureDetector(
-      onTapDown: (_) => setState(() => _isPressed = true),
-      onTapUp: (_) {
-        setState(() => _isPressed = false);
-        HapticFeedback.selectionClick();
-        widget.onPressed();
-      },
-      onTapCancel: () => setState(() => _isPressed = false),
-      child: AnimatedScale(
-        scale: _isPressed ? 0.92 : 1.0,
-        duration: const Duration(milliseconds: 100),
-        curve: Curves.easeOutBack,
-        child: Container(
-          width: isKout ? 64 : 52,
-          height: isKout ? 64 : 52,
-          decoration: BoxDecoration(
-            color: isKout
-                ? KoutTheme.accent.withValues(alpha: 0.15)
-                : KoutTheme.primary,
-            borderRadius: BorderRadius.circular(isKout ? 14 : 10),
-            border: Border.all(
-              color: isKout ? KoutTheme.accent : KoutTheme.accent.withValues(alpha: 0.5),
-              width: isKout ? 2.0 : 1.5,
-            ),
-            boxShadow: isKout
-                ? [
-                    BoxShadow(
-                      color: KoutTheme.accent.withValues(alpha: 0.3),
-                      blurRadius: 12,
-                      spreadRadius: 1,
-                    ),
-                  ]
-                : null,
+    return AnimatedPressButton(
+      onPressed: onPressed,
+      child: Container(
+        width: isKout ? 64 : 52,
+        height: isKout ? 64 : 52,
+        decoration: BoxDecoration(
+          color: isKout
+              ? KoutTheme.accent.withValues(alpha: 0.15)
+              : KoutTheme.primary,
+          borderRadius: BorderRadius.circular(isKout ? 14 : 10),
+          border: Border.all(
+            color: isKout ? KoutTheme.accent : KoutTheme.accent.withValues(alpha: 0.5),
+            width: isKout ? 2.0 : 1.5,
           ),
-          child: Center(
-            child: Text(
-              '${widget.value}',
-              style: TextStyle(
-                color: isKout ? KoutTheme.accent : KoutTheme.textColor,
-                fontSize: isKout ? 28 : 22,
-                fontWeight: FontWeight.bold,
-                fontFamily: KoutTheme.monoFontFamily,
-              ),
+          boxShadow: isKout
+              ? [
+                  BoxShadow(
+                    color: KoutTheme.accent.withValues(alpha: 0.3),
+                    blurRadius: 12,
+                    spreadRadius: 1,
+                  ),
+                ]
+              : null,
+        ),
+        child: Center(
+          child: Text(
+            '$value',
+            style: TextStyle(
+              color: isKout ? KoutTheme.accent : KoutTheme.textColor,
+              fontSize: isKout ? 28 : 22,
+              fontWeight: FontWeight.bold,
+              fontFamily: KoutTheme.monoFontFamily,
             ),
           ),
         ),
@@ -104,7 +84,7 @@ class _StaggeredEntranceState extends State<_StaggeredEntrance> {
     // Opacity 0->1, scale 0.8->1.0 over 200ms
     return TweenAnimationBuilder<double>(
       tween: Tween<double>(begin: 0.0, end: _visible ? 1.0 : 0.0),
-      duration: const Duration(milliseconds: 200),
+      duration: OverlayStyles.animNormal,
       curve: Curves.easeOut,
       builder: (context, value, child) {
         return Opacity(

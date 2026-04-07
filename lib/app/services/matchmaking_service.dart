@@ -8,7 +8,7 @@ class MatchmakingService {
   final String _token;
   WebSocketChannel? _lobbyChannel;
 
-  MatchmakingService({required String token, required String myUid})
+  MatchmakingService({required String token})
       : _token = token;
 
   Future<String?> joinQueue(int eloRating) async {

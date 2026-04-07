@@ -1,5 +1,6 @@
 // TODO: Phase 2 raised hand values ~0.5. Bid thresholds may need recalibration (Phase 3).
 import 'package:koutbh/shared/models/card.dart';
+import 'package:koutbh/shared/logic/card_utils.dart';
 
 class HandStrength {
   final double expectedWinners;
@@ -10,14 +11,8 @@ class HandStrength {
 class HandEvaluator {
   static HandStrength evaluate(List<GameCard> hand, {Suit? trumpSuit}) {
     double score = 0.0;
-    final suitCounts = <Suit, int>{};
+    final suitCounts = countBySuit(hand);
     final suitStrength = <Suit, double>{};
-
-    // Count suits
-    for (final card in hand) {
-      if (card.isJoker) continue;
-      suitCounts[card.suit!] = (suitCounts[card.suit!] ?? 0) + 1;
-    }
 
     for (final card in hand) {
       if (card.isJoker) {

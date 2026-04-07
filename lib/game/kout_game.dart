@@ -1,6 +1,9 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:flame/components.dart';
+import 'package:flame/effects.dart';
 import 'package:flame/game.dart';
+import 'package:flutter/animation.dart';
 import 'package:flutter/painting.dart';
 import '../app/models/client_game_state.dart';
 import '../app/services/game_service.dart';
@@ -13,14 +16,13 @@ import '../shared/models/card.dart';
 import '../shared/models/trick.dart';
 import '../shared/logic/trick_resolver.dart';
 import 'components/unified_hud.dart';
-import 'components/table_background.dart';
 import 'components/trick_area.dart';
 import 'managers/layout_manager.dart';
-import 'managers/animation_manager.dart';
 import 'managers/sound_manager.dart';
 import 'managers/turn_timer_manager.dart';
 import 'managers/overlay_controller.dart';
 import 'managers/component_lifecycle_manager.dart';
+import 'theme/kout_theme.dart';
 
 class KoutGame extends FlameGame {
   final Stream<ClientGameState> stateStream;
@@ -40,8 +42,7 @@ class KoutGame extends FlameGame {
   TrickAreaComponent? _trickArea;
   UnifiedHudComponent? _unifiedHud;
 
-  // Animation & sound
-  late AnimationManager _animationManager;
+  // Sound
   SoundManager? soundManager;
 
   // Track previous trick play count to detect new card plays
@@ -98,11 +99,8 @@ class KoutGame extends FlameGame {
   Future<void> onLoad() async {
     final safeSize = hasLayout ? size : Vector2(375, 812);
     layout = LayoutManager(safeSize, safeArea: _safeArea);
-    _animationManager = AnimationManager(game: this);
     soundManager = SoundManager();
     await soundManager!.init();
-
-    add(TableBackgroundComponent());
 
     _lifecycle.perspectiveTable = PerspectiveTableComponent(layout: layout);
     add(_lifecycle.perspectiveTable!);
@@ -156,7 +154,6 @@ class KoutGame extends FlameGame {
 
   void _onStateUpdate(ClientGameState state) {
     _lifecycle.updateLandscapeVisibility(layout.isLandscape);
-    _lifecycle.updateLandscapeLabels(state, layout);
     _lifecycle.updateSeats(state, layout);
     _updateScoreDisplay(state);
     _updateHand(state);
@@ -166,6 +163,7 @@ class KoutGame extends FlameGame {
       _updateTrickArea(state);
     }
     _overlayController.trackScores(state);
+    _overlayController.trackTrickSounds(state, soundManager);
     _overlayController.update(
       state,
       delegate: (
@@ -210,13 +208,12 @@ class KoutGame extends FlameGame {
     final newCount = state.currentTrickPlays.length;
 
     if (newCount == 4 && _prevTrickPlayCount < 4) {
-      soundManager?.playTrickWinSound();
       _flashTrickWinnerSeat(state);
       _trickPauseTimer = 1.0;
     }
 
     if (newCount == 0 && _prevTrickPlayCount > 0) {
-      soundManager?.playTrickCollectSound();
+      // Sound handled by overlay controller
     }
 
     if (newCount > _prevTrickPlayCount && newCount > 0) {
@@ -246,8 +243,7 @@ class KoutGame extends FlameGame {
           anchor: Anchor.center,
         )..scale = Vector2.all(sourceScale);
         add(tempCard);
-        soundManager?.playCardSound();
-        _animationManager.animateCardPlay(tempCard, target).then((_) {
+        _animateCardPlay(tempCard, target).then((_) {
           tempCard.removeFromParent();
           _trickArea!.updateState(state);
         });
@@ -262,15 +258,77 @@ class KoutGame extends FlameGame {
   }
 
   // ---------------------------------------------------------------------------
-  // Victory particles
+  // Victory particles & Animation
   // ---------------------------------------------------------------------------
 
   void spawnVictoryParticles() {
-    _animationManager.animateTrickWin(
-      layout.trickCenter,
-      particleCount: 60,
-      durationSeconds: 2.0,
+    final position = layout.trickCenter;
+    const particleCount = 60;
+    const durationSeconds = 2.0;
+
+    for (int i = 0; i < particleCount; i++) {
+      final angle = (math.pi * 2 / particleCount) * i;
+      final particle = _GoldParticleComponent(
+        startPosition: position.clone(),
+        angle: angle,
+        durationSeconds: durationSeconds,
+      );
+      add(particle);
+    }
+  }
+
+  Future<void> _animateCardPlay(
+    CardComponent card,
+    Vector2 target, {
+    double targetScale = 1.0,
+  }) async {
+    final moveCompleter = Completer<void>();
+    final scaleCompleter = Completer<void>();
+
+    // Use the visual size (base size * current scale) for the shadow
+    final visualSize = Vector2(
+      card.size.x * card.scale.x,
+      card.size.y * card.scale.y,
     );
+
+    // Attach a shadow component that fades out as the card lands
+    final shadow = _CardShadowComponent(
+      cardSize: visualSize,
+      totalDistance: card.position.distanceTo(target),
+    );
+    card.add(shadow);
+
+    card.add(
+      MoveEffect.to(
+        target,
+        CurvedEffectController(0.3, Curves.easeOut),
+        onComplete: () {
+          shadow.removeFromParent();
+          moveCompleter.complete();
+        },
+      ),
+    );
+
+    // Scale animation: slight pop above target, then settle to target scale.
+    // This gives a satisfying "land" feel regardless of source scale.
+    final popScale = targetScale * 1.08;
+    card.add(
+      ScaleEffect.to(
+        Vector2.all(popScale),
+        CurvedEffectController(0.15, Curves.easeOut),
+        onComplete: () {
+          card.add(
+            ScaleEffect.to(
+              Vector2.all(targetScale),
+              CurvedEffectController(0.15, Curves.easeIn),
+              onComplete: scaleCompleter.complete,
+            ),
+          );
+        },
+      ),
+    );
+
+    await Future.wait([moveCompleter.future, scaleCompleter.future]);
   }
 
   // ---------------------------------------------------------------------------
@@ -324,5 +382,102 @@ class KoutGame extends FlameGame {
     _connectionSub?.cancel();
     soundManager?.dispose();
     super.onRemove();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Drop shadow component
+// ---------------------------------------------------------------------------
+
+/// Renders a drop shadow beneath a card while it is in motion.
+///
+/// The shadow offset scales with [totalDistance]: at the start of flight the
+/// shadow is largest (highest altitude), and it shrinks to zero as the card
+/// lands.
+class _CardShadowComponent extends PositionComponent {
+  final Vector2 cardSize;
+  final double totalDistance;
+  double _elapsed = 0;
+  static const double _flightDuration = 0.3; // matches MoveEffect duration
+
+  _CardShadowComponent({
+    required this.cardSize,
+    required this.totalDistance,
+  }) : super(position: Vector2.zero(), anchor: Anchor.topLeft);
+
+  @override
+  void update(double dt) {
+    super.update(dt);
+    _elapsed = (_elapsed + dt).clamp(0.0, _flightDuration);
+  }
+
+  @override
+  void render(Canvas canvas) {
+    final progress = _elapsed / _flightDuration; // 0.0 = start, 1.0 = landed
+    final altitude = 1.0 - progress; // 1.0 = high, 0.0 = landed
+    final maxOffset = math.min(totalDistance * 0.12, 14.0);
+    final shadowOffset = maxOffset * altitude;
+
+    if (shadowOffset < 0.5) return; // not worth drawing
+
+    final shadowRect = Rect.fromLTWH(
+      shadowOffset,
+      shadowOffset,
+      cardSize.x,
+      cardSize.y,
+    );
+    final shadowPaint = Paint()
+      ..color = const Color(0x55000000).withValues(alpha: 0.35 * altitude)
+      ..maskFilter = MaskFilter.blur(BlurStyle.normal, shadowOffset * 0.6);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(shadowRect, const Radius.circular(6)),
+      shadowPaint,
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Gold particle component (trick win celebration)
+// ---------------------------------------------------------------------------
+
+/// A single expanding gold circle particle for the trick-win celebration.
+class _GoldParticleComponent extends PositionComponent {
+  @override
+  final double angle;
+  final double durationSeconds;
+  double _elapsed = 0;
+
+  static const double _speed = 80.0; // pixels per second
+  static const double _maxRadius = 5.0;
+
+  _GoldParticleComponent({
+    required Vector2 startPosition,
+    required this.angle,
+    required this.durationSeconds,
+  }) : super(position: startPosition, anchor: Anchor.center);
+
+  @override
+  void update(double dt) {
+    super.update(dt);
+    _elapsed += dt;
+    // Move outward
+    position.x += math.cos(angle) * _speed * dt;
+    position.y += math.sin(angle) * _speed * dt;
+
+    if (_elapsed >= durationSeconds) {
+      removeFromParent();
+    }
+  }
+
+  @override
+  void render(Canvas canvas) {
+    final progress = (_elapsed / durationSeconds).clamp(0.0, 1.0);
+    final opacity = 1.0 - progress; // fade out
+    final radius = _maxRadius * (0.3 + progress * 0.7); // grow slightly
+
+    final paint = Paint()
+      ..color = KoutTheme.accent.withValues(alpha: opacity)
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(Offset.zero, radius, paint);
   }
 }

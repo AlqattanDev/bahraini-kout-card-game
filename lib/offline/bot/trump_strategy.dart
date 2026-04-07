@@ -1,5 +1,6 @@
 import 'package:koutbh/shared/models/card.dart';
 import 'package:koutbh/shared/models/bid.dart';
+import 'package:koutbh/shared/logic/card_utils.dart';
 
 class TrumpStrategy {
   static Suit selectTrump(
@@ -9,13 +10,12 @@ class TrumpStrategy {
     double? lengthWeight,
     double? strengthWeight,
   }) {
-    final suitCounts = <Suit, int>{};
+    final suitCounts = countBySuit(hand);
     final suitStrength = <Suit, double>{};
 
     for (final card in hand) {
       if (card.isJoker) continue;
       final suit = card.suit!;
-      suitCounts[suit] = (suitCounts[suit] ?? 0) + 1;
 
       // Strength based on rank value
       double rankScore = 0.0;

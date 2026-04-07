@@ -53,36 +53,40 @@ class _AnimatedSuitButtonState extends State<AnimatedSuitButton> {
       onTapDown: _handleTapDown,
       onTapUp: _handleTapUp,
       onTapCancel: _handleTapCancel,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(10.0),
-          boxShadow: _isPressed
-              ? [
-                  BoxShadow(
-                    color: KoutTheme.accent.withValues(alpha: 0.8),
-                    blurRadius: 12.0,
-                    spreadRadius: 4.0,
-                  )
-                ]
-              : [],
-        ),
-        child: ElevatedButton(
-          // Pass empty onPressed, as GestureDetector handles tap
-          onPressed: () {},
-          style: OverlayStyles.primaryButton(
-            borderRadius: 10.0,
-            padding: EdgeInsets.zero,
-          ).copyWith(
-            minimumSize: WidgetStateProperty.all(const Size(70, 70)),
-            elevation: WidgetStateProperty.all(4),
+      child: AnimatedScale(
+        scale: _isPressed ? 0.92 : 1.0,
+        duration: const Duration(milliseconds: 100),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          width: 70,
+          height: 70,
+          decoration: BoxDecoration(
+            color: KoutTheme.accent,
+            borderRadius: BorderRadius.circular(10.0),
+            boxShadow: _isPressed
+                ? [
+                    BoxShadow(
+                      color: KoutTheme.accent.withValues(alpha: 0.8),
+                      blurRadius: 12.0,
+                      spreadRadius: 4.0,
+                    )
+                  ]
+                : [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.3),
+                      blurRadius: 4.0,
+                      offset: const Offset(0, 2),
+                    )
+                  ],
           ),
-          child: Text(
-            widget.suit.symbol,
-            style: TextStyle(
-              fontSize: 32,
-              color: KoutTheme.suitCardColor(widget.suit),
-              fontWeight: FontWeight.bold,
+          child: Center(
+            child: Text(
+              widget.suit.symbol,
+              style: TextStyle(
+                fontSize: 32,
+                color: KoutTheme.suitCardColor(widget.suit),
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ),

@@ -26,7 +26,7 @@ class CardPainter {
     );
 
     final outerBorderPaint = Paint()
-      ..color = KoutTheme.cardWhite
+      ..color = KoutTheme.cardFace
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.0;
     canvas.drawRRect(rrect, outerBorderPaint);

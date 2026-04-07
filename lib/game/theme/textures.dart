@@ -4,18 +4,6 @@ import 'diwaniya_colors.dart';
 
 /// Procedural texture generators for the Diwaniya table theme.
 class TextureGenerator {
-  /// Creates a warm wood-grain radial gradient paint for the table background.
-  /// Kept for backward compatibility.
-  static Paint woodGrainPaint(Rect bounds) {
-    return Paint()
-      ..shader = Gradient.radial(
-        bounds.center,
-        bounds.longestSide * 0.6,
-        [DiwaniyaColors.darkWood, const Color(0xFF2E1A0E), const Color(0xFF1A0F08)],
-        [0.0, 0.5, 1.0],
-      );
-  }
-
   /// Draws a repeating tile/brick texture pattern across [bounds].
   static void drawTileTexture(
     Canvas canvas,

@@ -3,6 +3,7 @@ import 'package:flame/components.dart';
 import '../managers/layout_manager.dart';
 import '../theme/diwaniya_colors.dart';
 import '../theme/geometric_patterns.dart';
+import '../theme/textures.dart';
 
 /// Renders a 3D perspective table surface as a trapezoid.
 class PerspectiveTableComponent extends PositionComponent {
@@ -23,6 +24,11 @@ class PerspectiveTableComponent extends PositionComponent {
 
   @override
   void render(Canvas canvas) {
+    final rect = Rect.fromLTWH(0, 0, size.x, size.y);
+    TextureGenerator.drawTileTexture(canvas, rect);
+    TextureGenerator.drawVignette(canvas, rect,
+        intensity: layout.isLandscape ? 0.35 : 0.5);
+
     final verts = layout.tableVertices;
 
     final bodyPath = Path()
@@ -68,16 +74,31 @@ class PerspectiveTableComponent extends PositionComponent {
       );
     canvas.drawPath(bodyPath, innerShadowPaint);
 
-    // Outer border — dark wood
+    // Outer border — dark wood rail
     final borderPaint = Paint()
       ..color = DiwaniyaColors.tableBorder
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 5.0
+      ..strokeWidth = 6.0
       ..strokeJoin = StrokeJoin.round;
     canvas.drawPath(bodyPath, borderPaint);
 
-    // Inner accent border — gold, more visible
-    final insetVerts = _insetVertices(verts, 10.0);
+    // Second outer border — lighter wood highlight for 3D rail effect
+    final railHighlight = Paint()
+      ..color = DiwaniyaColors.tableBorder.withValues(alpha: 0.5)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0
+      ..strokeJoin = StrokeJoin.round;
+    final outerRailVerts = _insetVertices(verts, -2.0);
+    final outerRailPath = Path()
+      ..moveTo(outerRailVerts[0].dx, outerRailVerts[0].dy)
+      ..lineTo(outerRailVerts[1].dx, outerRailVerts[1].dy)
+      ..lineTo(outerRailVerts[3].dx, outerRailVerts[3].dy)
+      ..lineTo(outerRailVerts[2].dx, outerRailVerts[2].dy)
+      ..close();
+    canvas.drawPath(outerRailPath, railHighlight);
+
+    // Inner accent border — gold inlay
+    final insetVerts = _insetVertices(verts, 12.0);
     final insetPath = Path()
       ..moveTo(insetVerts[0].dx, insetVerts[0].dy)
       ..lineTo(insetVerts[1].dx, insetVerts[1].dy)
@@ -86,24 +107,36 @@ class PerspectiveTableComponent extends PositionComponent {
       ..close();
 
     final accentPaint = Paint()
-      ..color = DiwaniyaColors.goldAccent.withValues(alpha: 0.4)
+      ..color = DiwaniyaColors.goldAccent.withValues(alpha: 0.35)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
+      ..strokeWidth = 1.0;
     canvas.drawPath(insetPath, accentPaint);
 
-    // Decorative geometric motif along the top edge — larger, more visible
+    // Subtle center glow where trick cards land
+    final glowPaint = Paint()
+      ..shader = Gradient.radial(
+        center,
+        radius * 0.3,
+        [
+          DiwaniyaColors.goldAccent.withValues(alpha: 0.06),
+          const Color(0x00000000),
+        ],
+      );
+    canvas.drawPath(bodyPath, glowPaint);
+
+    // Decorative geometric motif along the top edge
     GeometricPatterns.drawStarTessellation(
       canvas,
       Rect.fromLTWH(verts[0].dx, verts[0].dy - 2, verts[1].dx - verts[0].dx, 16),
-      opacity: 0.22,
+      opacity: 0.18,
       cellSize: 20.0,
     );
 
-    // Geometric motif along bottom edge too
+    // Geometric motif along bottom edge
     GeometricPatterns.drawStarTessellation(
       canvas,
       Rect.fromLTWH(verts[2].dx, verts[2].dy - 14, verts[3].dx - verts[2].dx, 16),
-      opacity: 0.15,
+      opacity: 0.12,
       cellSize: 20.0,
     );
   }

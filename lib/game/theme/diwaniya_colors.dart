@@ -12,13 +12,7 @@ class DiwaniyaColors {
   // Table surface (3D perspective trapezoid) — warm felt green
   static const Color tableSurfaceCenter = Color(0xFF2A5438);
   static const Color tableSurfaceEdge = Color(0xFF1E3F2A);
-  static const Color tableFelt = Color(0xFF3A4D3A);
   static const Color tableBorder = Color(0xFF3B2314);
-
-  // Landscape felt (richer, less saturated green)
-  static const Color feltCenter = Color(0xFF2A5438);
-  static const Color feltMid = Color(0xFF1E3F2A);
-  static const Color feltEdge = Color(0xFF142B1D);
 
   // Diwaniya accent colors
   static const Color goldAccent = Color(0xFFC9A84C);

@@ -11,6 +11,8 @@ typedef OverlayDelegate = ({
 
 /// Manages game overlay visibility state machine. Decides which overlays to
 /// show/hide based on [GamePhase] transitions. Extracted from KoutGame.
+///
+/// Also tracks trick play counts for card-play / trick-win / trick-clear sounds.
 class OverlayController {
   static const List<String> _allOverlays = [
     'bid',
@@ -28,12 +30,38 @@ class OverlayController {
   int _lastScoreA = 0;
   int _lastScoreB = 0;
 
+  /// Previous trick play count for detecting card-play, trick-win, trick-clear.
+  int _prevTrickPlayCount = 0;
+
   /// Call each frame to track scores for pre-round snapshots.
   void trackScores(ClientGameState state) {
     if (state.phase != GamePhase.roundScoring) {
       _lastScoreA = state.scores[Team.a] ?? 0;
       _lastScoreB = state.scores[Team.b] ?? 0;
     }
+  }
+
+  /// Detects card plays, trick completions, and trick clears from state changes,
+  /// playing the appropriate sounds. Call from the state update path.
+  void trackTrickSounds(ClientGameState state, SoundManager? soundManager) {
+    final newCount = state.currentTrickPlays.length;
+
+    // New card played
+    if (newCount > _prevTrickPlayCount && newCount > 0) {
+      soundManager?.playCardSound();
+    }
+
+    // Trick complete (4 cards on table)
+    if (newCount == 4 && _prevTrickPlayCount < 4) {
+      soundManager?.playTrickWinSound();
+    }
+
+    // Trick cleared (cards collected)
+    if (newCount == 0 && _prevTrickPlayCount > 0) {
+      soundManager?.playTrickCollectSound();
+    }
+
+    _prevTrickPlayCount = newCount;
   }
 
   /// Determines which overlay should be active and mutates the overlay set
@@ -108,6 +136,10 @@ class OverlayController {
         } else {
           soundManager?.playRoundLossSound();
         }
+      } else if (targetOverlay == 'bid') {
+        soundManager?.playBidSound();
+      } else if (targetOverlay == 'trump') {
+        soundManager?.playTrumpSound();
       }
       delegate.add(targetOverlay);
     }

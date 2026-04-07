@@ -5,10 +5,8 @@ import '../../app/models/client_game_state.dart';
 import '../../shared/models/game_state.dart';
 import '../components/ambient_decoration.dart';
 import '../components/opponent_hand_fan.dart';
-import '../components/opponent_name_label.dart';
 import '../components/perspective_table.dart';
 import '../components/player_seat.dart';
-import '../components/table_background.dart';
 import '../theme/kout_theme.dart';
 import 'layout_manager.dart';
 
@@ -19,8 +17,6 @@ class ComponentLifecycleManager {
 
   final List<PlayerSeatComponent> seats = [];
   final Map<int, OpponentHandFan> opponentFans = {};
-  final Map<int, OpponentNameLabel> opponentLabels = {};
-  OpponentNameLabel? playerLabel;
   AmbientDecorationComponent? ambientDecoration;
   PerspectiveTableComponent? perspectiveTable;
 
@@ -56,13 +52,6 @@ class ComponentLifecycleManager {
       } else if (!landscape && !fan.isMounted) {
         game.add(fan);
       }
-    }
-
-    // Update table background
-    final tableBg =
-        game.children.whereType<TableBackgroundComponent>().firstOrNull;
-    if (tableBg != null) {
-      tableBg.isLandscape = landscape;
     }
 
     return true;
@@ -175,18 +164,6 @@ class ComponentLifecycleManager {
       3 => Vector2(-50, 0),  // right → push left toward table
       _ => Vector2.zero(),
     };
-  }
-
-  /// Seats handle identity in all orientations — clean up any leftover labels.
-  void updateLandscapeLabels(ClientGameState state, LayoutManager layout) {
-    for (final label in opponentLabels.values) {
-      if (label.isMounted) label.removeFromParent();
-    }
-    opponentLabels.clear();
-    if (playerLabel != null) {
-      if (playerLabel!.isMounted) playerLabel!.removeFromParent();
-      playerLabel = null;
-    }
   }
 
   /// Adds or removes a component based on landscape state.
