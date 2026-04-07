@@ -1,5 +1,6 @@
 import 'package:flame/components.dart';
 import 'package:flame/effects.dart';
+import 'package:flutter/animation.dart';
 import '../../app/models/client_game_state.dart';
 import '../../shared/models/card.dart';
 import '../../shared/models/game_state.dart';
@@ -34,6 +35,8 @@ class HandComponent extends Component {
     final hand = _sortHand(state.myHand, state.trumpSuit);
     final playable = _playableCards(state);
     final positions = layout.handCardPositions(hand.length);
+
+    final isDeal = _cards.isEmpty && hand.isNotEmpty;
 
     // Preserve previous positions so fly-to-trick animation knows the origin.
     previousCardPositions
@@ -95,13 +98,56 @@ class HandComponent extends Component {
           isDimmed: isDimmed,
           showShadow: true,
           restScale: handCardScale,
-          position: posData.position,
-          angle: posData.angle,
+          position: isDeal ? Vector2(layout.handCenter.x, layout.handCenter.y + 100) : posData.position,
+          angle: isDeal ? 0 : posData.angle,
           onTap: (c) => onCardTap(c.encode()),
         )
-          ..scale = Vector2.all(handCardScale)
+          ..scale = isDeal ? Vector2.all(0.5) : Vector2.all(handCardScale)
+          ..opacity = isDeal ? 0.0 : 1.0
           ..priority = i;
 
+        if (isDeal) {
+          cardComp.add(
+            MoveEffect.to(
+              posData.position,
+              EffectController(
+                duration: 0.3,
+                curve: Curves.easeOutCubic,
+                startDelay: 0.08 * i,
+              ),
+            ),
+          );
+          cardComp.add(
+            ScaleEffect.to(
+              Vector2.all(handCardScale),
+              EffectController(
+                duration: 0.3,
+                curve: Curves.easeOutCubic,
+                startDelay: 0.08 * i,
+              ),
+            ),
+          );
+          cardComp.add(
+            RotateEffect.to(
+              posData.angle,
+              EffectController(
+                duration: 0.3,
+                curve: Curves.easeOutCubic,
+                startDelay: 0.08 * i,
+              ),
+            ),
+          );
+          cardComp.add(
+            OpacityEffect.to(
+              1.0,
+              EffectController(
+                duration: 0.3,
+                curve: Curves.easeOutCubic,
+                startDelay: 0.08 * i,
+              ),
+            ),
+          );
+        }
         _cards.add(cardComp);
         add(cardComp);
         keptCards.add(cardComp);
@@ -111,9 +157,39 @@ class HandComponent extends Component {
     // Remove any cards that are no longer in hand
     final staleCards = _cards.where((c) => !keptCards.contains(c)).toList();
     for (final c in staleCards) {
-      c.removeFromParent();
       _cards.remove(c);
+      _playCardOut(c);
     }
+  }
+
+  void _playCardOut(CardComponent card) {
+    // Remove existing effects
+    card.children.whereType<MoveEffect>().forEach((e) => e.removeFromParent());
+    card.children.whereType<ScaleEffect>().forEach((e) => e.removeFromParent());
+    card.children.whereType<RotateEffect>().forEach((e) => e.removeFromParent());
+
+    // Play card out toward trick center
+    card.add(
+      MoveEffect.to(
+        layout.trickCenter,
+        EffectController(duration: 0.25, curve: Curves.easeInCubic),
+        onComplete: () {
+          card.removeFromParent();
+        },
+      ),
+    );
+    card.add(
+      ScaleEffect.to(
+        Vector2.all(layout.trickCardScale),
+        EffectController(duration: 0.25),
+      ),
+    );
+    card.add(
+      RotateEffect.to(
+        0,
+        EffectController(duration: 0.25),
+      ),
+    );
   }
 
   /// Sorts the hand with alternating black-red suit colors.

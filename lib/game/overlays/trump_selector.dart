@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../shared/models/card.dart';
 import '../../game/theme/kout_theme.dart';
 import 'overlay_animation_wrapper.dart';
@@ -33,6 +34,7 @@ class _AnimatedSuitButtonState extends State<AnimatedSuitButton> {
   void _handleTapUp(TapUpDetails details) {
     if (_hasSelected) return;
     _hasSelected = true;
+    HapticFeedback.mediumImpact();
     setState(() => _isPressed = false);
     Future.delayed(const Duration(milliseconds: 200), () {
       if (mounted) {

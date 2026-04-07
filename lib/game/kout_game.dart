@@ -46,6 +46,9 @@ class KoutGame extends FlameGame {
 
   // Track previous trick play count to detect new card plays
   int _prevTrickPlayCount = 0;
+  // Pause after trick completion so player can see all 4 cards
+  double _trickPauseTimer = 0.0;
+  ClientGameState? _deferredTrickState;
 
   // Connection status for online games
   ConnectionStatus connectionStatus = ConnectionStatus.connected;
@@ -138,6 +141,13 @@ class KoutGame extends FlameGame {
   void update(double dt) {
     super.update(dt);
     _turnTimer.tick(dt, currentState, _lifecycle.seats, hud: _unifiedHud);
+    if (_trickPauseTimer > 0) {
+      _trickPauseTimer -= dt;
+      if (_trickPauseTimer <= 0 && _deferredTrickState != null) {
+        _updateTrickArea(_deferredTrickState!);
+        _deferredTrickState = null;
+      }
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -150,7 +160,11 @@ class KoutGame extends FlameGame {
     _lifecycle.updateSeats(state, layout);
     _updateScoreDisplay(state);
     _updateHand(state);
-    _updateTrickArea(state);
+    if (_trickPauseTimer > 0) {
+      _deferredTrickState = state;
+    } else {
+      _updateTrickArea(state);
+    }
     _overlayController.trackScores(state);
     _overlayController.update(
       state,
@@ -198,6 +212,7 @@ class KoutGame extends FlameGame {
     if (newCount == 4 && _prevTrickPlayCount < 4) {
       soundManager?.playTrickWinSound();
       _flashTrickWinnerSeat(state);
+      _trickPauseTimer = 1.0;
     }
 
     if (newCount == 0 && _prevTrickPlayCount > 0) {

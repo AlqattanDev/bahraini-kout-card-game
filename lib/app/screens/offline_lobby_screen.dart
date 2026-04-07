@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/game_mode.dart';
@@ -45,6 +46,8 @@ class _OfflineLobbyScreenState extends State<OfflineLobbyScreen> {
   @override
   Widget build(BuildContext context) {
     final seats = _seats;
+    final tableSize = min(300.0, MediaQuery.sizeOf(context).width * 0.75);
+    final avatarSize = tableSize * 0.21;
 
     return Scaffold(
       backgroundColor: KoutTheme.table,
@@ -62,8 +65,8 @@ class _OfflineLobbyScreenState extends State<OfflineLobbyScreen> {
           Expanded(
             child: Center(
               child: SizedBox(
-                width: 300,
-                height: 300,
+                width: tableSize,
+                height: tableSize,
                 child: Stack(
                   clipBehavior: Clip.none,
                   children: [
@@ -113,28 +116,28 @@ class _OfflineLobbyScreenState extends State<OfflineLobbyScreen> {
                       top: -20,
                       left: 0,
                       right: 0,
-                      child: Center(child: _seatWidget(seats[2], 'Team A')),
+                      child: Center(child: _seatWidget(seats[2], 'Team A', avatarSize)),
                     ),
                     // Seat 1 (left - opponent)
                     Positioned(
                       left: -30,
                       top: 0,
                       bottom: 0,
-                      child: Center(child: _seatWidget(seats[1], 'Team B')),
+                      child: Center(child: _seatWidget(seats[1], 'Team B', avatarSize)),
                     ),
                     // Seat 3 (right - opponent)
                     Positioned(
                       right: -30,
                       top: 0,
                       bottom: 0,
-                      child: Center(child: _seatWidget(seats[3], 'Team B')),
+                      child: Center(child: _seatWidget(seats[3], 'Team B', avatarSize)),
                     ),
                     // Seat 0 (bottom - you)
                     Positioned(
                       bottom: -20,
                       left: 0,
                       right: 0,
-                      child: Center(child: _seatWidget(seats[0], 'Team A')),
+                      child: Center(child: _seatWidget(seats[0], 'Team A', avatarSize)),
                     ),
                   ],
                 ),
@@ -144,15 +147,17 @@ class _OfflineLobbyScreenState extends State<OfflineLobbyScreen> {
           // Difficulty selector
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 32.0),
-            child: Row(
+            child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text('Bot Style: ',
                     style: KoutTheme.bodyStyle),
-                const SizedBox(width: 8),
-                ...BotDifficulty.values.map((d) => Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: ChoiceChip(
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  alignment: WrapAlignment.center,
+                  children: BotDifficulty.values.map((d) => ChoiceChip(
                         label: Text(_difficultyLabel(d)),
                         selected: _difficulty == d,
                         onSelected: (_) => setState(() => _difficulty = d),
@@ -169,8 +174,8 @@ class _OfflineLobbyScreenState extends State<OfflineLobbyScreen> {
                               ? KoutTheme.accent
                               : KoutTheme.secondary,
                         ),
-                      ),
-                    )),
+                      )).toList(),
+                ),
               ],
             ),
           ),
@@ -215,14 +220,14 @@ class _OfflineLobbyScreenState extends State<OfflineLobbyScreen> {
     );
   }
 
-  Widget _seatWidget(SeatConfig seat, String team) {
+  Widget _seatWidget(SeatConfig seat, String team, double avatarSize) {
     final isHuman = !seat.isBot;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 64,
-          height: 64,
+          width: avatarSize,
+          height: avatarSize,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: isHuman ? KoutTheme.accent : KoutTheme.primary,
@@ -233,7 +238,7 @@ class _OfflineLobbyScreenState extends State<OfflineLobbyScreen> {
             boxShadow: isHuman
                 ? [
                     BoxShadow(
-                      color: const Color(0xFF738C5A).withValues(alpha: 0.4),
+                      color: KoutTheme.accent.withValues(alpha: 0.4),
                       blurRadius: 12,
                     ),
                   ]
@@ -258,8 +263,8 @@ class _OfflineLobbyScreenState extends State<OfflineLobbyScreen> {
           team,
           style: TextStyle(
             color: team == 'Team A'
-                ? KoutTheme.accent
-                : KoutTheme.secondary,
+                ? KoutTheme.teamAColor
+                : KoutTheme.teamBColor,
             fontSize: 10,
           ),
         ),

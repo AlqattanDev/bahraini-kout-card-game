@@ -16,6 +16,7 @@ import '../../offline/bot_player_controller.dart';
 import '../../offline/player_controller.dart';
 import '../../shared/models/bid.dart';
 import '../../shared/models/card.dart';
+import '../../game/theme/kout_theme.dart';
 
 class GameScreen extends StatefulWidget {
   const GameScreen({super.key});
@@ -72,7 +73,7 @@ class _GameScreenState extends State<GameScreen> {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(error),
-                backgroundColor: const Color(0xFF5C1A1B),
+                backgroundColor: KoutTheme.lossColor,
                 duration: const Duration(seconds: 3),
               ),
             );

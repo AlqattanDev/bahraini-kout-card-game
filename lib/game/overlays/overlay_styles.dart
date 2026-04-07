@@ -37,7 +37,7 @@ abstract final class OverlayStyles {
   static ButtonStyle primaryButton({
     double borderRadius = 8.0,
     EdgeInsets padding =
-        const EdgeInsets.symmetric(horizontal: 36, vertical: 13),
+        const EdgeInsets.symmetric(horizontal: 36, vertical: 14),
   }) =>
       ElevatedButton.styleFrom(
         backgroundColor: KoutTheme.accent,

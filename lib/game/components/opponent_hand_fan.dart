@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'dart:ui';
 import 'package:flame/components.dart';
 import '../theme/kout_theme.dart';
@@ -48,6 +49,9 @@ class OpponentHandFan extends PositionComponent {
   /// Bounding box padding to accommodate rotated cards + arc.
   static const double _boundsPadding = 16.0;
 
+  double _targetCardCount = 0;
+  double _displayCardCount = 0;
+
   OpponentHandFan({
     required this.cardCount,
     required super.position,
@@ -58,15 +62,28 @@ class OpponentHandFan extends PositionComponent {
             _miniWidth + _fanOverlap * 10 + _boundsPadding,
             _miniHeight + _arcBow + _boundsPadding,
           ),
-        );
+        ) {
+    _targetCardCount = cardCount.toDouble();
+    _displayCardCount = cardCount.toDouble();
+  }
 
   void updateCardCount(int count) {
     cardCount = count;
+    _targetCardCount = count.toDouble();
+  }
+
+  @override
+  void update(double dt) {
+    super.update(dt);
+    if (_displayCardCount != _targetCardCount) {
+      _displayCardCount += (_targetCardCount - _displayCardCount) * min(1.0, dt * 8.0);
+    }
   }
 
   @override
   void render(Canvas canvas) {
-    if (cardCount <= 0) return;
+    final displayCount = _displayCardCount.round();
+    if (displayCount <= 0) return;
 
     // Apply base rotation around the component center so the entire fan
     // points in the right direction (toward the table center).
@@ -76,7 +93,7 @@ class OpponentHandFan extends PositionComponent {
 
     CardFanPainter.paint(
       canvas,
-      cardCount: cardCount,
+      cardCount: displayCount,
       fanAngle: _maxFanAngle,
       arcBow: _arcBow,
       scaleX: _scaleX,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../app/models/client_game_state.dart';
 import '../../shared/constants.dart';
 import '../../shared/models/game_state.dart';
@@ -34,8 +35,9 @@ class GameOverOverlay extends StatefulWidget {
 class _GameOverOverlayState extends State<GameOverOverlay>
     with TickerProviderStateMixin {
   late final bool _myTeamWon;
+  bool _hasActed = false;
 
-  // Gold glow pulse animation (victory only)
+  // Glow pulse animation (gold for victory, red for defeat)
   AnimationController? _glowController;
   Animation<double>? _glowAnimation;
 
@@ -56,20 +58,28 @@ class _GameOverOverlayState extends State<GameOverOverlay>
         CurvedAnimation(parent: _glowController!, curve: Curves.easeInOut),
       );
 
-      // Start glow pulse after entry animation completes (~250ms)
-      Future.delayed(const Duration(milliseconds: 250), () {
-        if (mounted) {
-          _glowController!.repeat(reverse: true);
-        }
-      });
-
       // Trigger victory particles after 200ms
       Future.delayed(const Duration(milliseconds: 200), () {
         if (mounted) {
           widget.onVictoryAnimationReady?.call();
         }
       });
+    } else {
+      _glowController = AnimationController(
+        vsync: this,
+        duration: const Duration(milliseconds: 1000),
+      );
+      _glowAnimation = Tween<double>(begin: 2.0, end: 10.0).animate(
+        CurvedAnimation(parent: _glowController!, curve: Curves.easeInOut),
+      );
     }
+
+    // Start glow pulse after entry animation completes (~250ms)
+    Future.delayed(const Duration(milliseconds: 250), () {
+      if (mounted) {
+        _glowController!.repeat(reverse: true);
+      }
+    });
   }
 
   @override
@@ -158,7 +168,12 @@ class _GameOverOverlayState extends State<GameOverOverlay>
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: widget.onPlayAgain,
+                onPressed: () {
+                  if (_hasActed) return;
+                  setState(() => _hasActed = true);
+                  HapticFeedback.mediumImpact();
+                  widget.onPlayAgain();
+                },
                 style: OverlayStyles.primaryButton(
                   borderRadius: 10.0,
                   padding: const EdgeInsets.symmetric(
@@ -176,7 +191,12 @@ class _GameOverOverlayState extends State<GameOverOverlay>
             SizedBox(
               width: double.infinity,
               child: OutlinedButton(
-                onPressed: widget.onReturnToMenu,
+                onPressed: () {
+                  if (_hasActed) return;
+                  setState(() => _hasActed = true);
+                  HapticFeedback.mediumImpact();
+                  widget.onReturnToMenu();
+                },
                 style: OverlayStyles.secondaryButton(),
                 child: const Text(
                   'Back to Lobby',
@@ -202,9 +222,13 @@ class _GameOverOverlayState extends State<GameOverOverlay>
       ),
     );
 
-    if (!_myTeamWon || _glowAnimation == null) {
+    if (_glowAnimation == null) {
       return textWidget;
     }
+
+    final glowColor = _myTeamWon
+        ? KoutTheme.accent.withValues(alpha: 0.6)
+        : KoutTheme.lossColor.withValues(alpha: 0.4);
 
     return AnimatedBuilder(
       animation: _glowAnimation!,
@@ -213,7 +237,7 @@ class _GameOverOverlayState extends State<GameOverOverlay>
           decoration: BoxDecoration(
             boxShadow: [
               BoxShadow(
-                color: KoutTheme.accent.withValues(alpha: 0.6),
+                color: glowColor,
                 blurRadius: _glowAnimation!.value,
                 spreadRadius: _glowAnimation!.value * 0.3,
               ),

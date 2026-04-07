@@ -99,7 +99,7 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> with SingleTickerProv
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('$e'),
-            backgroundColor: const Color(0xFF5C1A1B),
+            backgroundColor: KoutTheme.lossColor,
           ),
         );
         setState(() => _starting = false);

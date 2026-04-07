@@ -27,6 +27,7 @@ class PlayerSeatComponent extends PositionComponent {
   
   double _bidLabelAlpha = 0.0;
   String _displayPillName = '';
+  double _displayTimerProgress = 0.0;
 
   static const double _radius = 36.0;
 
@@ -53,6 +54,8 @@ class PlayerSeatComponent extends PositionComponent {
     if (_bidLabelAlpha < 1.0) {
       _bidLabelAlpha = math.min(1.0, _bidLabelAlpha + dt * 5.0);
     }
+    _displayTimerProgress +=
+        (timerProgress - _displayTimerProgress) * math.min(1.0, dt * 6.0);
   }
 
   @override
@@ -109,14 +112,14 @@ class PlayerSeatComponent extends PositionComponent {
     final teamColor = KoutTheme.teamColor(team);
     if (isActive) {
       final activeColor = teamColor;
-      if (timerProgress > 0.0) {
+      if (_displayTimerProgress > 0.0) {
         final bgRingPaint = Paint()
           ..color = activeColor.withValues(alpha: 0.2)
           ..style = PaintingStyle.stroke
           ..strokeWidth = 5.0;
         canvas.drawCircle(center, _radius, bgRingPaint);
 
-        final sweepAngle = timerProgress * math.pi * 2;
+        final sweepAngle = _displayTimerProgress * math.pi * 2;
         final timerPaint = Paint()
           ..color = activeColor
           ..style = PaintingStyle.stroke

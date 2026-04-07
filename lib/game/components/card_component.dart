@@ -12,7 +12,7 @@ import '../theme/kout_theme.dart';
 ///
 /// Renders face-up or face-down. Supports tap callbacks with a lift effect
 /// on touch-down / hover for highlighted (playable) cards.
-class CardComponent extends PositionComponent with TapCallbacks, HoverCallbacks {
+class CardComponent extends PositionComponent with TapCallbacks, HoverCallbacks, HasPaint {
   GameCard? card;
   bool isFaceUp;
   bool isHighlighted;
@@ -48,6 +48,10 @@ class CardComponent extends PositionComponent with TapCallbacks, HoverCallbacks 
 
   @override
   void render(Canvas canvas) {
+    if (opacity < 1.0) {
+      canvas.saveLayer(null, paint);
+    }
+
     final rect = Rect.fromLTWH(0, 0, KoutTheme.cardWidth, KoutTheme.cardHeight);
     final rrect = RRect.fromRectAndRadius(
       rect,
@@ -72,6 +76,10 @@ class CardComponent extends PositionComponent with TapCallbacks, HoverCallbacks 
       _renderFaceUp(canvas, rect, rrect);
     } else {
       CardPainter.paintBack(canvas, rect);
+    }
+
+    if (opacity < 1.0) {
+      canvas.restore();
     }
   }
 

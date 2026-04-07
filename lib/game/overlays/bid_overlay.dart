@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../shared/models/bid.dart';
 import '../../game/theme/kout_theme.dart';
 import 'overlay_animation_wrapper.dart';
@@ -30,6 +31,7 @@ class _BidChipState extends State<_BidChip> {
       onTapDown: (_) => setState(() => _isPressed = true),
       onTapUp: (_) {
         setState(() => _isPressed = false);
+        HapticFeedback.selectionClick();
         widget.onPressed();
       },
       onTapCancel: () => setState(() => _isPressed = false),
@@ -72,6 +74,48 @@ class _BidChipState extends State<_BidChip> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _StaggeredEntrance extends StatefulWidget {
+  final int delayIndex;
+  final Widget child;
+
+  const _StaggeredEntrance({required this.delayIndex, required this.child});
+
+  @override
+  State<_StaggeredEntrance> createState() => _StaggeredEntranceState();
+}
+
+class _StaggeredEntranceState extends State<_StaggeredEntrance> {
+  bool _visible = false;
+
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(Duration(milliseconds: widget.delayIndex * 60), () {
+      if (mounted) setState(() => _visible = true);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Opacity 0->1, scale 0.8->1.0 over 200ms
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0.0, end: _visible ? 1.0 : 0.0),
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOut,
+      builder: (context, value, child) {
+        return Opacity(
+          opacity: value,
+          child: Transform.scale(
+            scale: 0.8 + (0.2 * value),
+            child: child,
+          ),
+        );
+      },
+      child: widget.child,
     );
   }
 }
@@ -133,10 +177,13 @@ class BidOverlay extends StatelessWidget {
               children: [
                 for (int i = 0; i < bids.length; i++) ...[
                   if (i > 0) const SizedBox(width: 12),
-                  _BidChip(
-                    value: bids[i].value,
-                    isKout: bids[i] == BidAmount.kout,
-                    onPressed: () => onBid(bids[i].value),
+                  _StaggeredEntrance(
+                    delayIndex: i,
+                    child: _BidChip(
+                      value: bids[i].value,
+                      isKout: bids[i] == BidAmount.kout,
+                      onPressed: () => onBid(bids[i].value),
+                    ),
                   ),
                 ],
               ],

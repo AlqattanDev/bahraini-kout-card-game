@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../app/models/client_game_state.dart';
 import '../../shared/constants.dart';
 import '../../shared/models/game_state.dart';
@@ -32,6 +33,7 @@ class _RoundResultOverlayState extends State<RoundResultOverlay>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<double> _progressAnimation;
+  bool _hasContinued = false;
 
   @override
   void initState() {
@@ -206,7 +208,12 @@ class _RoundResultOverlayState extends State<RoundResultOverlay>
 
             // 5. Continue button
             ElevatedButton(
-              onPressed: widget.onContinue,
+              onPressed: () {
+                if (_hasContinued) return;
+                setState(() => _hasContinued = true);
+                HapticFeedback.mediumImpact();
+                widget.onContinue();
+              },
               style: OverlayStyles.primaryButton(),
               child: const Text(
                 'Continue',

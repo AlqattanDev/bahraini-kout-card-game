@@ -38,6 +38,7 @@ class UnifiedHudComponent extends PositionComponent {
   double _displayScore = 0.0;
   int _targetScore = 0;
   int _elapsedSeconds = 0;
+  double _elapsedSecondsSmooth = 0.0;
 
   UnifiedHudComponent({required double screenWidth})
       : super(
@@ -112,6 +113,8 @@ class UnifiedHudComponent extends PositionComponent {
       _pipAnimTimer = math.max(0.0, _pipAnimTimer - dt);
     }
     _displayScore += (_targetScore - _displayScore) * math.min(1.0, dt * 8.0);
+    _elapsedSecondsSmooth +=
+        (_elapsedSeconds - _elapsedSecondsSmooth) * math.min(1.0, dt * 4.0);
   }
 
   void updateTimer(Duration elapsed) {
@@ -257,12 +260,23 @@ class UnifiedHudComponent extends PositionComponent {
       y += 1 + _rowGap;
     }
 
-    // --- Row 4: Timer ---
-    Color timerColor;
-    if (_elapsedSeconds >= 55) {
-      timerColor = KoutTheme.lossColor.withValues(alpha: 0.9);
-    } else if (_elapsedSeconds >= 45) {
-      timerColor = DiwaniyaColors.goldAccent.withValues(alpha: 0.7);
+    // --- Row 4: Timer (smooth color transition) ---
+    final Color timerColor;
+    final s = _elapsedSecondsSmooth;
+    if (s >= 55) {
+      final t = math.min(1.0, (s - 55) / 5);
+      timerColor = Color.lerp(
+        DiwaniyaColors.goldAccent.withValues(alpha: 0.7),
+        KoutTheme.lossColor.withValues(alpha: 0.9),
+        t,
+      )!;
+    } else if (s >= 45) {
+      final t = (s - 45) / 10;
+      timerColor = Color.lerp(
+        DiwaniyaColors.cream.withValues(alpha: 0.45),
+        DiwaniyaColors.goldAccent.withValues(alpha: 0.7),
+        t,
+      )!;
     } else {
       timerColor = DiwaniyaColors.cream.withValues(alpha: 0.45);
     }

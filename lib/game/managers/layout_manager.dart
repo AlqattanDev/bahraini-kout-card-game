@@ -13,7 +13,7 @@ class LayoutManager {
   static const double _portraitHandBottomOffset = 80.0;
   static const double _portraitPartnerTopOffset = 120.0;
   static const double _portraitSeatEdgeInset = 80.0;
-  static const double _portraitTrickOffset = 55.0;
+  static const double _portraitTrickOffset = 32.0;
   static const double _portraitArcBow = 32.0;
   static const double _portraitTrickTrackerYOffset = 130.0;
 
@@ -49,8 +49,8 @@ class LayoutManager {
   /// Trick cards noticeably smaller than hand cards so 4 cards don't overwhelm
   /// the table. ~65% of hand scale in landscape, 0.85x in portrait.
   double get trickCardScale {
-    if (!isLandscape) return handCardScale * 0.85;
-    return (handCardScale * 0.60).clamp(0.8, 1.1);
+    if (!isLandscape) return handCardScale * 0.95;
+    return (handCardScale * 0.70).clamp(0.85, 1.2);
   }
 
   /// Proportional trick card offset (11% of shorter safe dimension).
@@ -58,7 +58,7 @@ class LayoutManager {
     final base = safeRect.width < safeRect.height
         ? safeRect.width
         : safeRect.height;
-    return base * 0.11;
+    return base * 0.065;
   }
 
   // ---------------------------------------------------------------------------
