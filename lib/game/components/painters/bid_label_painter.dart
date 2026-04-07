@@ -22,11 +22,13 @@ class BidLabelPainter {
     bool showCrown = false,
     bool isBidder = false,
     Offset? crownOffset,
+    double alpha = 1.0,
   }) {
     if (bidAction != null) {
       final isPass = bidAction == 'pass';
       final label = isPass ? 'PASS' : 'BID $bidAction';
-      final color = isPass ? DiwaniyaColors.passRed : DiwaniyaColors.goldAccent;
+      final baseColor = isPass ? DiwaniyaColors.passRed : DiwaniyaColors.goldAccent;
+      final color = baseColor.withValues(alpha: alpha);
       TextRenderer.drawCentered(canvas, label, color, offset, 9);
 
       if (showCrown && isBidder) {
@@ -34,7 +36,7 @@ class BidLabelPainter {
         TextRenderer.drawCentered(
           canvas,
           '\u{1F451}',
-          DiwaniyaColors.goldAccent,
+          DiwaniyaColors.goldAccent.withValues(alpha: alpha),
           crown,
           10,
         );
@@ -45,7 +47,7 @@ class BidLabelPainter {
       TextRenderer.drawCentered(
         canvas,
         '\u{1F451}',
-        DiwaniyaColors.goldAccent,
+        DiwaniyaColors.goldAccent.withValues(alpha: alpha),
         crown,
         10,
       );

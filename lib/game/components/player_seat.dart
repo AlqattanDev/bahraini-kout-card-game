@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'dart:ui';
+import 'package:flutter/painting.dart' show TextPainter, TextSpan, TextStyle;
 import 'package:flame/components.dart';
 import '../../app/models/client_game_state.dart';
 import '../../shared/models/game_state.dart';
@@ -21,7 +22,11 @@ class PlayerSeatComponent extends PositionComponent {
   bool isBidder = false;
   Color? bidderGlowColor;
   double timerProgress;
+  bool isConnected = true;
   // Card count badge removed — not needed in current layout
+  
+  double _bidLabelAlpha = 0.0;
+  String _displayPillName = '';
 
   static const double _radius = 36.0;
 
@@ -41,6 +46,14 @@ class PlayerSeatComponent extends PositionComponent {
     super.position,
     super.anchor = Anchor.center,
   }) : super(size: Vector2(_radius * 2 + 24, _radius * 2 + 32));
+
+  @override
+  void update(double dt) {
+    super.update(dt);
+    if (_bidLabelAlpha < 1.0) {
+      _bidLabelAlpha = math.min(1.0, _bidLabelAlpha + dt * 5.0);
+    }
+  }
 
   @override
   void onMount() {
@@ -67,6 +80,31 @@ class PlayerSeatComponent extends PositionComponent {
     }
 
     AvatarPainter.paint(canvas, center, _radius - 3, AvatarTraits.fromSeed(avatarSeed));
+
+    if (!isConnected) {
+      canvas.drawCircle(
+        center,
+        _radius - 3,
+        Paint()..color = const Color(0x88000000),
+      );
+      
+      final xPaint = Paint()
+        ..color = KoutTheme.lossColor
+        ..strokeWidth = 2.0
+        ..style = PaintingStyle.stroke;
+      
+      const double xSize = 8.0;
+      canvas.drawLine(
+        Offset(center.dx - xSize, center.dy - xSize),
+        Offset(center.dx + xSize, center.dy + xSize),
+        xPaint,
+      );
+      canvas.drawLine(
+        Offset(center.dx + xSize, center.dy - xSize),
+        Offset(center.dx - xSize, center.dy + xSize),
+        xPaint,
+      );
+    }
 
     final teamColor = KoutTheme.teamColor(team);
     if (isActive) {
@@ -129,7 +167,7 @@ class PlayerSeatComponent extends PositionComponent {
         ..strokeWidth = 0.5,
     );
     final teamLetter = team == Team.a ? 'A' : 'B';
-    final displayName = '$teamLetter  ${_truncateName(playerName)}';
+    final displayName = '$teamLetter  $_displayPillName';
     TextRenderer.drawCentered(canvas, displayName, DiwaniyaColors.pureWhite,
       Offset(center.dx, pillY), 9);
 
@@ -137,6 +175,7 @@ class PlayerSeatComponent extends PositionComponent {
       canvas,
       bidAction: bidAction,
       offset: Offset(center.dx, center.dy + _radius + 16),
+      alpha: _bidLabelAlpha,
     );
 
   }
@@ -224,16 +263,66 @@ class PlayerSeatComponent extends PositionComponent {
     }
   }
 
-  /// Truncates names longer than 8 characters with an ellipsis.
-  static String _truncateName(String name) {
-    if (name.length <= 8) return name;
-    return '${name.substring(0, 7)}…';
+  void _updateDisplayName() {
+    // Dynamic truncation based on width
+    final maxPillInnerWidth = 72.0; // 80 - 8 padding
+    
+    // First check full name
+    final span = TextSpan(
+      text: playerName,
+      style: const TextStyle(
+        fontFamily: KoutTheme.monoFontFamily,
+        fontSize: 9,
+        color: DiwaniyaColors.pureWhite,
+      ),
+    );
+    final tp = TextPainter(
+      text: span,
+      textDirection: TextDirection.ltr,
+    );
+    tp.layout();
+    
+    if (tp.width <= maxPillInnerWidth) {
+      _displayPillName = playerName;
+      tp.dispose();
+      return;
+    }
+    tp.dispose();
+    
+    // Truncate
+    for (int i = playerName.length - 1; i > 0; i--) {
+      final truncated = '${playerName.substring(0, i)}...';
+      final spanTrunc = TextSpan(
+        text: truncated,
+        style: const TextStyle(
+          fontFamily: KoutTheme.monoFontFamily,
+          fontSize: 9,
+          color: DiwaniyaColors.pureWhite,
+        ),
+      );
+      final tpTrunc = TextPainter(
+        text: spanTrunc,
+        textDirection: TextDirection.ltr,
+      );
+      tpTrunc.layout();
+      if (tpTrunc.width <= maxPillInnerWidth) {
+        _displayPillName = truncated;
+        tpTrunc.dispose();
+        return;
+      }
+      tpTrunc.dispose();
+    }
+    _displayPillName = '...';
   }
 
   void updateState(ClientGameState state) {
     final uid = state.playerUids[seatIndex];
     final wasActive = isActive;
+    final oldPlayerName = playerName;
     playerName = shortUid(uid);
+    if (playerName != oldPlayerName || _displayPillName.isEmpty) {
+      _updateDisplayName();
+    }
     cardCount = state.cardCounts[seatIndex] ??
         (seatIndex == state.mySeatIndex ? state.myHand.length : 8);
     isActive = state.currentPlayerUid == uid;
@@ -245,8 +334,14 @@ class PlayerSeatComponent extends PositionComponent {
       for (final entry in state.bidHistory) {
         if (entry.playerUid == uid) action = entry.action;
       }
+      if (bidAction != action) {
+        _bidLabelAlpha = 0.0;
+      }
       bidAction = action;
     } else {
+      if (bidAction != null) {
+        _bidLabelAlpha = 0.0;
+      }
       bidAction = null;
     }
 
@@ -279,7 +374,8 @@ class PlayerSeatComponent extends PositionComponent {
 
 class _TrickWinFlashComponent extends Component {
   final double radius;
-  double _life = 0.4;
+  double _life = 0.6;
+  static const double _totalDuration = 0.6;
 
   _TrickWinFlashComponent({required this.radius});
 
@@ -299,12 +395,27 @@ class _TrickWinFlashComponent extends Component {
       center = Offset.zero;
     }
 
-    final alpha = (_life / 0.4).clamp(0.0, 1.0) * 0.7;
+    final t = 1.0 - (_life / _totalDuration);
+    double currentRadius;
+    double currentAlpha;
+
+    if (t <= 0.5) {
+      // Phase 1 (0-0.3s): Expand and fade in
+      final p1 = t / 0.5;
+      currentRadius = radius * 1.5 * p1;
+      currentAlpha = 0.7 * p1;
+    } else {
+      // Phase 2 (0.3-0.6s): Hold radius, fade out
+      final p2 = (t - 0.5) / 0.5;
+      currentRadius = radius * 1.5;
+      currentAlpha = 0.7 * (1.0 - p2);
+    }
+
     canvas.drawCircle(
       center,
-      radius + 6,
+      currentRadius,
       Paint()
-        ..color = DiwaniyaColors.goldAccent.withValues(alpha: alpha)
+        ..color = DiwaniyaColors.goldAccent.withValues(alpha: currentAlpha)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12),
     );
   }

@@ -4,85 +4,71 @@ import '../../game/theme/kout_theme.dart';
 import 'overlay_animation_wrapper.dart';
 import 'overlay_styles.dart';
 
-class AnimatedBidButton extends StatefulWidget {
-  final String number;
-  final (String, String) label;
+class _BidChip extends StatefulWidget {
+  final int value;
+  final bool isKout;
   final VoidCallback onPressed;
 
-  const AnimatedBidButton({
-    super.key,
-    required this.number,
-    required this.label,
+  const _BidChip({
+    required this.value,
+    required this.isKout,
     required this.onPressed,
   });
 
   @override
-  State<AnimatedBidButton> createState() => _AnimatedBidButtonState();
+  State<_BidChip> createState() => _BidChipState();
 }
 
-class _AnimatedBidButtonState extends State<AnimatedBidButton> {
+class _BidChipState extends State<_BidChip> {
   bool _isPressed = false;
-
-  void _handleTapDown(TapDownDetails details) {
-    setState(() => _isPressed = true);
-  }
-
-  void _handleTapUp(TapUpDetails details) {
-    setState(() => _isPressed = false);
-    widget.onPressed();
-  }
-
-  void _handleTapCancel() {
-    setState(() => _isPressed = false);
-  }
 
   @override
   Widget build(BuildContext context) {
+    final isKout = widget.isKout;
+
     return GestureDetector(
-      onTapDown: _handleTapDown,
-      onTapUp: _handleTapUp,
-      onTapCancel: _handleTapCancel,
+      onTapDown: (_) => setState(() => _isPressed = true),
+      onTapUp: (_) {
+        setState(() => _isPressed = false);
+        widget.onPressed();
+      },
+      onTapCancel: () => setState(() => _isPressed = false),
       child: AnimatedScale(
-        scale: _isPressed ? 0.95 : 1.0,
+        scale: _isPressed ? 0.92 : 1.0,
         duration: const Duration(milliseconds: 100),
         curve: Curves.easeOutBack,
-        child: ElevatedButton(
-          onPressed: () {},
-          style: OverlayStyles.primaryButton(
-            borderRadius: 10.0,
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-          ).copyWith(
-            minimumSize: WidgetStateProperty.all(const Size(68, 68)),
-            elevation: WidgetStateProperty.all(4),
+        child: Container(
+          width: isKout ? 64 : 52,
+          height: isKout ? 64 : 52,
+          decoration: BoxDecoration(
+            color: isKout
+                ? KoutTheme.accent.withValues(alpha: 0.15)
+                : KoutTheme.primary,
+            borderRadius: BorderRadius.circular(isKout ? 14 : 10),
+            border: Border.all(
+              color: isKout ? KoutTheme.accent : KoutTheme.accent.withValues(alpha: 0.5),
+              width: isKout ? 2.0 : 1.5,
+            ),
+            boxShadow: isKout
+                ? [
+                    BoxShadow(
+                      color: KoutTheme.accent.withValues(alpha: 0.3),
+                      blurRadius: 12,
+                      spreadRadius: 1,
+                    ),
+                  ]
+                : null,
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                widget.number,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
+          child: Center(
+            child: Text(
+              '${widget.value}',
+              style: TextStyle(
+                color: isKout ? KoutTheme.accent : KoutTheme.textColor,
+                fontSize: isKout ? 28 : 22,
+                fontWeight: FontWeight.bold,
+                fontFamily: KoutTheme.monoFontFamily,
               ),
-              Text(
-                widget.label.$1,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              Text(
-                widget.label.$2,
-                textAlign: TextAlign.center,
-                textDirection: TextDirection.rtl,
-                style: const TextStyle(
-                  fontSize: 9,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -123,48 +109,34 @@ class BidOverlay extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             // Heading
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  isForced ? 'You Must Bid' : 'Place Your Bid',
-                  style: KoutTheme.headingStyle.copyWith(
-                    color: KoutTheme.accent,
-                    fontSize: 18,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  isForced ? 'لازم تختار' : 'ضع مزايدتك',
-                  style: KoutTheme.arabicHeadingStyle.copyWith(
-                    color: KoutTheme.accent,
-                    fontSize: 16,
-                  ),
-                  textDirection: TextDirection.rtl,
-                ),
-              ],
+            Text(
+              isForced ? 'You Must Bid' : 'Place Your Bid',
+              style: KoutTheme.headingStyle.copyWith(
+                color: KoutTheme.accent,
+                fontSize: 18,
+              ),
             ),
             OverlayStyles.sectionGap,
             if (currentHighBid != null) ...[
               Text(
-                'Current High Bid: ${currentHighBid!.value}',
+                'Current: ${currentHighBid!.value}',
                 style: KoutTheme.bodyStyle.copyWith(
-                  color: KoutTheme.cream.withValues(alpha: 0.5),
+                  color: KoutTheme.cream.withValues(alpha: 0.4),
                   fontSize: 12,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
             ],
-            // Bid buttons — only show bids higher than current
+            // Bid chips — single number per chip, Kout gets special treatment
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 for (int i = 0; i < bids.length; i++) ...[
-                  if (i > 0) const SizedBox(width: 10),
-                  _bidButton(
-                    '${bids[i].value}',
-                    _labelForBid(bids[i]),
-                    bids[i].value,
+                  if (i > 0) const SizedBox(width: 12),
+                  _BidChip(
+                    value: bids[i].value,
+                    isKout: bids[i] == BidAmount.kout,
+                    onPressed: () => onBid(bids[i].value),
                   ),
                 ],
               ],
@@ -175,43 +147,12 @@ class BidOverlay extends StatelessWidget {
               TextButton(
                 onPressed: onPass,
                 style: OverlayStyles.textButton(),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      KoutTheme.gameTerms['pass']!.$1,
-                      style: KoutTheme.bodyStyle,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      KoutTheme.gameTerms['pass']!.$2,
-                      style: KoutTheme.arabicBodyStyle,
-                      textDirection: TextDirection.rtl,
-                    ),
-                  ],
-                ),
+                child: Text('Pass', style: KoutTheme.bodyStyle),
               ),
             ],
           ],
         ),
       ),
-    );
-  }
-
-  (String, String) _labelForBid(BidAmount bid) {
-    return switch (bid) {
-      BidAmount.bab => KoutTheme.gameTerms['bab']!,
-      BidAmount.six => ('6', '٦'),
-      BidAmount.seven => ('7', '٧'),
-      BidAmount.kout => KoutTheme.gameTerms['kout']!,
-    };
-  }
-
-  Widget _bidButton(String number, (String, String) label, int amount) {
-    return AnimatedBidButton(
-      number: number,
-      label: label,
-      onPressed: () => onBid(amount),
     );
   }
 }

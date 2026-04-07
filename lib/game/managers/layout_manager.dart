@@ -18,7 +18,7 @@ class LayoutManager {
   static const double _portraitTrickTrackerYOffset = 130.0;
 
   // Landscape zone budget (proportional to safeRect)
-  static const double _handBleedRatio = 0.20;      // 20% of scaled card hidden below edge
+  static const double _handBleedRatio = 0.05;      // 5% of card hidden below edge — rank+suit always visible
 
   LayoutManager(this.screenSize, {this.safeArea = EdgeInsets.zero});
 

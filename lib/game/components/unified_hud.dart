@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flame/components.dart';
+import 'dart:math' as math;
 import '../../app/models/client_game_state.dart';
 import '../../shared/constants.dart';
 import '../../shared/models/game_state.dart';
@@ -29,6 +30,14 @@ class UnifiedHudComponent extends PositionComponent {
   GamePhase _phase = GamePhase.waiting;
   bool _isLandscape = false;
   String timerText = '00:00';
+  
+  // Animation state
+  int _prevTricksA = 0;
+  int _prevTricksB = 0;
+  double _pipAnimTimer = 0.0;
+  double _displayScore = 0.0;
+  int _targetScore = 0;
+  int _elapsedSeconds = 0;
 
   UnifiedHudComponent({required double screenWidth})
       : super(
@@ -76,16 +85,38 @@ class UnifiedHudComponent extends PositionComponent {
       opponentTarget = 0;
     }
 
-    score = teamAScore > 0 ? teamAScore : teamBScore;
+    _targetScore = teamAScore > 0 ? teamAScore : teamBScore;
+    score = _targetScore; // Keep score updated for backward compatibility and tests
+    if (_displayScore == 0.0 && _targetScore > 0) {
+      _displayScore = _targetScore.toDouble(); // Initial snap
+    }
     scoreColor = teamAScore > 0
         ? KoutTheme.teamAColor
         : teamBScore > 0
             ? KoutTheme.teamBColor
             : DiwaniyaColors.cream;
+            
+    final currentTricksA = state.tricks[Team.a] ?? 0;
+    final currentTricksB = state.tricks[Team.b] ?? 0;
+    if (currentTricksA > _prevTricksA || currentTricksB > _prevTricksB) {
+      _pipAnimTimer = 0.3;
+    }
+    _prevTricksA = currentTricksA;
+    _prevTricksB = currentTricksB;
+  }
+
+  @override
+  void update(double dt) {
+    super.update(dt);
+    if (_pipAnimTimer > 0) {
+      _pipAnimTimer = math.max(0.0, _pipAnimTimer - dt);
+    }
+    _displayScore += (_targetScore - _displayScore) * math.min(1.0, dt * 8.0);
   }
 
   void updateTimer(Duration elapsed) {
     final totalSeconds = elapsed.inSeconds.clamp(0, 3599);
+    _elapsedSeconds = totalSeconds;
     final m = totalSeconds ~/ 60;
     final s = totalSeconds % 60;
     timerText = '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
@@ -159,7 +190,7 @@ class UnifiedHudComponent extends PositionComponent {
     final rightEdge = _hudWidth - _padding;
 
     // --- Row 1: Score + Round (one line) ---
-    TextRenderer.draw(canvas, '$score', scoreColor, Offset(_padding, y), 22,
+    TextRenderer.draw(canvas, '${_displayScore.round()}', scoreColor, Offset(_padding, y), 22,
         align: TextAlign.left, width: 50);
     TextRenderer.draw(
         canvas,
@@ -227,10 +258,19 @@ class UnifiedHudComponent extends PositionComponent {
     }
 
     // --- Row 4: Timer ---
+    Color timerColor;
+    if (_elapsedSeconds >= 55) {
+      timerColor = KoutTheme.lossColor.withValues(alpha: 0.9);
+    } else if (_elapsedSeconds >= 45) {
+      timerColor = DiwaniyaColors.goldAccent.withValues(alpha: 0.7);
+    } else {
+      timerColor = DiwaniyaColors.cream.withValues(alpha: 0.45);
+    }
+
     TextRenderer.draw(
         canvas,
         timerText,
-        DiwaniyaColors.cream.withValues(alpha: 0.45),
+        timerColor,
         Offset(_hudWidth / 2, y),
         10,
         align: TextAlign.center,
@@ -251,7 +291,12 @@ class UnifiedHudComponent extends PositionComponent {
     for (int i = 0; i < total; i++) {
       final cx = startX + i * _pipSpacing;
       if (i < clamped) {
-        canvas.drawCircle(Offset(cx, y), _pipRadius, Paint()..color = color);
+        double radius = _pipRadius;
+        if (i == clamped - 1 && _pipAnimTimer > 0) {
+          final t = 1.0 - (_pipAnimTimer / 0.3);
+          radius = _pipRadius * (1.0 + 0.8 * (1.0 - t));
+        }
+        canvas.drawCircle(Offset(cx, y), radius, Paint()..color = color);
       } else {
         canvas.drawCircle(
           Offset(cx, y),

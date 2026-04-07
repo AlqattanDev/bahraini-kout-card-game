@@ -91,11 +91,12 @@ class _OfflineLobbyScreenState extends State<OfflineLobbyScreen> {
                                   painter: GeometricPatterns.overlayPainter(opacity: 0.08),
                                 ),
                               ),
-                              // Centre Arabic text
+                              // Centre text
                               Center(
                                 child: Text(
-                                  'كوت',
+                                  'Kout',
                                   style: TextStyle(
+                                    fontFamily: KoutTheme.monoFontFamily,
                                     color: KoutTheme.accent.withValues(alpha: 0.2),
                                     fontSize: 48,
                                     fontWeight: FontWeight.bold,

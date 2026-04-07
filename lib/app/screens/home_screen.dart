@@ -23,7 +23,13 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _authenticate() async {
-    await _authService.signInAnonymously();
+    try {
+      await _authService.signInAnonymously().timeout(
+        const Duration(seconds: 3),
+      );
+    } catch (_) {
+      // Auth failed or timed out — still show buttons so offline works
+    }
     if (mounted) setState(() => _isLoading = false);
   }
 
@@ -38,11 +44,6 @@ class _HomeScreenState extends State<HomeScreen> {
             Text(
               'Bahraini Kout',
               style: KoutTheme.headingStyle.copyWith(fontSize: 32),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'كوت البحريني',
-              style: KoutTheme.arabicHeadingStyle,
             ),
             const SizedBox(height: 48),
             if (_isLoading)
