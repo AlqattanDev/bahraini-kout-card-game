@@ -1,4 +1,3 @@
-// TODO: Phase 2 raised hand values ~0.5. Bid thresholds may need recalibration (Phase 3).
 import 'package:koutbh/shared/models/card.dart';
 import 'package:koutbh/shared/logic/card_utils.dart';
 
@@ -66,8 +65,9 @@ class HandEvaluator {
     }
 
     // Void and ruffing potential (Step 2.4+2.5)
-    final hasAnyTrump = hand.any((c) =>
-        !c.isJoker && trumpSuit != null && c.suit == trumpSuit);
+    final hasAnyTrump = hand.any(
+      (c) => !c.isJoker && trumpSuit != null && c.suit == trumpSuit,
+    );
 
     for (final suit in Suit.values) {
       if (!suitCounts.containsKey(suit)) {

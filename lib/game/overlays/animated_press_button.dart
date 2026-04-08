@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'overlay_styles.dart';
+import 'overlay_utils.dart';
 
 class AnimatedPressButton extends StatefulWidget {
   final Widget? child;
@@ -48,11 +49,11 @@ class _AnimatedPressButtonState extends State<AnimatedPressButton> {
     setState(() => _isPressed = false);
 
     // Give time for the release animation to start
-    Future.delayed(widget.delayDuration ?? OverlayStyles.animFast, () {
-      if (mounted) {
-        widget.onPressed();
-      }
-    });
+    delayIfMounted(
+      this,
+      widget.delayDuration ?? OverlayStyles.animFast,
+      widget.onPressed,
+    );
   }
 
   void _handleTapCancel() {

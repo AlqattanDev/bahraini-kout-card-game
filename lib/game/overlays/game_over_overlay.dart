@@ -61,7 +61,7 @@ class _GameOverOverlayState extends State<GameOverOverlay>
       // Trigger victory particles after 200ms
       delayIfMounted(
         this,
-        const Duration(milliseconds: 200),
+        OverlayStyles.animNormal,
         () => widget.onVictoryAnimationReady?.call(),
       );
     } else {
@@ -119,7 +119,7 @@ class _GameOverOverlayState extends State<GameOverOverlay>
           const SizedBox(height: 24),
           // Final score
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            padding: OverlayStyles.infoBoxPadding,
             decoration: OverlayStyles.infoBoxDecoration(),
             child: Column(
               children: [
@@ -165,7 +165,7 @@ class _GameOverOverlayState extends State<GameOverOverlay>
             onPressed: () => _runOnce(widget.onPlayAgain),
             style: OverlayStyles.primaryButton(
               borderRadius: 10.0,
-              padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 14),
+              padding: OverlayStyles.buttonPadding,
             ),
             child: const Text(
               'Play Again',
@@ -231,5 +231,4 @@ class _GameOverOverlayState extends State<GameOverOverlay>
       child: textWidget,
     );
   }
-
 }

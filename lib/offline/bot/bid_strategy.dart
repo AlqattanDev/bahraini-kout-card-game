@@ -130,8 +130,6 @@ class BidStrategy {
     return PassAction();
   }
 
-  // TODO: Phase 3.5 — fuzzy thresholds for Aggressive bots (needs BotDifficulty from Phase 9)
-
   static BidAmount? _strengthToBid(double expectedWinners) {
     for (final bid in _descendingBidStrength) {
       final threshold = _thresholdByBid[bid];

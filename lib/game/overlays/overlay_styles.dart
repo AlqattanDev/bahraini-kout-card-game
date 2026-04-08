@@ -12,19 +12,18 @@ abstract final class OverlayStyles {
     double borderWidth = 2.0,
     double borderRadius = 16.0,
     double blurRadius = 24.0,
-  }) =>
-      BoxDecoration(
-        color: KoutTheme.primary.withValues(alpha: alpha),
-        borderRadius: BorderRadius.circular(borderRadius),
-        border: Border.all(color: KoutTheme.accent, width: borderWidth),
-        boxShadow: [
-          BoxShadow(
-            color: KoutTheme.table.withValues(alpha: 0.7),
-            blurRadius: blurRadius,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      );
+  }) => BoxDecoration(
+    color: KoutTheme.primary.withValues(alpha: alpha),
+    borderRadius: BorderRadius.circular(borderRadius),
+    border: Border.all(color: KoutTheme.accent, width: borderWidth),
+    boxShadow: [
+      BoxShadow(
+        color: KoutTheme.table.withValues(alpha: 0.7),
+        blurRadius: blurRadius,
+        offset: const Offset(0, 8),
+      ),
+    ],
+  );
 
   /// Inner content box (e.g. trick breakdown, final score).
   static BoxDecoration infoBoxDecoration({double borderRadius = 10.0}) =>
@@ -39,7 +38,9 @@ abstract final class OverlayStyles {
       color: KoutTheme.primary.withValues(alpha: isFailed ? 0.97 : 0.95),
       borderRadius: BorderRadius.circular(isFailed ? 12.0 : 10.0),
       border: Border.all(
-        color: isFailed ? KoutTheme.lossColor : KoutTheme.accent.withValues(alpha: 0.5),
+        color: isFailed
+            ? KoutTheme.lossColor
+            : KoutTheme.accent.withValues(alpha: 0.5),
         width: 1.5,
       ),
       boxShadow: [
@@ -55,32 +56,28 @@ abstract final class OverlayStyles {
   /// Primary filled button style (Continue, Play Again).
   static ButtonStyle primaryButton({
     double borderRadius = 8.0,
-    EdgeInsets padding =
-        const EdgeInsets.symmetric(horizontal: 36, vertical: 14),
-  }) =>
-      ElevatedButton.styleFrom(
-        backgroundColor: KoutTheme.accent,
-        foregroundColor: KoutTheme.buttonForeground,
-        padding: padding,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(borderRadius),
-        ),
-      );
+    EdgeInsets padding = buttonPadding,
+  }) => ElevatedButton.styleFrom(
+    backgroundColor: KoutTheme.accent,
+    foregroundColor: KoutTheme.buttonForeground,
+    padding: padding,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(borderRadius),
+    ),
+  );
 
   /// Secondary outlined button style (Back to Lobby).
   static ButtonStyle secondaryButton({
     double borderRadius = 10.0,
-    EdgeInsets padding =
-        const EdgeInsets.symmetric(horizontal: 36, vertical: 14),
-  }) =>
-      OutlinedButton.styleFrom(
-        foregroundColor: KoutTheme.accent,
-        side: const BorderSide(color: KoutTheme.accent, width: 1.5),
-        padding: padding,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(borderRadius),
-        ),
-      );
+    EdgeInsets padding = buttonPadding,
+  }) => OutlinedButton.styleFrom(
+    foregroundColor: KoutTheme.accent,
+    side: const BorderSide(color: KoutTheme.accent, width: 1.5),
+    padding: padding,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(borderRadius),
+    ),
+  );
 
   /// Result headline color — green for win, red for loss.
   static Color resultColor(bool won) =>
@@ -99,8 +96,19 @@ abstract final class OverlayStyles {
   // ---------------------------------------------------------------------------
 
   /// Standard panel padding (used in overlay containers).
-  static const EdgeInsets panelPadding =
-      EdgeInsets.symmetric(horizontal: 28, vertical: 24);
+  static const EdgeInsets panelPadding = EdgeInsets.symmetric(
+    horizontal: 28,
+    vertical: 24,
+  );
+
+  static const EdgeInsets infoBoxPadding = EdgeInsets.symmetric(
+    horizontal: 20,
+    vertical: 14,
+  );
+  static const EdgeInsets buttonPadding = EdgeInsets.symmetric(
+    horizontal: 36,
+    vertical: 14,
+  );
 
   /// Section/divider spacing between major content blocks.
   static const SizedBox sectionGap = SizedBox(height: 20);
@@ -112,14 +120,16 @@ abstract final class OverlayStyles {
   /// Text button with border (Pass button, dismissible actions).
   static ButtonStyle textButton({
     double borderRadius = 8.0,
-    EdgeInsets padding = const EdgeInsets.symmetric(horizontal: 32, vertical: 10),
-  }) =>
-      TextButton.styleFrom(
-        foregroundColor: KoutTheme.textColor,
-        padding: padding,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(borderRadius),
-        ),
-        side: const BorderSide(color: KoutTheme.textColor, width: 1),
-      );
+    EdgeInsets padding = const EdgeInsets.symmetric(
+      horizontal: 32,
+      vertical: 10,
+    ),
+  }) => TextButton.styleFrom(
+    foregroundColor: KoutTheme.textColor,
+    padding: padding,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(borderRadius),
+    ),
+    side: const BorderSide(color: KoutTheme.textColor, width: 1),
+  );
 }

@@ -107,7 +107,7 @@ class _RoundResultOverlayState extends State<RoundResultOverlay>
             // 2. Trick breakdown box ([OverlayPanel] already adds sectionGap after title)
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(14),
+              padding: OverlayStyles.infoBoxPadding,
               decoration: OverlayStyles.infoBoxDecoration(),
               child: Column(
                 children: [

@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import '../theme/kout_theme.dart';
+import 'overlay_styles.dart';
 
 /// Wraps overlay content with scale+fade entry/exit animation.
 class OverlayAnimationWrapper extends StatefulWidget {
@@ -15,7 +16,7 @@ class OverlayAnimationWrapper extends StatefulWidget {
     super.key,
     required this.child,
     this.entryDuration = const Duration(milliseconds: 250),
-    this.exitDuration = const Duration(milliseconds: 200),
+    this.exitDuration = OverlayStyles.animNormal,
     this.entryCurve = Curves.easeOutBack,
     this.exitCurve = Curves.easeIn,
   });
@@ -74,7 +75,9 @@ class _OverlayAnimationWrapperState extends State<OverlayAnimationWrapper>
       animation: _controller,
       builder: (context, child) {
         return Container(
-          color: KoutTheme.table.withValues(alpha: _opacityAnimation.value * 0.4),
+          color: KoutTheme.table.withValues(
+            alpha: _opacityAnimation.value * 0.4,
+          ),
           child: SafeArea(
             child: Center(
               child: Transform.scale(

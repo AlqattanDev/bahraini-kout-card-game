@@ -4,6 +4,7 @@ import '../../game/theme/kout_theme.dart';
 import 'animated_press_button.dart';
 import 'overlay_panel.dart';
 import 'overlay_styles.dart';
+import 'overlay_utils.dart';
 
 class _BidChip extends StatelessWidget {
   final int value;
@@ -76,8 +77,8 @@ class _StaggeredEntranceState extends State<_StaggeredEntrance> {
   @override
   void initState() {
     super.initState();
-    Future.delayed(Duration(milliseconds: widget.delayIndex * 60), () {
-      if (mounted) setState(() => _visible = true);
+    delayIfMounted(this, Duration(milliseconds: widget.delayIndex * 60), () {
+      setState(() => _visible = true);
     });
   }
 
