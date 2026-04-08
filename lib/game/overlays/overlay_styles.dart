@@ -19,7 +19,7 @@ abstract final class OverlayStyles {
         border: Border.all(color: KoutTheme.accent, width: borderWidth),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.6),
+            color: KoutTheme.table.withValues(alpha: 0.7),
             blurRadius: blurRadius,
             offset: const Offset(0, 8),
           ),
@@ -29,7 +29,7 @@ abstract final class OverlayStyles {
   /// Inner content box (e.g. trick breakdown, final score).
   static BoxDecoration infoBoxDecoration({double borderRadius = 10.0}) =>
       BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.25),
+        color: KoutTheme.table.withValues(alpha: 0.35),
         borderRadius: BorderRadius.circular(borderRadius),
       );
 
@@ -44,7 +44,7 @@ abstract final class OverlayStyles {
       ),
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withValues(alpha: isFailed ? 0.5 : 0.4),
+          color: KoutTheme.table.withValues(alpha: isFailed ? 0.6 : 0.5),
           blurRadius: isFailed ? 16.0 : 12.0,
           offset: const Offset(0, 4),
         ),

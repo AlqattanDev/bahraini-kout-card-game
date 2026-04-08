@@ -30,6 +30,11 @@ class PlayerSeatComponent extends PositionComponent {
   double _displayTimerProgress = 0.0;
 
   static const double _radius = 36.0;
+  static const TextStyle _pillNameStyle = TextStyle(
+    fontFamily: KoutTheme.monoFontFamily,
+    fontSize: 9,
+    color: DiwaniyaColors.pureWhite,
+  );
 
   _GlowPulseComponent? _glowPulse;
 
@@ -269,53 +274,31 @@ class PlayerSeatComponent extends PositionComponent {
   void _updateDisplayName() {
     // Dynamic truncation based on width
     final maxPillInnerWidth = 72.0; // 80 - 8 padding
-    
-    // First check full name
-    final span = TextSpan(
-      text: playerName,
-      style: const TextStyle(
-        fontFamily: KoutTheme.monoFontFamily,
-        fontSize: 9,
-        color: DiwaniyaColors.pureWhite,
-      ),
-    );
-    final tp = TextPainter(
-      text: span,
-      textDirection: TextDirection.ltr,
-    );
-    tp.layout();
-    
-    if (tp.width <= maxPillInnerWidth) {
+
+    if (_measureTextWidth(playerName) <= maxPillInnerWidth) {
       _displayPillName = playerName;
-      tp.dispose();
       return;
     }
-    tp.dispose();
-    
+
     // Truncate
     for (int i = playerName.length - 1; i > 0; i--) {
       final truncated = '${playerName.substring(0, i)}...';
-      final spanTrunc = TextSpan(
-        text: truncated,
-        style: const TextStyle(
-          fontFamily: KoutTheme.monoFontFamily,
-          fontSize: 9,
-          color: DiwaniyaColors.pureWhite,
-        ),
-      );
-      final tpTrunc = TextPainter(
-        text: spanTrunc,
-        textDirection: TextDirection.ltr,
-      );
-      tpTrunc.layout();
-      if (tpTrunc.width <= maxPillInnerWidth) {
+      if (_measureTextWidth(truncated) <= maxPillInnerWidth) {
         _displayPillName = truncated;
-        tpTrunc.dispose();
         return;
       }
-      tpTrunc.dispose();
     }
     _displayPillName = '...';
+  }
+
+  static double _measureTextWidth(String text) {
+    final tp = TextPainter(
+      text: TextSpan(text: text, style: _pillNameStyle),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    final width = tp.width;
+    tp.dispose();
+    return width;
   }
 
   void updateState(ClientGameState state) {

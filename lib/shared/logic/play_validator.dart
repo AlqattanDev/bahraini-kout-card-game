@@ -59,6 +59,31 @@ class PlayValidator {
         .toSet();
   }
 
+  /// Playable cards for the current trick using the same inputs UI and bots use.
+  ///
+  /// [trickHasNoPlaysYet] — true when this seat is leading (no cards on the trick yet).
+  /// [ledSuit] — suit led; when following a joker lead this may be null even though
+  /// [trickHasNoPlaysYet] is false, so do not infer lead vs follow from [ledSuit] alone.
+  /// [noTricksCompletedYet] — true while the round has not finished any trick
+  /// (`trickWinners.isEmpty`); drives the Kout “lead trump first trick” rule only when leading.
+  static Set<GameCard> playableForCurrentTrick({
+    required List<GameCard> hand,
+    required bool trickHasNoPlaysYet,
+    required Suit? ledSuit,
+    Suit? trumpSuit,
+    required bool bidIsKout,
+    required bool noTricksCompletedYet,
+  }) {
+    return playableCards(
+      hand: hand,
+      ledSuit: trickHasNoPlaysYet ? null : ledSuit,
+      isLeadPlay: trickHasNoPlaysYet,
+      trumpSuit: trumpSuit,
+      isKout: bidIsKout,
+      isFirstTrick: noTricksCompletedYet,
+    );
+  }
+
   static bool detectPoisonJoker(List<GameCard> hand) {
     return hand.length == 1 && hand.first.isJoker;
   }

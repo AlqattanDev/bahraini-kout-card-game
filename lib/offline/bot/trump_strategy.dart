@@ -17,21 +17,8 @@ class TrumpStrategy {
       if (card.isJoker) continue;
       final suit = card.suit!;
 
-      // Strength based on rank value
-      double rankScore = 0.0;
-      if (card.rank == Rank.ace) {
-        rankScore = 3.0;
-      } else if (card.rank == Rank.king) {
-        rankScore = 2.0;
-      } else if (card.rank == Rank.queen) {
-        rankScore = 1.5;
-      } else if (card.rank == Rank.jack) {
-        rankScore = 1.0;
-      } else {
-        rankScore = 0.5;
-      }
-
-      suitStrength[suit] = (suitStrength[suit] ?? 0) + rankScore;
+      suitStrength[suit] =
+          (suitStrength[suit] ?? 0) + trumpSuitStrengthWeight(card.rank!);
     }
 
     // Step 4.5: Forced-bid defensive trump — just pick longest suit
@@ -81,11 +68,7 @@ class TrumpStrategy {
       double sideStrength = 0.0;
       for (final card in hand) {
         if (!card.isJoker && card.suit != candidateSuit) {
-          if (card.rank == Rank.ace) {
-            sideStrength += 0.9;
-          } else if (card.rank == Rank.king) {
-            sideStrength += 0.5;
-          }
+          sideStrength += trumpSideHonorBonus(card.rank!);
         }
       }
       score += sideStrength;

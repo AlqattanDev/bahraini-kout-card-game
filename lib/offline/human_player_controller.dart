@@ -60,13 +60,13 @@ class HumanPlayerController implements PlayerController, GameInputSink {
     }
 
     if (context is PlayContext) {
-      final playable = PlayValidator.playableCards(
+      final playable = PlayValidator.playableForCurrentTrick(
         hand: state.myHand,
+        trickHasNoPlaysYet: context.ledSuit == null,
         ledSuit: context.ledSuit,
-        isLeadPlay: context.ledSuit == null,
         trumpSuit: state.trumpSuit,
-        isKout: state.currentBid?.isKout ?? false,
-        isFirstTrick: state.trickWinners.isEmpty && context.ledSuit == null,
+        bidIsKout: state.currentBid?.isKout ?? false,
+        noTricksCompletedYet: state.trickWinners.isEmpty,
       ).toList();
       return PlayCardAction(playable[rng.nextInt(playable.length)]);
     }

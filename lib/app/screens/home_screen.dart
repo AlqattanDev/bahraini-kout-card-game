@@ -1,9 +1,11 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../../game/theme/kout_theme.dart';
+import '../app_routes.dart';
+import '../models/navigation_args.dart';
 import '../services/auth_service.dart';
 import '../services/room_service.dart';
+import '../widgets/app_action_button.dart';
+import '../widgets/app_snackbar.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -49,13 +51,13 @@ class _HomeScreenState extends State<HomeScreen> {
             if (_isLoading)
               Column(
                 children: [
-                  CircularProgressIndicator(
-                    color: KoutTheme.accent,
-                  ),
+                  CircularProgressIndicator(color: KoutTheme.accent),
                   const SizedBox(height: 16),
                   Text(
                     'Signing in...',
-                    style: KoutTheme.bodyStyle.copyWith(color: KoutTheme.accent),
+                    style: KoutTheme.bodyStyle.copyWith(
+                      color: KoutTheme.accent,
+                    ),
                   ),
                 ],
               ),
@@ -65,30 +67,37 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Column(
                 children: [
                   if (!_isLoading)
-                    _buildButton(
+                    AppPrimaryButton(
+                      width: appButtonWidth(context),
                       label: 'Play Online',
-                      onPressed: () {
+                      onPressed: withLightHaptic(() {
                         Navigator.pushNamed(
                           context,
-                          '/matchmaking',
-                          arguments: {
-                            'uid': _authService.currentUid,
-                            'token': _authService.token,
-                          },
+                          AppRoutes.matchmaking,
+                          arguments: MatchmakingArgs(
+                            uid: _authService.currentUid ?? '',
+                            token: _authService.token ?? '',
+                          ),
                         );
-                      },
+                      }),
                     ),
                   const SizedBox(height: 16),
                   if (!_isLoading)
-                    _buildButton(
+                    AppPrimaryButton(
+                      width: appButtonWidth(context),
                       label: 'Play with Friend',
-                      onPressed: _showRoomOptions,
+                      onPressed: withLightHaptic(() {
+                        _showRoomOptions();
+                      }),
                     ),
                   const SizedBox(height: 16),
                   if (!_isLoading)
-                    _buildButton(
+                    AppPrimaryButton(
+                      width: appButtonWidth(context),
                       label: 'Play Offline',
-                      onPressed: () => Navigator.pushNamed(context, '/offline-lobby'),
+                      onPressed: withLightHaptic(() {
+                        Navigator.pushNamed(context, AppRoutes.offlineLobby);
+                      }),
                     ),
                 ],
               ),
@@ -111,22 +120,28 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Play with Friend',
-                style: KoutTheme.headingStyle.copyWith(fontSize: 20)),
+            Text(
+              'Play with Friend',
+              style: KoutTheme.headingStyle.copyWith(fontSize: 20),
+            ),
             const SizedBox(height: 24),
-            _buildButton(
-                label: 'Create Room',
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  _createRoom();
-                }),
+            AppPrimaryButton(
+              width: appButtonWidth(context),
+              label: 'Create Room',
+              onPressed: withLightHaptic(() {
+                Navigator.pop(ctx);
+                _createRoom();
+              }),
+            ),
             const SizedBox(height: 12),
-            _buildButton(
-                label: 'Join Room',
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  _showJoinDialog();
-                }),
+            AppPrimaryButton(
+              width: appButtonWidth(context),
+              label: 'Join Room',
+              onPressed: withLightHaptic(() {
+                Navigator.pop(ctx);
+                _showJoinDialog();
+              }),
+            ),
             const SizedBox(height: 16),
           ],
         ),
@@ -139,18 +154,20 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final result = await roomService.createRoom();
       if (!mounted) return;
-      Navigator.pushNamed(context, '/room-lobby', arguments: {
-        'gameId': result.gameId,
-        'roomCode': result.roomCode,
-        'myUid': _authService.currentUid,
-        'token': _authService.token,
-        'isHost': true,
-      });
+      Navigator.pushNamed(
+        context,
+        AppRoutes.roomLobby,
+        arguments: RoomLobbyArgs(
+          gameId: result.gameId,
+          roomCode: result.roomCode,
+          myUid: _authService.currentUid ?? '',
+          token: _authService.token ?? '',
+          isHost: true,
+        ),
+      );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to create room: $e')),
-        );
+        context.showErrorSnack('Failed to create room: $e');
       }
     }
   }
@@ -161,8 +178,10 @@ class _HomeScreenState extends State<HomeScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: KoutTheme.primary,
-        title: Text('Join Room',
-            style: KoutTheme.headingStyle.copyWith(fontSize: 18)),
+        title: Text(
+          'Join Room',
+          style: KoutTheme.headingStyle.copyWith(fontSize: 18),
+        ),
         content: TextField(
           controller: controller,
           textCapitalization: TextCapitalization.characters,
@@ -170,12 +189,15 @@ class _HomeScreenState extends State<HomeScreen> {
           style: KoutTheme.bodyStyle.copyWith(fontSize: 20, letterSpacing: 4),
           decoration: InputDecoration(
             hintText: 'ENTER CODE',
-            hintStyle: KoutTheme.bodyStyle
-                .copyWith(color: KoutTheme.accent.withValues(alpha: 0.3)),
+            hintStyle: KoutTheme.bodyStyle.copyWith(
+              color: KoutTheme.accent.withValues(alpha: 0.3),
+            ),
             enabledBorder: UnderlineInputBorder(
-                borderSide: BorderSide(color: KoutTheme.accent)),
+              borderSide: BorderSide(color: KoutTheme.accent),
+            ),
             focusedBorder: UnderlineInputBorder(
-                borderSide: BorderSide(color: KoutTheme.accent)),
+              borderSide: BorderSide(color: KoutTheme.accent),
+            ),
           ),
         ),
         actions: [
@@ -188,9 +210,10 @@ class _HomeScreenState extends State<HomeScreen> {
               Navigator.pop(ctx);
               _joinRoom(controller.text);
             },
-            child: Text('Join',
-                style: KoutTheme.bodyStyle
-                    .copyWith(color: KoutTheme.accent)),
+            child: Text(
+              'Join',
+              style: KoutTheme.bodyStyle.copyWith(color: KoutTheme.accent),
+            ),
           ),
         ],
       ),
@@ -199,45 +222,28 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _joinRoom(String code) async {
     if (code.length != 6) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Code must be 6 characters')),
-      );
+      context.showErrorSnack('Code must be 6 characters');
       return;
     }
     final roomService = RoomService();
     try {
       final gameId = await roomService.joinRoom(code);
       if (!mounted) return;
-      Navigator.pushNamed(context, '/room-lobby', arguments: {
-        'gameId': gameId,
-        'roomCode': code.toUpperCase(),
-        'myUid': _authService.currentUid,
-        'token': _authService.token,
-        'isHost': false,
-      });
+      Navigator.pushNamed(
+        context,
+        AppRoutes.roomLobby,
+        arguments: RoomLobbyArgs(
+          gameId: gameId,
+          roomCode: code.toUpperCase(),
+          myUid: _authService.currentUid ?? '',
+          token: _authService.token ?? '',
+          isHost: false,
+        ),
+      );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$e')),
-        );
+        context.showErrorSnack('$e');
       }
     }
-  }
-
-  Widget _buildButton({
-    required String label,
-    required VoidCallback onPressed,
-  }) {
-    return SizedBox(
-      width: min(220.0, MediaQuery.sizeOf(context).width * 0.6),
-      child: ElevatedButton(
-        onPressed: () {
-          HapticFeedback.lightImpact();
-          onPressed();
-        },
-        style: KoutTheme.primaryButtonStyle,
-        child: Text(label),
-      ),
-    );
   }
 }

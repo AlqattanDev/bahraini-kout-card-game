@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
+import '../app_routes.dart';
 import '../models/game_mode.dart';
 import '../services/game_service.dart';
+import '../widgets/app_snackbar.dart';
 import '../../game/kout_game.dart';
 import '../../game/overlays/bid_overlay.dart';
 import '../../game/overlays/trump_selector.dart';
@@ -16,7 +18,6 @@ import '../../offline/bot_player_controller.dart';
 import '../../offline/player_controller.dart';
 import '../../shared/models/bid.dart';
 import '../../shared/models/card.dart';
-import '../../game/theme/kout_theme.dart';
 
 class GameScreen extends StatefulWidget {
   const GameScreen({super.key});
@@ -70,13 +71,7 @@ class _GameScreenState extends State<GameScreen> {
 
         _errorSub = _gameService!.errorStream.listen((error) {
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(error),
-                backgroundColor: KoutTheme.lossColor,
-                duration: const Duration(seconds: 3),
-              ),
-            );
+            context.showErrorSnack(error);
           }
         });
 
@@ -190,18 +185,18 @@ class _GameScreenState extends State<GameScreen> {
                 koutGame.overlays.remove('gameOver');
                 if (_gameMode is OfflineGameMode) {
                   Navigator.of(context).pushReplacementNamed(
-                    '/game',
+                    AppRoutes.game,
                     arguments: _gameMode,
                   );
                 } else {
                   Navigator.of(context)
-                      .pushNamedAndRemoveUntil('/', (route) => false);
+                      .pushNamedAndRemoveUntil(AppRoutes.home, (route) => false);
                 }
               },
               onReturnToMenu: () {
                 koutGame.overlays.remove('gameOver');
                 Navigator.of(context).pushNamedAndRemoveUntil(
-                  '/',
+                  AppRoutes.home,
                   (route) => false,
                 );
               },
@@ -218,7 +213,7 @@ class _GameScreenState extends State<GameScreen> {
               onReturnToMenu: () {
                 koutGame.overlays.remove('connectionStatus');
                 Navigator.of(context).pushNamedAndRemoveUntil(
-                  '/',
+                  AppRoutes.home,
                   (route) => false,
                 );
               },

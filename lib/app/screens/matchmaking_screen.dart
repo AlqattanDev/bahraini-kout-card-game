@@ -1,8 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../services/matchmaking_service.dart';
+import '../app_routes.dart';
+import '../models/game_mode.dart';
+import '../models/navigation_args.dart';
 import '../../game/theme/kout_theme.dart';
 import 'dart:math' as math;
+import '../widgets/app_action_button.dart';
 
 class MatchmakingScreen extends StatefulWidget {
   const MatchmakingScreen({super.key});
@@ -11,16 +15,18 @@ class MatchmakingScreen extends StatefulWidget {
   State<MatchmakingScreen> createState() => _MatchmakingScreenState();
 }
 
-class _MatchmakingScreenState extends State<MatchmakingScreen> with SingleTickerProviderStateMixin {
-  late MatchmakingService _matchmakingService;
+class _MatchmakingScreenState extends State<MatchmakingScreen>
+    with SingleTickerProviderStateMixin {
+  /// Null when route arguments are missing — do not call [dispose] helpers on it until set.
+  MatchmakingService? _matchmakingService;
   StreamSubscription? _matchSub;
   Timer? _tickTimer;
   bool _initialized = false;
   int _elapsedSeconds = 0;
   bool _timedOut = false;
   String? _error;
-  late String _uid;
-  late String _token;
+  String _uid = '';
+  String _token = '';
   late AnimationController _spinnerController;
 
   @override
@@ -38,23 +44,30 @@ class _MatchmakingScreenState extends State<MatchmakingScreen> with SingleTicker
     if (_initialized) return;
     _initialized = true;
 
-    final args =
-        ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
-    _uid = args['uid'] as String;
-    _token = args['token'] as String;
+    final args = MatchmakingArgs.fromRouteArgs(
+      ModalRoute.of(context)!.settings.arguments,
+    );
+    if (args == null) {
+      _error = 'Missing matchmaking arguments';
+      return;
+    }
+    _uid = args.uid;
+    _token = args.token;
 
     _matchmakingService = MatchmakingService(token: _token);
     _startMatchmaking();
   }
 
   Future<void> _startMatchmaking() async {
+    final service = _matchmakingService;
+    if (service == null) return;
+
     setState(() {
       _elapsedSeconds = 0;
       _timedOut = false;
       _error = null;
     });
 
-    // Start elapsed timer
     _tickTimer?.cancel();
     _tickTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
@@ -62,7 +75,7 @@ class _MatchmakingScreenState extends State<MatchmakingScreen> with SingleTicker
     });
 
     try {
-      final immediateGameId = await _matchmakingService.joinQueue(1000);
+      final immediateGameId = await service.joinQueue(1000);
       if (immediateGameId != null) {
         _navigateToGame(immediateGameId);
         return;
@@ -75,7 +88,7 @@ class _MatchmakingScreenState extends State<MatchmakingScreen> with SingleTicker
     }
 
     _matchSub?.cancel();
-    _matchSub = _matchmakingService.listenForMatch().listen(
+    _matchSub = service.listenForMatch().listen(
       (gameId) => _navigateToGame(gameId),
       onDone: () {
         // Stream closed without match = timeout
@@ -86,8 +99,7 @@ class _MatchmakingScreenState extends State<MatchmakingScreen> with SingleTicker
       onError: (e) {
         if (!mounted) return;
         _tickTimer?.cancel();
-        setState(
-            () => _error = e.toString().replaceFirst('Exception: ', ''));
+        setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
       },
     );
   }
@@ -97,12 +109,16 @@ class _MatchmakingScreenState extends State<MatchmakingScreen> with SingleTicker
     if (!mounted) return;
     Navigator.pushReplacementNamed(
       context,
-      '/game',
-      arguments: {'gameId': gameId, 'myUid': _uid, 'token': _token},
+      AppRoutes.game,
+      arguments: OnlineGameMode(gameId: gameId, myUid: _uid, token: _token),
     );
   }
 
   void _retry() {
+    if (_matchmakingService == null) {
+      Navigator.pop(context);
+      return;
+    }
     _matchSub?.cancel();
     _startMatchmaking();
   }
@@ -110,7 +126,7 @@ class _MatchmakingScreenState extends State<MatchmakingScreen> with SingleTicker
   void _cancel() {
     _tickTimer?.cancel();
     _matchSub?.cancel();
-    _matchmakingService.leaveQueue();
+    _matchmakingService?.leaveQueue();
     Navigator.pop(context);
   }
 
@@ -119,7 +135,7 @@ class _MatchmakingScreenState extends State<MatchmakingScreen> with SingleTicker
     _spinnerController.dispose();
     _tickTimer?.cancel();
     _matchSub?.cancel();
-    _matchmakingService.dispose();
+    _matchmakingService?.dispose();
     super.dispose();
   }
 
@@ -150,10 +166,7 @@ class _MatchmakingScreenState extends State<MatchmakingScreen> with SingleTicker
       body: Container(
         decoration: const BoxDecoration(
           gradient: RadialGradient(
-            colors: [
-              Color(0x00000000),
-              Color(0x88000000),
-            ],
+            colors: [Color(0x00000000), Color(0x88000000)],
             radius: 1.0,
           ),
         ),
@@ -164,42 +177,36 @@ class _MatchmakingScreenState extends State<MatchmakingScreen> with SingleTicker
               if (_error != null) ...[
                 _buildIcon(Icons.error_outline, KoutTheme.lossColor),
                 const SizedBox(height: 16),
-                Text(_error!, style: KoutTheme.bodyStyle.copyWith(fontSize: 16)),
+                Text(
+                  _error!,
+                  style: KoutTheme.bodyStyle.copyWith(fontSize: 16),
+                ),
                 const SizedBox(height: 24),
-                SizedBox(
-                  width: 200,
-                  child: ElevatedButton(
-                    style: KoutTheme.primaryButtonStyle,
-                    onPressed: _retry,
-                    child: const Text('Retry'),
-                  ),
-                ),
+                AppPrimaryButton(width: 200, label: 'Retry', onPressed: _retry),
                 const SizedBox(height: 12),
-                TextButton(
-                  onPressed: _cancel,
-                  child: const Text('Back', style: TextStyle(color: KoutTheme.cream)),
-                ),
+                AppSecondaryButton(label: 'Back', onPressed: _cancel),
               ] else if (_timedOut) ...[
                 _buildIcon(Icons.hourglass_disabled, KoutTheme.accent),
                 const SizedBox(height: 16),
-                Text('No match found', style: KoutTheme.bodyStyle.copyWith(fontSize: 18)),
+                Text(
+                  'No match found',
+                  style: KoutTheme.bodyStyle.copyWith(fontSize: 18),
+                ),
                 const SizedBox(height: 8),
-                Text('Waited ${_formatElapsed()}',
-                    style: KoutTheme.bodyStyle.copyWith(color: KoutTheme.textColor.withValues(alpha: 0.5))),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: 200,
-                  child: ElevatedButton(
-                    style: KoutTheme.primaryButtonStyle,
-                    onPressed: _retry,
-                    child: const Text('Try Again'),
+                Text(
+                  'Waited ${_formatElapsed()}',
+                  style: KoutTheme.bodyStyle.copyWith(
+                    color: KoutTheme.textColor.withValues(alpha: 0.5),
                   ),
                 ),
-                const SizedBox(height: 12),
-                TextButton(
-                  onPressed: _cancel,
-                  child: const Text('Back', style: TextStyle(color: KoutTheme.cream)),
+                const SizedBox(height: 24),
+                AppPrimaryButton(
+                  width: 200,
+                  label: 'Try Again',
+                  onPressed: _retry,
                 ),
+                const SizedBox(height: 12),
+                AppSecondaryButton(label: 'Back', onPressed: _cancel),
               ] else ...[
                 AnimatedBuilder(
                   animation: _spinnerController,
@@ -214,25 +221,33 @@ class _MatchmakingScreenState extends State<MatchmakingScreen> with SingleTicker
                   },
                 ),
                 const SizedBox(height: 24),
-                Text('Searching for opponents...',
-                    style: KoutTheme.bodyStyle.copyWith(fontSize: 16)),
+                Text(
+                  'Searching for opponents...',
+                  style: KoutTheme.bodyStyle.copyWith(fontSize: 16),
+                ),
                 const SizedBox(height: 8),
-                Text('Usually takes less than a minute',
-                    style: KoutTheme.bodyStyle.copyWith(fontSize: 12, color: KoutTheme.textColor.withValues(alpha: 0.5))),
+                Text(
+                  'Usually takes less than a minute',
+                  style: KoutTheme.bodyStyle.copyWith(
+                    fontSize: 12,
+                    color: KoutTheme.textColor.withValues(alpha: 0.5),
+                  ),
+                ),
                 const SizedBox(height: 24),
-                Text(_formatElapsed(),
-                    style: const TextStyle(fontFamily: KoutTheme.monoFontFamily, fontSize: 14, color: KoutTheme.accent)),
+                Text(
+                  _formatElapsed(),
+                  style: const TextStyle(
+                    fontFamily: KoutTheme.monoFontFamily,
+                    fontSize: 14,
+                    color: KoutTheme.accent,
+                  ),
+                ),
                 const SizedBox(height: 24),
-                Container(
+                AppSecondaryButton(
                   width: 200,
-                  decoration: BoxDecoration(
-                    border: Border.all(color: KoutTheme.goldAccent),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: TextButton(
-                    onPressed: _cancel,
-                    child: const Text('Cancel', style: TextStyle(color: KoutTheme.cream)),
-                  ),
+                  label: 'Cancel',
+                  onPressed: _cancel,
+                  withBorder: true,
                 ),
               ],
             ],

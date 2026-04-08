@@ -6,6 +6,19 @@ import 'package:koutbh/offline/player_controller.dart';
 import 'hand_evaluator.dart';
 
 class BidStrategy {
+  static const Map<BidAmount, double> _thresholdByBid = {
+    BidAmount.bab: 4.5,
+    BidAmount.six: 5.5,
+    BidAmount.seven: 6.5,
+    BidAmount.kout: 7.5,
+  };
+  static const List<BidAmount> _descendingBidStrength = [
+    BidAmount.kout,
+    BidAmount.seven,
+    BidAmount.six,
+    BidAmount.bab,
+  ];
+
   static GameAction decideBid(
     List<GameCard> hand,
     BidAmount? currentHighBid, {
@@ -54,8 +67,9 @@ class BidStrategy {
     // Step 3.3 — Partner inference from bid history
     if (bidHistory != null && mySeat != null) {
       final partnerSeat = (mySeat + 2) % 4;
-      final partnerEntry =
-          bidHistory.where((e) => e.seat == partnerSeat).lastOrNull;
+      final partnerEntry = bidHistory
+          .where((e) => e.seat == partnerSeat)
+          .lastOrNull;
       if (partnerEntry != null && partnerEntry.action != 'pass') {
         thresholdAdjust += 0.3; // partner bid → reliable
       } else if (partnerEntry?.action == 'pass') {
@@ -79,9 +93,7 @@ class BidStrategy {
 
     // Step 3.6 — Tactical overbidding: steal from opponent
     if (currentHighBid != null && bidHistory != null && mySeat != null) {
-      final lastBidder = bidHistory
-          .where((e) => e.action != 'pass')
-          .lastOrNull;
+      final lastBidder = bidHistory.where((e) => e.action != 'pass').lastOrNull;
       if (lastBidder != null) {
         final isOpponentBid = teamForSeat(lastBidder.seat) != myTeam;
         if (isOpponentBid) {
@@ -121,19 +133,16 @@ class BidStrategy {
   // TODO: Phase 3.5 — fuzzy thresholds for Aggressive bots (needs BotDifficulty from Phase 9)
 
   static BidAmount? _strengthToBid(double expectedWinners) {
-    if (expectedWinners >= 7.5) return BidAmount.kout;
-    if (expectedWinners >= 6.5) return BidAmount.seven;
-    if (expectedWinners >= 5.5) return BidAmount.six;
-    if (expectedWinners >= 4.5) return BidAmount.bab;
+    for (final bid in _descendingBidStrength) {
+      final threshold = _thresholdByBid[bid];
+      if (threshold != null && expectedWinners >= threshold) {
+        return bid;
+      }
+    }
     return null;
   }
 
   static double _bidThreshold(BidAmount bid) {
-    return switch (bid) {
-      BidAmount.bab => 4.5,
-      BidAmount.six => 5.5,
-      BidAmount.seven => 6.5,
-      BidAmount.kout => 7.5,
-    };
+    return _thresholdByBid[bid]!;
   }
 }

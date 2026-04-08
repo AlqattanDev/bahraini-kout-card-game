@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../../app/models/client_game_state.dart';
 import '../../shared/constants.dart';
 import '../../shared/models/game_state.dart';
 import '../../game/theme/kout_theme.dart';
-import 'overlay_animation_wrapper.dart';
+import 'overlay_panel.dart';
 import 'overlay_styles.dart';
+import 'overlay_utils.dart';
 
 /// Flutter overlay shown during ROUND_SCORING phase.
 ///
@@ -33,7 +33,7 @@ class _RoundResultOverlayState extends State<RoundResultOverlay>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<double> _progressAnimation;
-  bool _hasContinued = false;
+  final _action = OneShotHapticAction();
 
   @override
   void initState() {
@@ -47,9 +47,7 @@ class _RoundResultOverlayState extends State<RoundResultOverlay>
       curve: Curves.easeOut,
     );
     // Start the animation after a brief delay so the overlay entry finishes
-    Future.delayed(OverlayStyles.animSlow, () {
-      if (mounted) _controller.forward();
-    });
+    delayIfMounted(this, OverlayStyles.animSlow, _controller.forward);
   }
 
   @override
@@ -71,8 +69,9 @@ class _RoundResultOverlayState extends State<RoundResultOverlay>
 
     // Evaluate result: bidder needs to win at least their bid in tricks
     final bidValue = state.currentBid?.value ?? 0;
-    final bidderTricks =
-        bidderTeam != null ? (state.tricks[bidderTeam] ?? 0) : 0;
+    final bidderTricks = bidderTeam != null
+        ? (state.tricks[bidderTeam] ?? 0)
+        : 0;
     final bidderWon = bidderTricks >= bidValue;
 
     final bool roundWon = isMyTeamBidder ? bidderWon : !bidderWon;
@@ -92,27 +91,20 @@ class _RoundResultOverlayState extends State<RoundResultOverlay>
     final curTug = state.tugScore;
     final curLeader = state.leadingTeam;
 
-    return OverlayAnimationWrapper(
-      child: Container(
-        padding: OverlayStyles.panelPadding,
-        constraints: const BoxConstraints(minWidth: 300, maxWidth: 340),
-        decoration: OverlayStyles.panelDecoration(),
+    return OverlayPanel(
+      title: resultText,
+      titleStyle: TextStyle(
+        color: resultColor,
+        fontSize: 30,
+        fontWeight: FontWeight.bold,
+        letterSpacing: 1.5,
+      ),
+      constraints: const BoxConstraints(minWidth: 300, maxWidth: 340),
+      content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // 1. Headline
-            Text(
-              resultText,
-              style: TextStyle(
-                color: resultColor,
-                fontSize: 30,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.5,
-              ),
-            ),
-            OverlayStyles.sectionGap,
-
-            // 2. Trick breakdown box
+            // 2. Trick breakdown box ([OverlayPanel] already adds sectionGap after title)
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(14),
@@ -148,18 +140,17 @@ class _RoundResultOverlayState extends State<RoundResultOverlay>
               animation: _progressAnimation,
               builder: (context, _) {
                 final t = _progressAnimation.value;
-                final displayScore =
-                    (prevTug + (curTug - prevTug) * t).round();
+                final displayScore = (prevTug + (curTug - prevTug) * t).round();
                 final scoreColor = curLeader == Team.a
                     ? KoutTheme.teamAColor
                     : curLeader == Team.b
-                        ? KoutTheme.teamBColor
-                        : KoutTheme.textColor;
+                    ? KoutTheme.teamBColor
+                    : KoutTheme.textColor;
                 final leaderLabel = curLeader == null
                     ? 'Tied'
                     : curLeader == myTeam
-                        ? 'Your Team leads'
-                        : 'Opponent leads';
+                    ? 'Your Team leads'
+                    : 'Opponent leads';
                 return Column(
                   children: [
                     Text(
@@ -193,8 +184,8 @@ class _RoundResultOverlayState extends State<RoundResultOverlay>
                 final scoreColor = curLeader == Team.a
                     ? KoutTheme.teamAColor
                     : curLeader == Team.b
-                        ? KoutTheme.teamBColor
-                        : KoutTheme.textColor;
+                    ? KoutTheme.teamBColor
+                    : KoutTheme.textColor;
                 return _progressBar(
                   label: 'Score',
                   fromScore: prevTug,
@@ -205,24 +196,21 @@ class _RoundResultOverlayState extends State<RoundResultOverlay>
               },
             ),
             const SizedBox(height: 22),
-
-            // 5. Continue button
-            ElevatedButton(
-              onPressed: () {
-                if (_hasContinued) return;
-                setState(() => _hasContinued = true);
-                HapticFeedback.mediumImpact();
-                widget.onContinue();
-              },
-              style: OverlayStyles.primaryButton(),
-              child: const Text(
-                'Continue',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-              ),
-            ),
           ],
         ),
       ),
+      actions: [
+        Center(
+          child: ElevatedButton(
+            onPressed: () => _action.run(widget.onContinue),
+            style: OverlayStyles.primaryButton(),
+            child: const Text(
+              'Continue',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -274,10 +262,7 @@ class _RoundResultOverlayState extends State<RoundResultOverlay>
             ),
             Text(
               '$displayScore / $targetScore',
-              style: const TextStyle(
-                color: KoutTheme.textColor,
-                fontSize: 11,
-              ),
+              style: const TextStyle(color: KoutTheme.textColor, fontSize: 11),
             ),
           ],
         ),

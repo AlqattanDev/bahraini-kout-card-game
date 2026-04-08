@@ -2,10 +2,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../game/theme/kout_theme.dart';
+import '../app_routes.dart';
 import '../models/game_mode.dart';
 import '../models/lobby_state.dart';
+import '../models/navigation_args.dart';
 import '../services/game_service.dart';
 import '../services/room_service.dart';
+import '../widgets/app_action_button.dart';
+import '../widgets/app_snackbar.dart';
 
 class RoomLobbyScreen extends StatefulWidget {
   const RoomLobbyScreen({super.key});
@@ -14,7 +18,8 @@ class RoomLobbyScreen extends StatefulWidget {
   State<RoomLobbyScreen> createState() => _RoomLobbyScreenState();
 }
 
-class _RoomLobbyScreenState extends State<RoomLobbyScreen> with SingleTickerProviderStateMixin {
+class _RoomLobbyScreenState extends State<RoomLobbyScreen>
+    with SingleTickerProviderStateMixin {
   GameService? _gameService;
   RoomService? _roomService;
   LobbyState? _lobbyState;
@@ -37,7 +42,10 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> with SingleTickerProv
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     )..repeat(reverse: true);
-    _pulseAnimation = Tween<double>(begin: 0.3, end: 1.0).animate(_pulseController);
+    _pulseAnimation = Tween<double>(
+      begin: 0.3,
+      end: 1.0,
+    ).animate(_pulseController);
   }
 
   @override
@@ -46,13 +54,19 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> with SingleTickerProv
     if (_initialized) return;
     _initialized = true;
 
-    final args =
-        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>;
-    _gameId = args['gameId'] as String;
-    _roomCode = args['roomCode'] as String;
-    _myUid = args['myUid'] as String;
-    _token = args['token'] as String;
-    _isHost = args['isHost'] as bool;
+    final args = RoomLobbyArgs.fromRouteArgs(
+      ModalRoute.of(context)?.settings.arguments,
+    );
+    if (args == null) {
+      context.showErrorSnack('Invalid room lobby arguments');
+      Navigator.pop(context);
+      return;
+    }
+    _gameId = args.gameId;
+    _roomCode = args.roomCode;
+    _myUid = args.myUid;
+    _token = args.token;
+    _isHost = args.isHost;
     _roomService = RoomService();
 
     _gameService = GameService(gameId: _gameId, myUid: _myUid, token: _token);
@@ -78,7 +92,7 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> with SingleTickerProv
     if (!mounted) return;
     Navigator.pushReplacementNamed(
       context,
-      '/game',
+      AppRoutes.game,
       arguments: RoomGameMode(
         gameId: _gameId,
         myUid: _myUid,
@@ -96,12 +110,7 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> with SingleTickerProv
       await _roomService!.startGame(_gameId);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('$e'),
-            backgroundColor: KoutTheme.lossColor,
-          ),
-        );
+        context.showErrorSnack('$e');
         setState(() => _starting = false);
       }
     }
@@ -109,21 +118,19 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> with SingleTickerProv
 
   void _copyCode() {
     Clipboard.setData(ClipboardData(text: _roomCode));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Code copied!'),
-        duration: Duration(seconds: 1),
-      ),
+    context.showInfoSnack(
+      'Code copied!',
+      duration: const Duration(seconds: 1),
     );
   }
 
   void _shareCode() {
-    Clipboard.setData(ClipboardData(text: 'Join my Kout game! Code: $_roomCode'));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Share text copied to clipboard!'),
-        duration: Duration(seconds: 2),
-      ),
+    Clipboard.setData(
+      ClipboardData(text: 'Join my Kout game! Code: $_roomCode'),
+    );
+    context.showInfoSnack(
+      'Share text copied to clipboard!',
+      duration: const Duration(seconds: 2),
     );
   }
 
@@ -176,8 +183,10 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> with SingleTickerProv
                     ),
                     child: Text(
                       _roomCode,
-                      style: KoutTheme.headingStyle
-                          .copyWith(fontSize: 36, letterSpacing: 8),
+                      style: KoutTheme.headingStyle.copyWith(
+                        fontSize: 36,
+                        letterSpacing: 8,
+                      ),
                     ),
                   ),
                 ),
@@ -199,12 +208,14 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> with SingleTickerProv
 
             // Action buttons
             if (_isHost) ...[
-              _buildActionButton(
+              AppPrimaryButton(
+                width: 220,
                 label: 'Share Code',
                 onPressed: _shareCode,
               ),
               const SizedBox(height: 12),
-              _buildActionButton(
+              AppPrimaryButton(
+                width: 220,
                 label: _starting ? 'Starting...' : 'Start Game',
                 onPressed: (_lobbyState?.isFull == true && !_starting)
                     ? _startGame
@@ -252,8 +263,7 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> with SingleTickerProv
         padding: const EdgeInsets.symmetric(vertical: 4),
         child: Container(
           width: 220,
-          padding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
             color: KoutTheme.primary,
             borderRadius: BorderRadius.circular(8),
@@ -278,10 +288,7 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> with SingleTickerProv
         return AnimatedBuilder(
           animation: _pulseAnimation,
           builder: (context, child) {
-            return Opacity(
-              opacity: _pulseAnimation.value,
-              child: child,
-            );
+            return Opacity(opacity: _pulseAnimation.value, child: child);
           },
           child: seatWidget,
         );
@@ -289,36 +296,5 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen> with SingleTickerProv
 
       return seatWidget;
     }).toList();
-  }
-
-  Widget _buildActionButton({
-    required String label,
-    VoidCallback? onPressed,
-  }) {
-    return SizedBox(
-      width: 220,
-      child: ElevatedButton(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: KoutTheme.primary,
-          foregroundColor: KoutTheme.accent,
-          disabledBackgroundColor:
-              KoutTheme.primary.withValues(alpha: 0.5),
-          disabledForegroundColor:
-              KoutTheme.accent.withValues(alpha: 0.3),
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: BorderSide(
-              color: onPressed != null
-                  ? KoutTheme.accent
-                  : KoutTheme.accent.withValues(alpha: 0.3),
-              width: 1.5,
-            ),
-          ),
-        ),
-        child: Text(label),
-      ),
-    );
   }
 }

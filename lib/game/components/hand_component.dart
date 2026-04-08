@@ -157,15 +157,14 @@ class HandComponent extends Component {
 
     final isLeadPlay = state.currentTrickPlays.isEmpty;
     final ledSuit = isLeadPlay ? null : state.currentTrickPlays.first.card.suit;
-    final isFirstTrick = state.trickWinners.isEmpty;
 
-    return PlayValidator.playableCards(
+    return PlayValidator.playableForCurrentTrick(
       hand: state.myHand,
+      trickHasNoPlaysYet: isLeadPlay,
       ledSuit: ledSuit,
-      isLeadPlay: isLeadPlay,
       trumpSuit: state.trumpSuit,
-      isKout: state.currentBid?.isKout ?? false,
-      isFirstTrick: isFirstTrick,
+      bidIsKout: state.currentBid?.isKout ?? false,
+      noTricksCompletedYet: state.trickWinners.isEmpty,
     );
   }
 }

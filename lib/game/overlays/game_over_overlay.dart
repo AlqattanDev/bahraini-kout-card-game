@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../../app/models/client_game_state.dart';
 import '../../shared/constants.dart';
 import '../../shared/models/game_state.dart';
 import '../../game/theme/kout_theme.dart';
-import 'overlay_animation_wrapper.dart';
+import 'overlay_panel.dart';
 import 'overlay_styles.dart';
+import 'overlay_utils.dart';
 
 /// Flutter overlay shown during GAME_OVER phase.
 ///
@@ -35,7 +35,7 @@ class GameOverOverlay extends StatefulWidget {
 class _GameOverOverlayState extends State<GameOverOverlay>
     with TickerProviderStateMixin {
   late final bool _myTeamWon;
-  bool _hasActed = false;
+  final _action = OneShotHapticAction();
 
   // Glow pulse animation (gold for victory, red for defeat)
   AnimationController? _glowController;
@@ -59,11 +59,11 @@ class _GameOverOverlayState extends State<GameOverOverlay>
       );
 
       // Trigger victory particles after 200ms
-      Future.delayed(const Duration(milliseconds: 200), () {
-        if (mounted) {
-          widget.onVictoryAnimationReady?.call();
-        }
-      });
+      delayIfMounted(
+        this,
+        const Duration(milliseconds: 200),
+        () => widget.onVictoryAnimationReady?.call(),
+      );
     } else {
       _glowController = AnimationController(
         vsync: this,
@@ -75,11 +75,11 @@ class _GameOverOverlayState extends State<GameOverOverlay>
     }
 
     // Start glow pulse after entry animation completes (~250ms)
-    Future.delayed(const Duration(milliseconds: 250), () {
-      if (mounted) {
-        _glowController!.repeat(reverse: true);
-      }
-    });
+    delayIfMounted(
+      this,
+      const Duration(milliseconds: 250),
+      () => _glowController!.repeat(reverse: true),
+    );
   }
 
   @override
@@ -97,118 +97,94 @@ class _GameOverOverlayState extends State<GameOverOverlay>
     final headlineText = _myTeamWon ? 'Victory!' : 'Defeat';
     final headlineColor = OverlayStyles.resultColor(_myTeamWon);
 
-    return OverlayAnimationWrapper(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 32),
-        constraints: const BoxConstraints(minWidth: 280),
-        decoration: OverlayStyles.panelDecoration(
-          alpha: 0.98,
-          borderWidth: 2.5,
-          borderRadius: 20.0,
-          blurRadius: 32.0,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Headline with optional glow
-            _buildHeadline(headlineText, headlineColor),
-            const SizedBox(height: 8),
-            const Text(
-              'Game Over',
-              style: TextStyle(
-                color: KoutTheme.textColor,
-                fontSize: 14,
-                letterSpacing: 1,
-              ),
-            ),
-            const SizedBox(height: 24),
-            // Final score
-            Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-              decoration: OverlayStyles.infoBoxDecoration(),
-              child: Column(
-                children: [
-                  Text(
-                    '$finalScore',
-                    style: TextStyle(
-                      color: winner == Team.a
-                          ? KoutTheme.teamAColor
-                          : KoutTheme.teamBColor,
-                      fontSize: 36,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    winner == myTeam
-                        ? 'Your Team wins!'
-                        : 'Opponent wins',
-                    style: const TextStyle(
-                      color: KoutTheme.textColor,
-                      fontSize: 14,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    finalScore >= targetScore && widget.state.currentBid?.isKout == true
-                        ? 'Won by Kout'
-                        : 'Won by $finalScore points',
-                    style: const TextStyle(
-                      color: KoutTheme.textColor,
-                      fontSize: 12,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 28),
-            // Play Again button (filled gold)
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  if (_hasActed) return;
-                  setState(() => _hasActed = true);
-                  HapticFeedback.mediumImpact();
-                  widget.onPlayAgain();
-                },
-                style: OverlayStyles.primaryButton(
-                  borderRadius: 10.0,
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 36, vertical: 14),
-                ),
-                child: const Text(
-                  'Play Again',
-                  style:
-                      TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            // Back to Lobby button (outlined gold)
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton(
-                onPressed: () {
-                  if (_hasActed) return;
-                  setState(() => _hasActed = true);
-                  HapticFeedback.mediumImpact();
-                  widget.onReturnToMenu();
-                },
-                style: OverlayStyles.secondaryButton(),
-                child: const Text(
-                  'Back to Lobby',
-                  style:
-                      TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-              ),
-            ),
-          ],
-        ),
+    return OverlayPanel(
+      title: 'Game Over',
+      titleStyle: const TextStyle(
+        color: KoutTheme.textColor,
+        fontSize: 14,
+        letterSpacing: 1,
       ),
+      constraints: const BoxConstraints(minWidth: 280),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Headline with optional glow
+          _buildHeadline(headlineText, headlineColor),
+          const SizedBox(height: 24),
+          // Final score
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            decoration: OverlayStyles.infoBoxDecoration(),
+            child: Column(
+              children: [
+                Text(
+                  '$finalScore',
+                  style: TextStyle(
+                    color: winner == Team.a
+                        ? KoutTheme.teamAColor
+                        : KoutTheme.teamBColor,
+                    fontSize: 36,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  winner == myTeam ? 'Your Team wins!' : 'Opponent wins',
+                  style: const TextStyle(
+                    color: KoutTheme.textColor,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  finalScore >= targetScore &&
+                          widget.state.currentBid?.isKout == true
+                      ? 'Won by Kout'
+                      : 'Won by $finalScore points',
+                  style: const TextStyle(
+                    color: KoutTheme.textColor,
+                    fontSize: 12,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: () => _runOnce(widget.onPlayAgain),
+            style: OverlayStyles.primaryButton(
+              borderRadius: 10.0,
+              padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 14),
+            ),
+            child: const Text(
+              'Play Again',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton(
+            onPressed: () => _runOnce(widget.onReturnToMenu),
+            style: OverlayStyles.secondaryButton(),
+            child: const Text(
+              'Back to Lobby',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+          ),
+        ),
+      ],
     );
+  }
+
+  void _runOnce(VoidCallback action) {
+    _action.run(action);
   }
 
   Widget _buildHeadline(String text, Color color) {

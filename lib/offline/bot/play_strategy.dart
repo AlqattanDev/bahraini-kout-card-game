@@ -3,6 +3,7 @@ import 'package:koutbh/shared/logic/play_validator.dart';
 import 'package:koutbh/shared/logic/trick_resolver.dart';
 import 'package:koutbh/shared/logic/card_utils.dart';
 import 'package:koutbh/offline/player_controller.dart';
+import 'package:koutbh/offline/bot/card_tracker.dart';
 import 'package:koutbh/offline/bot/game_context.dart';
 
 class PlayStrategy {
@@ -48,13 +49,13 @@ class PlayStrategy {
   static List<GameCard> _legalPlays(
       List<GameCard> hand, Suit? ledSuit, bool isLead,
       {Suit? trumpSuit, bool isKout = false, bool isFirstTrick = false}) {
-    final legal = PlayValidator.playableCards(
+    final legal = PlayValidator.playableForCurrentTrick(
       hand: hand,
+      trickHasNoPlaysYet: isLead,
       ledSuit: ledSuit,
-      isLeadPlay: isLead,
       trumpSuit: trumpSuit,
-      isKout: isKout,
-      isFirstTrick: isFirstTrick,
+      bidIsKout: isKout,
+      noTricksCompletedYet: isFirstTrick,
     ).toList();
 
     // Bot-specific: avoid leading with Joker (legal but triggers instant loss)
@@ -245,15 +246,10 @@ class PlayStrategy {
     // Void — partner winning: dump strategically, but dump Joker if poison
     if (partnerWinning) {
       if (hasJoker) {
-        bool poisonRisk = false;
         final nonJoker = legalCards.where((c) => !c.isJoker).toList();
-        if (nonJoker.length <= 1) {
-          poisonRisk = true;
-        } else if (context?.tracker != null && nonJoker.length <= 2) {
-          poisonRisk = nonJoker
-              .any((c) => !context!.tracker!.isSuitExhausted(c.suit!, hand));
+        if (_jokerPoisonRisk(nonJoker, hand, context?.tracker)) {
+          return legalCards.firstWhere((c) => c.isJoker);
         }
-        if (poisonRisk) return legalCards.firstWhere((c) => c.isJoker);
       }
       return _strategicDump(legalCards, hand, trumpSuit);
     }
@@ -269,17 +265,9 @@ class PlayStrategy {
     if (hasJoker) {
       final nonJoker = legalCards.where((c) => !c.isJoker).toList();
 
-      // 7.3 — Poison detection
-      bool poisonRisk = false;
-      if (nonJoker.isEmpty) {
-        poisonRisk = true;
-      } else if (nonJoker.length <= 2 && context?.tracker != null) {
-        poisonRisk = nonJoker
-            .any((c) => !context!.tracker!.isSuitExhausted(c.suit!, hand));
-      } else if (nonJoker.length <= 1) {
-        poisonRisk = true;
+      if (_jokerPoisonRisk(nonJoker, hand, context?.tracker)) {
+        return legalCards.firstWhere((c) => c.isJoker);
       }
-      if (poisonRisk) return legalCards.firstWhere((c) => c.isJoker);
 
       // 7.4 — Joker urgency scoring
       double urgency = 0.0;
@@ -312,9 +300,7 @@ class PlayStrategy {
       final myTrumps =
           legalCards.where((c) => !c.isJoker && c.suit == trumpSuit).toList();
       if (trumpsOut <= 1 && myTrumps.length == 1) {
-        final trickHasHonor = trickPlays.any((p) =>
-            !p.card.isJoker &&
-            (p.card.rank == Rank.ace || p.card.rank == Rank.king));
+        final trickHasHonor = _trickHasAceOrKing(trickPlays);
         if (!trickHasHonor && (context.tricksNeededForBid) > 1) {
           return _strategicDump(legalCards, hand, trumpSuit);
         }
@@ -327,9 +313,7 @@ class PlayStrategy {
           legalCards.where((c) => !c.isJoker && c.suit == trumpSuit).toList();
       if (trumpCards.isNotEmpty) {
         // 6.4 — Overtrump: skip low-value tricks as defender
-        final trickHasValue = trickPlays.any((p) =>
-            !p.card.isJoker &&
-            (p.card.rank == Rank.ace || p.card.rank == Rank.king));
+        final trickHasValue = _trickHasAceOrKing(trickPlays);
         if (!trickHasValue && context != null && !context.isBiddingTeam) {
           return _strategicDump(legalCards, hand, trumpSuit);
         }
@@ -421,6 +405,29 @@ class PlayStrategy {
       }
     }
     return bestPlay;
+  }
+
+  static bool _jokerPoisonRisk(
+    List<GameCard> nonJokerLegal,
+    List<GameCard> hand,
+    CardTracker? tracker,
+  ) {
+    if (nonJokerLegal.isEmpty) return true;
+    if (nonJokerLegal.length <= 1) return true;
+    if (tracker != null && nonJokerLegal.length <= 2) {
+      return nonJokerLegal.any((c) => !tracker.isSuitExhausted(c.suit!, hand));
+    }
+    return false;
+  }
+
+  static bool _trickHasAceOrKing(
+    List<({String playerUid, GameCard card})> trickPlays,
+  ) {
+    return trickPlays.any(
+      (p) =>
+          !p.card.isJoker &&
+          (p.card.rank == Rank.ace || p.card.rank == Rank.king),
+    );
   }
 
   static List<GameCard> _cardsBeating(

@@ -162,31 +162,11 @@ class UnifiedHudComponent extends PositionComponent {
     final borderColor =
         _isLandscape ? DiwaniyaColors.hudBorderLandscape : DiwaniyaColors.scoreHudBorder;
 
-    final bgRect = RRect.fromRectAndRadius(
-      Rect.fromLTWH(0, 0, _hudWidth, hudHeight),
-      const Radius.circular(12),
-    );
-
-    canvas.drawRRect(
-      bgRect.shift(const Offset(0, 2)),
-      Paint()
-        ..color = const Color(0x44000000)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
-    );
-    canvas.drawRRect(bgRect, Paint()..color = bgColor);
-
-    final highlightRect = RRect.fromRectAndRadius(
-      Rect.fromLTWH(1, 1, _hudWidth - 2, hudHeight * 0.35),
-      const Radius.circular(11),
-    );
-    canvas.drawRRect(highlightRect, Paint()..color = const Color(0x08FFFFFF));
-
-    canvas.drawRRect(
-      bgRect,
-      Paint()
-        ..color = borderColor
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.0,
+    _drawHudBackground(
+      canvas: canvas,
+      hudHeight: hudHeight,
+      backgroundColor: bgColor,
+      borderColor: borderColor,
     );
 
     double y = _padding;
@@ -261,25 +241,7 @@ class UnifiedHudComponent extends PositionComponent {
     }
 
     // --- Row 4: Timer (smooth color transition) ---
-    final Color timerColor;
-    final s = _elapsedSecondsSmooth;
-    if (s >= 55) {
-      final t = math.min(1.0, (s - 55) / 5);
-      timerColor = Color.lerp(
-        DiwaniyaColors.goldAccent.withValues(alpha: 0.7),
-        KoutTheme.lossColor.withValues(alpha: 0.9),
-        t,
-      )!;
-    } else if (s >= 45) {
-      final t = (s - 45) / 10;
-      timerColor = Color.lerp(
-        DiwaniyaColors.cream.withValues(alpha: 0.45),
-        DiwaniyaColors.goldAccent.withValues(alpha: 0.7),
-        t,
-      )!;
-    } else {
-      timerColor = DiwaniyaColors.cream.withValues(alpha: 0.45);
-    }
+    final timerColor = _timerColorForElapsed(_elapsedSecondsSmooth);
 
     TextRenderer.draw(
         canvas,
@@ -289,6 +251,60 @@ class UnifiedHudComponent extends PositionComponent {
         10,
         align: TextAlign.center,
         width: _hudWidth);
+  }
+
+  void _drawHudBackground({
+    required Canvas canvas,
+    required double hudHeight,
+    required Color backgroundColor,
+    required Color borderColor,
+  }) {
+    final bgRect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(0, 0, _hudWidth, hudHeight),
+      const Radius.circular(12),
+    );
+
+    canvas.drawRRect(
+      bgRect.shift(const Offset(0, 2)),
+      Paint()
+        ..color = const Color(0x44000000)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
+    );
+    canvas.drawRRect(bgRect, Paint()..color = backgroundColor);
+
+    final highlightRect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(1, 1, _hudWidth - 2, hudHeight * 0.35),
+      const Radius.circular(11),
+    );
+    canvas.drawRRect(highlightRect, Paint()..color = const Color(0x08FFFFFF));
+
+    canvas.drawRRect(
+      bgRect,
+      Paint()
+        ..color = borderColor
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.0,
+    );
+  }
+
+  Color _timerColorForElapsed(double seconds) {
+    if (seconds >= 55) {
+      final t = math.min(1.0, (seconds - 55) / 5);
+      return Color.lerp(
+        DiwaniyaColors.goldAccent.withValues(alpha: 0.7),
+        KoutTheme.lossColor.withValues(alpha: 0.9),
+        t,
+      )!;
+    }
+    if (seconds >= 45) {
+      final t = (seconds - 45) / 10;
+      return Color.lerp(
+        DiwaniyaColors.cream.withValues(alpha: 0.45),
+        DiwaniyaColors.goldAccent.withValues(alpha: 0.7),
+        t,
+      )!;
+    }
+    return DiwaniyaColors.cream.withValues(alpha: 0.45);
   }
 
   void _drawDivider(Canvas canvas, double y) {

@@ -1,11 +1,13 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../app_routes.dart';
 import '../models/game_mode.dart';
 import '../models/seat_config.dart';
 import '../../offline/bot/bot_difficulty.dart';
 import '../../game/theme/kout_theme.dart';
 import '../../game/theme/geometric_patterns.dart';
+import '../widgets/app_action_button.dart';
 
 class OfflineLobbyScreen extends StatefulWidget {
   const OfflineLobbyScreen({super.key});
@@ -18,30 +20,34 @@ class _OfflineLobbyScreenState extends State<OfflineLobbyScreen> {
   BotDifficulty _difficulty = BotDifficulty.balanced;
 
   List<SeatConfig> get _seats => [
-        const SeatConfig(
-            seatIndex: 0,
-            uid: 'human_0',
-            displayName: 'You',
-            isBot: false),
-        SeatConfig(
-            seatIndex: 1,
-            uid: 'bot_1',
-            displayName: 'Bot Khalid',
-            isBot: true,
-            difficulty: _difficulty),
-        SeatConfig(
-            seatIndex: 2,
-            uid: 'bot_2',
-            displayName: 'Bot Fatima',
-            isBot: true,
-            difficulty: _difficulty),
-        SeatConfig(
-            seatIndex: 3,
-            uid: 'bot_3',
-            displayName: 'Bot Ahmed',
-            isBot: true,
-            difficulty: _difficulty),
-      ];
+    const SeatConfig(
+      seatIndex: 0,
+      uid: 'human_0',
+      displayName: 'You',
+      isBot: false,
+    ),
+    SeatConfig(
+      seatIndex: 1,
+      uid: 'bot_1',
+      displayName: 'Bot Khalid',
+      isBot: true,
+      difficulty: _difficulty,
+    ),
+    SeatConfig(
+      seatIndex: 2,
+      uid: 'bot_2',
+      displayName: 'Bot Fatima',
+      isBot: true,
+      difficulty: _difficulty,
+    ),
+    SeatConfig(
+      seatIndex: 3,
+      uid: 'bot_3',
+      displayName: 'Bot Ahmed',
+      isBot: true,
+      difficulty: _difficulty,
+    ),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -91,7 +97,9 @@ class _OfflineLobbyScreenState extends State<OfflineLobbyScreen> {
                               // Geometric pattern overlay at 8% opacity
                               Positioned.fill(
                                 child: CustomPaint(
-                                  painter: GeometricPatterns.overlayPainter(opacity: 0.08),
+                                  painter: GeometricPatterns.overlayPainter(
+                                    opacity: 0.08,
+                                  ),
                                 ),
                               ),
                               // Centre text
@@ -100,7 +108,9 @@ class _OfflineLobbyScreenState extends State<OfflineLobbyScreen> {
                                   'Kout',
                                   style: TextStyle(
                                     fontFamily: KoutTheme.monoFontFamily,
-                                    color: KoutTheme.accent.withValues(alpha: 0.2),
+                                    color: KoutTheme.accent.withValues(
+                                      alpha: 0.2,
+                                    ),
                                     fontSize: 48,
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -116,28 +126,36 @@ class _OfflineLobbyScreenState extends State<OfflineLobbyScreen> {
                       top: -20,
                       left: 0,
                       right: 0,
-                      child: Center(child: _seatWidget(seats[2], 'Team A', avatarSize)),
+                      child: Center(
+                        child: _seatWidget(seats[2], 'Team A', avatarSize),
+                      ),
                     ),
                     // Seat 1 (left - opponent)
                     Positioned(
                       left: -30,
                       top: 0,
                       bottom: 0,
-                      child: Center(child: _seatWidget(seats[1], 'Team B', avatarSize)),
+                      child: Center(
+                        child: _seatWidget(seats[1], 'Team B', avatarSize),
+                      ),
                     ),
                     // Seat 3 (right - opponent)
                     Positioned(
                       right: -30,
                       top: 0,
                       bottom: 0,
-                      child: Center(child: _seatWidget(seats[3], 'Team B', avatarSize)),
+                      child: Center(
+                        child: _seatWidget(seats[3], 'Team B', avatarSize),
+                      ),
                     ),
                     // Seat 0 (bottom - you)
                     Positioned(
                       bottom: -20,
                       left: 0,
                       right: 0,
-                      child: Center(child: _seatWidget(seats[0], 'Team A', avatarSize)),
+                      child: Center(
+                        child: _seatWidget(seats[0], 'Team A', avatarSize),
+                      ),
                     ),
                   ],
                 ),
@@ -150,31 +168,34 @@ class _OfflineLobbyScreenState extends State<OfflineLobbyScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text('Bot Style: ',
-                    style: KoutTheme.bodyStyle),
+                Text('Bot Style: ', style: KoutTheme.bodyStyle),
                 const SizedBox(height: 8),
                 Wrap(
                   spacing: 8,
                   runSpacing: 8,
                   alignment: WrapAlignment.center,
-                  children: BotDifficulty.values.map((d) => ChoiceChip(
-                        label: Text(_difficultyLabel(d)),
-                        selected: _difficulty == d,
-                        onSelected: (_) => setState(() => _difficulty = d),
-                        selectedColor: KoutTheme.accent,
-                        backgroundColor: KoutTheme.primary,
-                        labelStyle: TextStyle(
-                          color: _difficulty == d
-                              ? KoutTheme.table
-                              : KoutTheme.textColor,
-                          fontSize: 12,
+                  children: BotDifficulty.values
+                      .map(
+                        (d) => ChoiceChip(
+                          label: Text(_difficultyLabel(d)),
+                          selected: _difficulty == d,
+                          onSelected: (_) => setState(() => _difficulty = d),
+                          selectedColor: KoutTheme.accent,
+                          backgroundColor: KoutTheme.primary,
+                          labelStyle: TextStyle(
+                            color: _difficulty == d
+                                ? KoutTheme.table
+                                : KoutTheme.textColor,
+                            fontSize: 12,
+                          ),
+                          side: BorderSide(
+                            color: _difficulty == d
+                                ? KoutTheme.accent
+                                : KoutTheme.secondary,
+                          ),
                         ),
-                        side: BorderSide(
-                          color: _difficulty == d
-                              ? KoutTheme.accent
-                              : KoutTheme.secondary,
-                        ),
-                      )).toList(),
+                      )
+                      .toList(),
                 ),
               ],
             ),
@@ -182,40 +203,26 @@ class _OfflineLobbyScreenState extends State<OfflineLobbyScreen> {
           const SizedBox(height: 8),
           Padding(
             padding: const EdgeInsets.all(32.0),
-            child: SizedBox(
+            child: AppPrimaryButton(
               width: double.infinity,
               height: 56,
-              child: _buildStartGameButton(seats),
+              label: 'Start Game',
+              textStyle: KoutTheme.bodyStyle.copyWith(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: KoutTheme.accent,
+              ),
+              onPressed: () {
+                HapticFeedback.mediumImpact();
+                Navigator.pushNamed(
+                  context,
+                  AppRoutes.game,
+                  arguments: OfflineGameMode(seats: seats),
+                );
+              },
             ),
           ),
         ],
-      ),
-    );
-  }
-
-
-  Widget _buildStartGameButton(List<SeatConfig> seats) {
-    return SizedBox(
-      width: double.infinity,
-      height: 56,
-      child: ElevatedButton(
-        onPressed: () {
-          HapticFeedback.mediumImpact();
-          Navigator.pushNamed(
-            context,
-            '/game',
-            arguments: OfflineGameMode(seats: seats),
-          );
-        },
-        style: KoutTheme.primaryButtonStyle,
-        child: Text(
-          'Start Game',
-          style: KoutTheme.bodyStyle.copyWith(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: KoutTheme.accent,
-          ),
-        ),
       ),
     );
   }
@@ -273,8 +280,8 @@ class _OfflineLobbyScreenState extends State<OfflineLobbyScreen> {
   }
 
   String _difficultyLabel(BotDifficulty d) => switch (d) {
-        BotDifficulty.conservative => 'Safe',
-        BotDifficulty.balanced => 'Balanced',
-        BotDifficulty.aggressive => 'Bold',
-      };
+    BotDifficulty.conservative => 'Safe',
+    BotDifficulty.balanced => 'Balanced',
+    BotDifficulty.aggressive => 'Bold',
+  };
 }

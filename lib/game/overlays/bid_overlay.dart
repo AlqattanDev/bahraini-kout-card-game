@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../shared/models/bid.dart';
 import '../../game/theme/kout_theme.dart';
 import 'animated_press_button.dart';
-import 'overlay_animation_wrapper.dart';
+import 'overlay_panel.dart';
 import 'overlay_styles.dart';
 
 class _BidChip extends StatelessWidget {
@@ -29,7 +29,9 @@ class _BidChip extends StatelessWidget {
               : KoutTheme.primary,
           borderRadius: BorderRadius.circular(isKout ? 14 : 10),
           border: Border.all(
-            color: isKout ? KoutTheme.accent : KoutTheme.accent.withValues(alpha: 0.5),
+            color: isKout
+                ? KoutTheme.accent
+                : KoutTheme.accent.withValues(alpha: 0.5),
             width: isKout ? 2.0 : 1.5,
           ),
           boxShadow: isKout
@@ -89,10 +91,7 @@ class _StaggeredEntranceState extends State<_StaggeredEntrance> {
       builder: (context, value, child) {
         return Opacity(
           opacity: value,
-          child: Transform.scale(
-            scale: 0.8 + (0.2 * value),
-            child: child,
-          ),
+          child: Transform.scale(scale: 0.8 + (0.2 * value), child: child),
         );
       },
       child: widget.child,
@@ -125,61 +124,48 @@ class BidOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     final bids = _availableBids;
 
-    return OverlayAnimationWrapper(
-      child: Container(
-        padding: OverlayStyles.panelPadding,
-        decoration: OverlayStyles.panelDecoration(),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Heading
+    return OverlayPanel(
+      title: isForced ? 'You Must Bid' : 'Place Your Bid',
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (currentHighBid != null) ...[
             Text(
-              isForced ? 'You Must Bid' : 'Place Your Bid',
-              style: KoutTheme.headingStyle.copyWith(
-                color: KoutTheme.accent,
-                fontSize: 18,
+              'Current: ${currentHighBid!.value}',
+              style: KoutTheme.bodyStyle.copyWith(
+                color: KoutTheme.cream.withValues(alpha: 0.4),
+                fontSize: 12,
               ),
             ),
-            OverlayStyles.sectionGap,
-            if (currentHighBid != null) ...[
-              Text(
-                'Current: ${currentHighBid!.value}',
-                style: KoutTheme.bodyStyle.copyWith(
-                  color: KoutTheme.cream.withValues(alpha: 0.4),
-                  fontSize: 12,
-                ),
-              ),
-              const SizedBox(height: 10),
-            ],
-            // Bid chips — single number per chip, Kout gets special treatment
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                for (int i = 0; i < bids.length; i++) ...[
-                  if (i > 0) const SizedBox(width: 12),
-                  _StaggeredEntrance(
-                    delayIndex: i,
-                    child: _BidChip(
-                      value: bids[i].value,
-                      isKout: bids[i] == BidAmount.kout,
-                      onPressed: () => onBid(bids[i].value),
-                    ),
+            const SizedBox(height: 10),
+          ],
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (int i = 0; i < bids.length; i++) ...[
+                if (i > 0) const SizedBox(width: 12),
+                _StaggeredEntrance(
+                  delayIndex: i,
+                  child: _BidChip(
+                    value: bids[i].value,
+                    isKout: bids[i] == BidAmount.kout,
+                    onPressed: () => onBid(bids[i].value),
                   ),
-                ],
+                ),
               ],
-            ),
-            // Pass button — hidden when forced
-            if (!isForced) ...[
-              const SizedBox(height: 16),
+            ],
+          ),
+        ],
+      ),
+      actions: !isForced
+          ? [
               TextButton(
                 onPressed: onPass,
                 style: OverlayStyles.textButton(),
                 child: Text('Pass', style: KoutTheme.bodyStyle),
               ),
-            ],
-          ],
-        ),
-      ),
+            ]
+          : null,
     );
   }
 }

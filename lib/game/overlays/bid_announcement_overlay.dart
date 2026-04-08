@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../app/models/client_game_state.dart';
 import '../../game/theme/kout_theme.dart';
-import 'overlay_animation_wrapper.dart';
+import 'overlay_panel.dart';
 import 'overlay_styles.dart';
+import 'overlay_utils.dart';
 
 /// Auto-dismissing overlay shown during BID_ANNOUNCEMENT phase.
 ///
@@ -28,18 +29,22 @@ class _BidAnnouncementOverlayState extends State<BidAnnouncementOverlay>
   @override
   void initState() {
     super.initState();
-    
+
     // Staggered fade-ins
-    Future.delayed(const Duration(milliseconds: 150), () {
-      if (mounted) setState(() => _showBidValue = true);
-    });
-    Future.delayed(OverlayStyles.animSlow, () {
-      if (mounted) setState(() => _showTrumpSuit = true);
-    });
+    delayIfMounted(
+      this,
+      const Duration(milliseconds: 150),
+      () => setState(() => _showBidValue = true),
+    );
+    delayIfMounted(
+      this,
+      OverlayStyles.animSlow,
+      () => setState(() => _showTrumpSuit = true),
+    );
 
     _pulseController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 600),
+      duration: OverlayStyles.animSlow * 2,
     );
     _pulseAnimation = Tween<double>(begin: 1.0, end: 1.05).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
@@ -72,97 +77,81 @@ class _BidAnnouncementOverlayState extends State<BidAnnouncementOverlay>
 
     final isKout = widget.state.currentBid?.isKout == true;
 
-    return OverlayAnimationWrapper(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
-        constraints: const BoxConstraints(minWidth: 260, maxWidth: 300),
-        decoration: OverlayStyles.panelDecoration(),
-        // Note: padding uses 32H instead of standard 28H to fit 3-line content
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Bidder Label (0ms)
-            Text(
-              bidderLabel,
-              style: const TextStyle(
-                color: KoutTheme.textColor,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 4),
-            // Bid Value (150ms)
-            AnimatedOpacity(
-              opacity: _showBidValue ? 1.0 : 0.0,
-              duration: OverlayStyles.animSlow,
-              child: isKout
-                  ? AnimatedBuilder(
-                      animation: _pulseAnimation,
-                      builder: (context, child) {
-                        return Transform.scale(
-                          scale: _pulseAnimation.value,
-                          child: Text(
-                            bidLabel,
-                            style: TextStyle(
-                              color: KoutTheme.accent,
-                              fontSize: 26,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1.2,
-                              shadows: [
-                                Shadow(
-                                  color: KoutTheme.accent.withValues(alpha: 0.6),
-                                  blurRadius: (_pulseAnimation.value - 1.0) * 100,
-                                ),
-                              ],
-                            ),
+    return OverlayPanel(
+      title: bidderLabel,
+      constraints: const BoxConstraints(minWidth: 260, maxWidth: 300),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AnimatedOpacity(
+            opacity: _showBidValue ? 1.0 : 0.0,
+            duration: OverlayStyles.animSlow,
+            child: isKout
+                ? AnimatedBuilder(
+                    animation: _pulseAnimation,
+                    builder: (context, child) {
+                      return Transform.scale(
+                        scale: _pulseAnimation.value,
+                        child: Text(
+                          bidLabel,
+                          style: TextStyle(
+                            color: KoutTheme.accent,
+                            fontSize: 26,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.2,
+                            shadows: [
+                              Shadow(
+                                color: KoutTheme.accent.withValues(alpha: 0.6),
+                                blurRadius: (_pulseAnimation.value - 1.0) * 100,
+                              ),
+                            ],
                           ),
-                        );
-                      },
-                    )
-                  : Text(
-                      bidLabel,
-                      style: const TextStyle(
-                        color: KoutTheme.accent,
-                        fontSize: 26,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1.2,
-                      ),
+                        ),
+                      );
+                    },
+                  )
+                : Text(
+                    bidLabel,
+                    style: const TextStyle(
+                      color: KoutTheme.accent,
+                      fontSize: 26,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.2,
                     ),
-            ),
-            const SizedBox(height: 16),
-            // Trump suit display (300ms)
-            AnimatedOpacity(
-              opacity: _showTrumpSuit ? 1.0 : 0.0,
-              duration: OverlayStyles.animSlow,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                decoration: OverlayStyles.infoBoxDecoration(),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text(
-                      'Trump',
-                      style: TextStyle(
-                        color: KoutTheme.textColor,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
+                  ),
+          ),
+          const SizedBox(height: 16),
+          AnimatedOpacity(
+            opacity: _showTrumpSuit ? 1.0 : 0.0,
+            duration: OverlayStyles.animSlow,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              decoration: OverlayStyles.infoBoxDecoration(),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Trump',
+                    style: TextStyle(
+                      color: KoutTheme.textColor,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
                     ),
-                    const SizedBox(width: 16),
-                    Text(
-                      suitSymbol,
-                      style: TextStyle(
-                        fontSize: 40,
-                        color: suitColor,
-                        fontWeight: FontWeight.bold,
-                      ),
+                  ),
+                  const SizedBox(width: 16),
+                  Text(
+                    suitSymbol,
+                    style: TextStyle(
+                      fontSize: 40,
+                      color: suitColor,
+                      fontWeight: FontWeight.bold,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

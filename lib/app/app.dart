@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'app_routes.dart';
 import 'screens/home_screen.dart';
 import 'screens/matchmaking_screen.dart';
 import 'screens/game_screen.dart';
@@ -16,14 +17,14 @@ class KoutApp extends StatelessWidget {
       theme: ThemeData.dark().copyWith(
         scaffoldBackgroundColor: const Color(0xFF2F403E),
       ),
-      initialRoute: '/',
+      initialRoute: AppRoutes.home,
       onGenerateRoute: (settings) {
         final routes = <String, WidgetBuilder>{
-          '/': (_) => const HomeScreen(),
-          '/matchmaking': (_) => const MatchmakingScreen(),
-          '/game': (_) => const GameScreen(),
-          '/offline-lobby': (_) => const OfflineLobbyScreen(),
-          '/room-lobby': (_) => const RoomLobbyScreen(),
+          AppRoutes.home: (_) => const HomeScreen(),
+          AppRoutes.matchmaking: (_) => const MatchmakingScreen(),
+          AppRoutes.game: (_) => const GameScreen(),
+          AppRoutes.offlineLobby: (_) => const OfflineLobbyScreen(),
+          AppRoutes.roomLobby: (_) => const RoomLobbyScreen(),
         };
         final builder = routes[settings.name];
         if (builder == null) return null;
