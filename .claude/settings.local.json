@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(flutter run:*)",
-      "Bash(flutter clean:*)"
+      "Bash(flutter clean:*)",
+      "Bash(flutter analyze:*)",
+      "Bash(flutter test:*)"
     ]
   }
 }

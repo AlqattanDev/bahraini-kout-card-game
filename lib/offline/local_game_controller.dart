@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:koutbh/app/models/client_game_state.dart';
 import 'package:koutbh/app/models/seat_config.dart';
 import 'package:koutbh/shared/models/card.dart';
@@ -484,6 +485,13 @@ class LocalGameController {
           .toList(),
       trickWinners: List.unmodifiable(full.trickWinners),
       cardCounts: cardCounts,
+      debugAllHands: kDebugMode
+          ? {
+              for (int i = 0; i < full.players.length; i++)
+                full.players[i].uid:
+                    List<GameCard>.from(full.hands[i] ?? const []),
+            }
+          : null,
     );
   }
 

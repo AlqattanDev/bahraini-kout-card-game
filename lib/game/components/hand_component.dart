@@ -2,6 +2,7 @@ import 'package:flame/components.dart';
 import '../../app/models/client_game_state.dart';
 import '../../shared/models/card.dart';
 import '../../shared/models/game_state.dart';
+import '../../shared/logic/card_utils.dart';
 import '../../shared/logic/play_validator.dart';
 import '../managers/layout_manager.dart';
 import 'card_component.dart';
@@ -30,7 +31,7 @@ class HandComponent extends Component {
   HandComponent({required this.layout, required this.onCardTap});
 
   void updateState(ClientGameState state) {
-    final hand = _sortHand(state.myHand, state.trumpSuit);
+    final hand = sortHandForDisplay(state.myHand, state.trumpSuit);
     final playable = _playableCards(state);
     final positions = layout.handCardPositions(hand.length);
 
@@ -104,50 +105,6 @@ class HandComponent extends Component {
       _cards.remove(c);
       c.removeFromParent();
     }
-  }
-
-  /// Sorts the hand with alternating black-red suit colors.
-  /// Each suit group sorted by rank descending (Ace high). Joker goes last.
-  List<GameCard> _sortHand(List<GameCard> hand, Suit? trumpSuit) {
-    // Separate joker(s) from suited cards
-    final jokers = hand.where((c) => c.isJoker).toList();
-    final suited = hand.where((c) => !c.isJoker).toList();
-
-    // Find which suits are present
-    final presentSuits = suited.map((c) => c.suit!).toSet();
-
-    // Build alternating black-red order from the suits actually in hand
-    const blackSuits = [Suit.clubs, Suit.spades];
-    const redSuits = [Suit.diamonds, Suit.hearts];
-    final blacks = blackSuits.where(presentSuits.contains).toList();
-    final reds = redSuits.where(presentSuits.contains).toList();
-
-    // Interleave: start with the larger color group to maximize alternation.
-    // Equal counts → start with black (preferred base order).
-    final suitOrder = <Suit>[];
-    final List<Suit> first;
-    final List<Suit> second;
-    if (reds.length > blacks.length) {
-      first = reds;
-      second = blacks;
-    } else {
-      first = blacks;
-      second = reds;
-    }
-    final maxLen = first.length > second.length ? first.length : second.length;
-    for (int i = 0; i < maxLen; i++) {
-      if (i < first.length) suitOrder.add(first[i]);
-      if (i < second.length) suitOrder.add(second[i]);
-    }
-
-    // Sort suited cards by the interleaved suit order, then rank descending
-    suited.sort((a, b) {
-      final suitCmp = suitOrder.indexOf(a.suit!).compareTo(suitOrder.indexOf(b.suit!));
-      if (suitCmp != 0) return suitCmp;
-      return b.rank!.value.compareTo(a.rank!.value);
-    });
-
-    return [...suited, ...jokers];
   }
 
   /// Determines which cards are playable in the current state.

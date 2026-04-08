@@ -9,6 +9,7 @@ import '../app/models/client_game_state.dart';
 import '../app/services/game_service.dart';
 import '../shared/models/game_state.dart';
 import 'components/card_component.dart';
+import 'components/debug_opponent_hands_overlay.dart';
 import 'components/hand_component.dart';
 import 'components/perspective_table.dart';
 import '../offline/game_input_sink.dart';
@@ -41,6 +42,7 @@ class KoutGame extends FlameGame {
   HandComponent? _hand;
   TrickAreaComponent? _trickArea;
   UnifiedHudComponent? _unifiedHud;
+  DebugOpponentHandsOverlay? _debugOpponentHands;
 
   // Sound
   SoundManager? soundManager;
@@ -68,6 +70,9 @@ class KoutGame extends FlameGame {
       _lifecycle.perspectiveTable?.updateLayout(layout);
       _hand?.layout = layout;
       _trickArea?.layout = layout;
+      if (currentState != null && _debugOpponentHands != null) {
+        _debugOpponentHands!.updateState(currentState!, layout);
+      }
       if (layout.isLandscape) {
         _unifiedHud?.updateLayout(size.x, rightInset: _safeArea.right, topInset: _safeArea.top, landscape: true, leftInset: _safeArea.left);
       }
@@ -129,6 +134,9 @@ class KoutGame extends FlameGame {
     _lifecycle.perspectiveTable?.updateLayout(layout);
     _hand?.layout = layout;
     _trickArea?.layout = layout;
+    if (currentState != null && _debugOpponentHands != null) {
+      _debugOpponentHands!.updateState(currentState!, layout);
+    }
     if (layout.isLandscape) {
       _unifiedHud?.updateLayout(size.x, rightInset: _safeArea.right, topInset: _safeArea.top, landscape: true, leftInset: _safeArea.left);
     }
@@ -157,6 +165,7 @@ class KoutGame extends FlameGame {
     _lifecycle.updateSeats(state, layout);
     _updateScoreDisplay(state);
     _updateHand(state);
+    _updateDebugOpponentHands(state);
     if (_trickPauseTimer > 0) {
       _deferredTrickState = state;
     } else {
@@ -194,6 +203,19 @@ class KoutGame extends FlameGame {
       add(_hand!);
     }
     _hand!.updateState(state);
+  }
+
+  void _updateDebugOpponentHands(ClientGameState state) {
+    if (state.debugAllHands == null) {
+      _debugOpponentHands?.removeFromParent();
+      _debugOpponentHands = null;
+      return;
+    }
+    _debugOpponentHands ??= DebugOpponentHandsOverlay()..priority = 25;
+    if (!_debugOpponentHands!.isMounted) {
+      add(_debugOpponentHands!);
+    }
+    _debugOpponentHands!.updateState(state, layout);
   }
 
   void _updateTrickArea(ClientGameState state) {

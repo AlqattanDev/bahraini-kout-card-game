@@ -1,6 +1,6 @@
+import '../../shared/models/bid.dart';
 import '../../shared/models/card.dart';
 import '../../shared/models/game_state.dart';
-import '../../shared/models/bid.dart';
 
 /// Map of phase strings to Dart enum values.
 /// Supports both Worker format (UPPER_SNAKE) and camelCase.
@@ -43,6 +43,10 @@ class ClientGameState {
   final List<Team> trickWinners;
   final Map<int, int> cardCounts;
 
+  /// Offline local games, debug builds only: every player's current hand by uid.
+  /// Null in release builds and for online games.
+  final Map<String, List<GameCard>>? debugAllHands;
+
   ClientGameState({
     required this.phase,
     required this.playerUids,
@@ -60,6 +64,7 @@ class ClientGameState {
     this.bidHistory = const [],
     this.trickWinners = const [],
     this.cardCounts = const {},
+    this.debugAllHands,
   });
 
   bool get isMyTurn => currentPlayerUid == myUid;
@@ -213,6 +218,7 @@ class ClientGameState {
       bidHistory: bidHistory,
       trickWinners: trickWinners,
       cardCounts: cardCounts,
+      debugAllHands: null,
     );
   }
 
