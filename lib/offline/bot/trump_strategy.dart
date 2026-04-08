@@ -2,6 +2,22 @@ import 'package:koutbh/shared/models/card.dart';
 import 'package:koutbh/shared/models/bid.dart';
 import 'package:koutbh/shared/logic/card_utils.dart';
 
+/// Per-rank weights for trump suit strength accumulation.
+double _trumpSuitStrengthWeight(Rank rank) => switch (rank) {
+      Rank.ace => 3.0,
+      Rank.king => 2.0,
+      Rank.queen => 1.5,
+      Rank.jack => 1.0,
+      _ => 0.5,
+    };
+
+/// Side-suit honor bonus while scoring a candidate trump suit.
+double _trumpSideHonorBonus(Rank rank) => switch (rank) {
+      Rank.ace => 0.9,
+      Rank.king => 0.5,
+      _ => 0.0,
+    };
+
 class TrumpStrategy {
   static Suit selectTrump(
     List<GameCard> hand, {
@@ -18,7 +34,7 @@ class TrumpStrategy {
       final suit = card.suit!;
 
       suitStrength[suit] =
-          (suitStrength[suit] ?? 0) + trumpSuitStrengthWeight(card.rank!);
+          (suitStrength[suit] ?? 0) + _trumpSuitStrengthWeight(card.rank!);
     }
 
     // Step 4.5: Forced-bid defensive trump — just pick longest suit
@@ -68,7 +84,7 @@ class TrumpStrategy {
       double sideStrength = 0.0;
       for (final card in hand) {
         if (!card.isJoker && card.suit != candidateSuit) {
-          sideStrength += trumpSideHonorBonus(card.rank!);
+          sideStrength += _trumpSideHonorBonus(card.rank!);
         }
       }
       score += sideStrength;

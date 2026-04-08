@@ -43,16 +43,13 @@ class BiddingOutcome {
 }
 
 class BidValidator {
-  static bool _alreadyPassed(List<int> passedPlayers, int playerIndex) =>
-      passedPlayers.contains(playerIndex);
-
   static BidValidationResult validateBid({
     required BidAmount bidAmount,
     required BidAmount? currentHighest,
     required List<int> passedPlayers,
     required int playerIndex,
   }) {
-    if (_alreadyPassed(passedPlayers, playerIndex)) {
+    if (passedPlayers.contains(playerIndex)) {
       return const BidValidationResult.invalid(BidValidationError.alreadyPassed);
     }
     if (currentHighest != null && bidAmount.value <= currentHighest.value) {
@@ -67,7 +64,7 @@ class BidValidator {
     int playerCount = 4,
     BidAmount? currentHighest,
   }) {
-    if (_alreadyPassed(passedPlayers, playerIndex)) {
+    if (passedPlayers.contains(playerIndex)) {
       return const BidValidationResult.invalid(BidValidationError.alreadyPassed);
     }
     if (isLastBidder(passedPlayers: passedPlayers, playerIndex: playerIndex, playerCount: playerCount) && currentHighest == null) {
@@ -81,7 +78,7 @@ class BidValidator {
     required int playerIndex,
     int playerCount = 4,
   }) {
-    if (_alreadyPassed(passedPlayers, playerIndex)) return false;
+    if (passedPlayers.contains(playerIndex)) return false;
     final activePlayers = playerCount - passedPlayers.length;
     return activePlayers == 1;
   }

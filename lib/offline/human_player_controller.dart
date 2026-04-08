@@ -62,7 +62,7 @@ class HumanPlayerController implements PlayerController, GameInputSink {
     if (context is PlayContext) {
       final playable = PlayValidator.playableForCurrentTrick(
         hand: state.myHand,
-        trickHasNoPlaysYet: context.ledSuit == null,
+        trickHasNoPlaysYet: state.currentTrickPlays.isEmpty,
         ledSuit: context.ledSuit,
         trumpSuit: state.trumpSuit,
         bidIsKout: state.currentBid?.isKout ?? false,

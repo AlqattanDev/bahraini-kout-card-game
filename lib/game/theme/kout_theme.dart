@@ -1,5 +1,5 @@
 import 'dart:ui';
-import 'package:flutter/material.dart' show TextStyle, FontWeight, ButtonStyle, ElevatedButton, EdgeInsets, RoundedRectangleBorder, BorderRadius, BorderSide;
+import 'package:flutter/material.dart' show TextStyle, FontWeight;
 import '../../shared/models/card.dart';
 import '../../shared/models/game_state.dart';
 import 'diwaniya_colors.dart';
@@ -77,22 +77,4 @@ class KoutTheme {
         fontSize: 14,
       );
 
-  // ---------------------------------------------------------------------------
-  // Shared button styles
-  // ---------------------------------------------------------------------------
-
-  /// Primary button: dark background, gold text/border, rounded.
-  static ButtonStyle get primaryButtonStyle => ElevatedButton.styleFrom(
-        backgroundColor: primary,
-        foregroundColor: accent,
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: const BorderSide(color: accent, width: 1.5),
-        ),
-        textStyle: bodyStyle.copyWith(
-          fontWeight: FontWeight.bold,
-          fontSize: 16,
-        ),
-      );
 }

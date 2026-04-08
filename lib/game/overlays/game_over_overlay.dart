@@ -104,11 +104,17 @@ class _GameOverOverlayState extends State<GameOverOverlay>
         fontSize: 14,
         letterSpacing: 1,
       ),
+      padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 32),
+      decoration: OverlayStyles.panelDecoration(
+        alpha: 0.98,
+        borderWidth: 2.5,
+        borderRadius: 20.0,
+        blurRadius: 32.0,
+      ),
       constraints: const BoxConstraints(minWidth: 280),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Headline with optional glow
           _buildHeadline(headlineText, headlineColor),
           const SizedBox(height: 24),
           // Final score

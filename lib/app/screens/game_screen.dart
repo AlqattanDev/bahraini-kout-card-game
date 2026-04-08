@@ -44,13 +44,6 @@ class _GameScreenState extends State<GameScreen> {
 
     if (args is GameMode) {
       _initFromGameMode(args);
-    } else if (args is Map<String, dynamic>) {
-      // Legacy: online mode from route args map
-      _initFromGameMode(OnlineGameMode(
-        gameId: args['gameId'] as String? ?? '',
-        myUid: args['myUid'] as String? ?? '',
-        token: args['token'] as String? ?? '',
-      ));
     }
   }
 

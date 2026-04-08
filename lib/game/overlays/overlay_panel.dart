@@ -10,6 +10,8 @@ class OverlayPanel extends StatelessWidget {
   final Widget? subtitle;
   final List<Widget>? actions;
   final BoxConstraints? constraints;
+  final EdgeInsets? padding;
+  final BoxDecoration? decoration;
 
   const OverlayPanel({
     super.key,
@@ -19,6 +21,8 @@ class OverlayPanel extends StatelessWidget {
     this.subtitle,
     this.actions,
     this.constraints,
+    this.padding,
+    this.decoration,
   });
 
   @override
@@ -26,8 +30,8 @@ class OverlayPanel extends StatelessWidget {
     return OverlayAnimationWrapper(
       child: Container(
         constraints: constraints,
-        padding: OverlayStyles.panelPadding,
-        decoration: OverlayStyles.panelDecoration(),
+        padding: padding ?? OverlayStyles.panelPadding,
+        decoration: decoration ?? OverlayStyles.panelDecoration(),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
