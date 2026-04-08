@@ -136,6 +136,9 @@ class _GameOverOverlayState extends State<GameOverOverlay>
                 const SizedBox(height: 4),
                 Text(
                   winner == myTeam ? 'Your Team wins!' : 'Opponent wins',
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: KoutTheme.textColor,
                     fontSize: 14,
@@ -147,6 +150,9 @@ class _GameOverOverlayState extends State<GameOverOverlay>
                           widget.state.currentBid?.isKout == true
                       ? 'Won by Kout'
                       : 'Won by $finalScore points',
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: KoutTheme.textColor,
                     fontSize: 12,

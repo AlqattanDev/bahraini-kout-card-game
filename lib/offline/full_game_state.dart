@@ -31,6 +31,8 @@ class FullGameState {
   List<({int seat, String action})> bidHistory;
   int trickNumber;
   List<Team> trickWinners;
+  /// 0-based completed rounds counter; incremented after each round scores.
+  int roundIndex;
 
   FullGameState({
     required this.phase,
@@ -48,5 +50,6 @@ class FullGameState {
     this.bidHistory = const [],
     this.trickNumber = 1,
     this.trickWinners = const [],
+    this.roundIndex = 0,
   });
 }

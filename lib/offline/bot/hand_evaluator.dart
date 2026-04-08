@@ -8,6 +8,16 @@ class HandStrength {
 }
 
 class HandEvaluator {
+  /// Non-joker cards grouped by suit (empty suits omitted).
+  static Map<Suit, List<GameCard>> suitDistribution(List<GameCard> hand) {
+    final map = <Suit, List<GameCard>>{};
+    for (final c in hand) {
+      if (c.isJoker) continue;
+      map.putIfAbsent(c.suit!, () => []).add(c);
+    }
+    return map;
+  }
+
   static HandStrength evaluate(List<GameCard> hand, {Suit? trumpSuit}) {
     double score = 0.0;
     final suitCounts = countBySuit(hand);

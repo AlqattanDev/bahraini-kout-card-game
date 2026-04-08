@@ -37,10 +37,7 @@ void main() {
   });
 
   test('trumpsRemaining counts correctly', () {
-    final myHand = [
-      GameCard.decode('HA'),
-      GameCard.decode('HK'),
-    ];
+    final myHand = [GameCard.decode('HA'), GameCard.decode('HK')];
     // Hearts in deck: A,K,Q,J,10,9,8,7 = 8 cards
     // In hand: 2 (HA, HK). Played: 0. Remaining = 6
     expect(tracker.trumpsRemaining(Suit.hearts, myHand), 6);

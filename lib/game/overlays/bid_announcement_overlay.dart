@@ -22,7 +22,7 @@ class _BidAnnouncementOverlayState extends State<BidAnnouncementOverlay>
     with SingleTickerProviderStateMixin {
   late final AnimationController _pulseController;
   late final Animation<double> _pulseAnimation;
-  
+
   bool _showBidValue = false;
   bool _showTrumpSuit = false;
 

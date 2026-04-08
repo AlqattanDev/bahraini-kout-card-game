@@ -1,10 +1,13 @@
 import 'package:koutbh/shared/models/card.dart';
+import 'package:koutbh/shared/models/game_state.dart';
 import 'package:koutbh/shared/logic/play_validator.dart';
 import 'package:koutbh/shared/logic/trick_resolver.dart';
 import 'package:koutbh/shared/logic/card_utils.dart';
 import 'package:koutbh/offline/player_controller.dart';
 import 'package:koutbh/offline/bot/card_tracker.dart';
 import 'package:koutbh/offline/bot/game_context.dart';
+import 'package:koutbh/offline/bot/bot_persona.dart';
+import 'package:koutbh/offline/bot/bot_settings.dart';
 
 class PlayStrategy {
   static PlayCardAction selectCard({
@@ -18,37 +21,46 @@ class PlayStrategy {
     bool isFirstTrick = false,
     GameContext? context,
   }) {
-    // Determine which cards are legal to play
-    final legalCards = _legalPlays(hand, ledSuit, trickPlays.isEmpty,
-        trumpSuit: trumpSuit, isKout: isKout, isFirstTrick: isFirstTrick);
+    final legalCards = _legalPlays(
+      hand,
+      ledSuit,
+      trickPlays.isEmpty,
+      trumpSuit: trumpSuit,
+      isKout: isKout,
+      isFirstTrick: isFirstTrick,
+    );
 
     if (legalCards.length == 1) {
       return PlayCardAction(legalCards.first);
     }
 
     if (trickPlays.isEmpty) {
-      // LEADING
       return PlayCardAction(
-          _selectLead(legalCards, trumpSuit, context: context, hand: hand));
+        _selectLead(legalCards, trumpSuit, context: context, hand: hand),
+      );
     }
 
-    // FOLLOWING
-    return PlayCardAction(_selectFollow(
-      legalCards: legalCards,
-      hand: hand,
-      trickPlays: trickPlays,
-      trumpSuit: trumpSuit,
-      ledSuit: ledSuit,
-      partnerUid: partnerUid,
-      context: context,
-    ));
+    return PlayCardAction(
+      _selectFollow(
+        legalCards: legalCards,
+        hand: hand,
+        trickPlays: trickPlays,
+        trumpSuit: trumpSuit,
+        ledSuit: ledSuit,
+        partnerUid: partnerUid,
+        context: context,
+      ),
+    );
   }
 
-  /// Returns legally playable cards, delegating to [PlayValidator] as the
-  /// single source of truth, then applying bot-specific filtering.
   static List<GameCard> _legalPlays(
-      List<GameCard> hand, Suit? ledSuit, bool isLead,
-      {Suit? trumpSuit, bool isKout = false, bool isFirstTrick = false}) {
+    List<GameCard> hand,
+    Suit? ledSuit,
+    bool isLead, {
+    Suit? trumpSuit,
+    bool isKout = false,
+    bool isFirstTrick = false,
+  }) {
     final legal = PlayValidator.playableForCurrentTrick(
       hand: hand,
       trickHasNoPlaysYet: isLead,
@@ -58,7 +70,6 @@ class PlayStrategy {
       noTricksCompletedYet: isFirstTrick,
     ).toList();
 
-    // Bot-specific: avoid leading with Joker (legal but triggers instant loss)
     if (isLead) {
       final nonJoker = legal.where((c) => !c.isJoker).toList();
       if (nonJoker.isNotEmpty) return nonJoker;
@@ -67,56 +78,91 @@ class PlayStrategy {
     return legal;
   }
 
-  static GameCard _selectLead(List<GameCard> legalCards, Suit? trumpSuit,
-      {GameContext? context, List<GameCard>? hand}) {
+  static bool _isLowLead(GameCard card) {
+    if (card.isJoker || card.rank == null) return false;
+    return card.rank!.value <= Rank.ten.value;
+  }
+
+  static bool _defenderDumpMode(GameContext ctx) {
+    if (ctx.isBiddingTeam) return false;
+    if (ctx.bidderSeat == null) return false;
+    final bidderTeam = teamForSeat(ctx.bidderSeat!);
+    final won = ctx.trickCounts[bidderTeam] ?? 0;
+    return won >= (ctx.currentBid?.value ?? 5);
+  }
+
+  static bool _defenderBidAlreadyLost(GameContext ctx) {
+    if (ctx.isBiddingTeam) return false;
+    if (ctx.bidderSeat == null) return false;
+    final bidderTeam = teamForSeat(ctx.bidderSeat!);
+    final won = ctx.trickCounts[bidderTeam] ?? 0;
+    final need = (ctx.currentBid?.value ?? 5) - won;
+    final remaining = 8 - ctx.tricksPlayed;
+    return need > remaining;
+  }
+
+  static GameCard _selectLead(
+    List<GameCard> legalCards,
+    Suit? trumpSuit, {
+    GameContext? context,
+    List<GameCard>? hand,
+  }) {
     final fullHand = hand ?? legalCards;
 
-    // 5.6 — Master card leads (requires CardTracker): guaranteed winners
     if (context?.tracker != null) {
       final masters = legalCards
-          .where((c) =>
-              !c.isJoker &&
-              c.suit != trumpSuit &&
-              context!.tracker!.isHighestRemaining(c, fullHand))
+          .where(
+            (c) =>
+                !c.isJoker && context!.tracker!.isHighestRemaining(c, fullHand),
+          )
           .toList();
-      if (masters.isNotEmpty) return masters.first;
+      if (masters.isNotEmpty) {
+        masters.sort((a, b) {
+          final aT = a.suit == trumpSuit;
+          final bT = b.suit == trumpSuit;
+          if (aT != bT) return aT ? 1 : -1;
+          return b.rank!.value.compareTo(a.rank!.value);
+        });
+        return masters.first;
+      }
     }
 
-    // T1.1 — Ace-first: lead an Ace if we have one (non-trump)
     final aces = legalCards
-        .where((c) =>
-            !c.isJoker &&
-            c.rank == Rank.ace &&
-            (trumpSuit == null || c.suit != trumpSuit))
+        .where(
+          (c) =>
+              !c.isJoker &&
+              c.rank == Rank.ace &&
+              (trumpSuit == null || c.suit != trumpSuit),
+        )
         .toList();
 
     if (aces.isNotEmpty) {
-      // Prefer Ace where we also hold King of same suit
-      final aceWithKing = aces.where((a) => legalCards.any(
-          (c) => !c.isJoker && c.suit == a.suit && c.rank == Rank.king));
+      final aceWithKing = aces.where(
+        (a) => legalCards.any(
+          (c) => !c.isJoker && c.suit == a.suit && c.rank == Rank.king,
+        ),
+      );
       if (aceWithKing.isNotEmpty) return aceWithKing.first;
 
-      // Prefer singleton Ace (only card in that suit → creates void)
-      final singletonAce = aces.where((a) =>
-          legalCards.where((c) => !c.isJoker && c.suit == a.suit).length == 1);
+      final singletonAce = aces.where(
+        (a) =>
+            legalCards.where((c) => !c.isJoker && c.suit == a.suit).length == 1,
+      );
       if (singletonAce.isNotEmpty) return singletonAce.first;
 
-      // Any Ace
       return aces.first;
     }
 
-    // 5.2 — Trump strip leads for bidding team with 3+ trump
     if (context != null && context.isBiddingTeam && trumpSuit != null) {
       final myTrumps = legalCards
           .where((c) => !c.isJoker && c.suit == trumpSuit)
           .toList();
       if (myTrumps.length >= 3) {
         myTrumps.sort((a, b) => b.rank!.value.compareTo(a.rank!.value));
-        return myTrumps.first; // lead highest trump to strip opponents
+        return myTrumps.first;
       }
     }
 
-    // 5.3 — Partner-void leads (requires CardTracker)
     if (context?.tracker != null) {
       final partnerSeat = context!.partnerSeat;
       final partnerVoids = context.tracker!.knownVoids[partnerSeat] ?? {};
@@ -127,12 +173,11 @@ class PlayStrategy {
             .toList();
         if (suitCards.isNotEmpty) {
           suitCards.sort((a, b) => a.rank!.value.compareTo(b.rank!.value));
-          return suitCards.first; // lead low into partner's void
+          return suitCards.first;
         }
       }
     }
 
-    // 5.4 — Short-suit leads for defense: singleton non-trump to create void
     if (context != null && !context.isBiddingTeam) {
       final nonTrumpSingles = legalCards.where((c) {
         if (c.isJoker) return false;
@@ -143,7 +188,6 @@ class PlayStrategy {
       if (nonTrumpSingles.isNotEmpty) return nonTrumpSingles.first;
     }
 
-    // 5.5 — Fallback: lead LOW from longest non-trump suit (probing)
     final nonTrump = trumpSuit != null
         ? legalCards.where((c) => !c.isJoker && c.suit != trumpSuit).toList()
         : legalCards.where((c) => !c.isJoker).toList();
@@ -168,13 +212,11 @@ class PlayStrategy {
           return bMax.compareTo(aMax);
         });
 
-      // Lead LOW from longest suit — probe cheaply, preserve honors
       final bestSuitCards = sortedSuits.first.value;
       bestSuitCards.sort((a, b) => a.rank!.value.compareTo(b.rank!.value));
       return bestSuitCards.first;
     }
 
-    // Only trump left, lead highest
     final sorted = legalCards.where((c) => !c.isJoker).toList()
       ..sort((a, b) => b.rank!.value.compareTo(a.rank!.value));
     return sorted.isNotEmpty ? sorted.first : legalCards.first;
@@ -195,30 +237,45 @@ class PlayStrategy {
     final hasJoker = legalCards.any((c) => c.isJoker);
     final myPosition = trickPlays.length;
 
-    final followingSuit = ledSuit != null &&
+    final followingSuit =
+        ledSuit != null &&
         legalCards.every((c) => !c.isJoker && c.suit == ledSuit);
 
-    // 6.5 — Defensive play: bid already made → dump to end round
     if (context != null) {
-      final needed = context.tricksNeededForBid;
-      if (context.isBiddingTeam && needed <= 0) {
+      if (context.isBiddingTeam && context.tricksNeededForBid <= 0) {
         return _strategicDump(legalCards, hand, trumpSuit);
       }
-      // Defending and they need exactly 1 more: MUST win this one
-      if (!context.isBiddingTeam && needed == 1) {
+      if (_defenderDumpMode(context) || _defenderBidAlreadyLost(context)) {
+        return _strategicDump(legalCards, hand, trumpSuit);
+      }
+      if (!context.isBiddingTeam && context.tricksNeededForBid == 1) {
         if (hasJoker) return legalCards.firstWhere((c) => c.isJoker);
         if (trumpSuit != null) {
           final trumpCards = legalCards
               .where((c) => !c.isJoker && c.suit == trumpSuit)
               .toList();
-          final winningTrumps =
-              _cardsBeating(trumpCards, trickPlays, trumpSuit, ledSuit);
+          final winningTrumps = _cardsBeating(
+            trumpCards,
+            trickPlays,
+            trumpSuit,
+            ledSuit,
+          );
           if (winningTrumps.isNotEmpty) return _lowest(winningTrumps);
         }
       }
     }
 
-    // 6.6 — Forced-bid survival mode
+    if (partnerUid != null &&
+        trickPlays.isNotEmpty &&
+        trickPlays.first.playerUid == partnerUid &&
+        _isLowLead(trickPlays.first.card) &&
+        (myPosition == 1 || myPosition == 2)) {
+      final w = _winningPlay(trickPlays, trumpSuit, ledSuit);
+      if (w != null && w.playerUid == partnerUid) {
+        return _lowest(legalCards);
+      }
+    }
+
     if (context?.isForcedBid == true) {
       if (followingSuit) {
         final aces = legalCards.where((c) => c.rank == Rank.ace).toList();
@@ -228,22 +285,55 @@ class PlayStrategy {
       return _strategicDump(legalCards, hand, trumpSuit);
     }
 
-    // Following suit
+    if (hand.length <= 2 &&
+        hasJoker &&
+        hand.where((c) => !c.isJoker).length <= 1) {
+      return legalCards.firstWhere((c) => c.isJoker);
+    }
+
     if (followingSuit) {
+      final urgency = context?.roundControlUrgency ?? 0;
+      final canBeat = _cardsBeating(legalCards, trickPlays, trumpSuit, ledSuit);
+      final shouldProtectPartner =
+          partnerWinning && myPosition <= 2 && urgency < 0.8;
+      if (shouldProtectPartner) {
+        return _personaTieBreak(legalCards, context);
+      }
+      final mustSecureNow =
+          partnerWinning && urgency >= 0.8 && canBeat.isNotEmpty;
+      if (mustSecureNow) {
+        return _personaTieBreak(canBeat, context);
+      }
+
+      // Last to play: if partner already has the trick, do not overtake.
+      if (partnerWinning && myPosition == 3) {
+        return _personaTieBreak(legalCards, context);
+      }
       if (myPosition == 3) {
-        if (partnerWinning) return _lowest(legalCards);
-        final winners =
-            _cardsBeating(legalCards, trickPlays, trumpSuit, ledSuit);
-        return _lowest(winners.isNotEmpty ? winners : legalCards);
+        final winners = _cardsBeating(
+          legalCards,
+          trickPlays,
+          trumpSuit,
+          ledSuit,
+        );
+        return _personaTieBreak(
+          winners.isNotEmpty ? winners : legalCards,
+          context,
+        );
       } else {
-        final winners =
-            _cardsBeating(legalCards, trickPlays, trumpSuit, ledSuit);
-        if (winners.isNotEmpty) return _lowest(winners);
-        return _lowest(legalCards);
+        final winners = _cardsBeating(
+          legalCards,
+          trickPlays,
+          trumpSuit,
+          ledSuit,
+        );
+        if (winners.isNotEmpty) {
+          return _personaTieBreak(winners, context);
+        }
+        return _personaTieBreak(legalCards, context);
       }
     }
 
-    // Void — partner winning: dump strategically, but dump Joker if poison
     if (partnerWinning) {
       if (hasJoker) {
         final nonJoker = legalCards.where((c) => !c.isJoker).toList();
@@ -254,33 +344,30 @@ class PlayStrategy {
       return _strategicDump(legalCards, hand, trumpSuit);
     }
 
-    // 7.5 — Endgame Joker: if <=2 cards, one is Joker, might be forced to lead
-    if (hand.length <= 2 &&
-        hasJoker &&
-        hand.where((c) => !c.isJoker).length <= 1) {
-      return legalCards.firstWhere((c) => c.isJoker);
-    }
-
-    // Void, NOT partner winning — Joker decision (P7 urgency scoring)
     if (hasJoker) {
       final nonJoker = legalCards.where((c) => !c.isJoker).toList();
+
+      if (_cannotWinWithoutJoker(nonJoker, trickPlays, trumpSuit, ledSuit) &&
+          !partnerWinning) {
+        return legalCards.firstWhere((c) => c.isJoker);
+      }
 
       if (_jokerPoisonRisk(nonJoker, hand, context?.tracker)) {
         return legalCards.firstWhere((c) => c.isJoker);
       }
 
-      // 7.4 — Joker urgency scoring
       double urgency = 0.0;
 
       if (context != null) {
         final needed = context.isBiddingTeam
             ? context.tricksNeededForBid
             : (8 - (context.currentBid?.value ?? 5) + 1) -
-                context.opponentTricks;
+                  context.opponentTricks;
         if (needed == 1) urgency += 0.5;
       }
 
-      final opponentTrumped = trumpSuit != null &&
+      final opponentTrumped =
+          trumpSuit != null &&
           trickPlays.any((p) => !p.card.isJoker && p.card.suit == trumpSuit);
       if (opponentTrumped) urgency += 0.3;
 
@@ -288,17 +375,17 @@ class PlayStrategy {
 
       if (partnerWinning) urgency -= 0.8;
 
-      final jokerThreshold = context?.difficulty.jokerUrgencyThreshold ?? 0.3;
+      final jokerThreshold = BotSettings.jokerUrgencyThreshold;
       if (urgency >= jokerThreshold) {
         return legalCards.firstWhere((c) => c.isJoker);
       }
     }
 
-    // 6.3 — Trump conservation (requires CardTracker)
     if (context?.tracker != null && trumpSuit != null) {
       final trumpsOut = context!.tracker!.trumpsRemaining(trumpSuit, hand);
-      final myTrumps =
-          legalCards.where((c) => !c.isJoker && c.suit == trumpSuit).toList();
+      final myTrumps = legalCards
+          .where((c) => !c.isJoker && c.suit == trumpSuit)
+          .toList();
       if (trumpsOut <= 1 && myTrumps.length == 1) {
         final trickHasHonor = _trickHasAceOrKing(trickPlays);
         if (!trickHasHonor && (context.tricksNeededForBid) > 1) {
@@ -307,37 +394,37 @@ class PlayStrategy {
       }
     }
 
-    // Try to trump in
     if (trumpSuit != null) {
-      final trumpCards =
-          legalCards.where((c) => !c.isJoker && c.suit == trumpSuit).toList();
+      final trumpCards = legalCards
+          .where((c) => !c.isJoker && c.suit == trumpSuit)
+          .toList();
       if (trumpCards.isNotEmpty) {
-        // 6.4 — Overtrump: skip low-value tricks as defender
-        final trickHasValue = _trickHasAceOrKing(trickPlays);
-        if (!trickHasValue && context != null && !context.isBiddingTeam) {
-          return _strategicDump(legalCards, hand, trumpSuit);
-        }
-
-        final winningTrumps =
-            _cardsBeating(trumpCards, trickPlays, trumpSuit, ledSuit);
+        final winningTrumps = _cardsBeating(
+          trumpCards,
+          trickPlays,
+          trumpSuit,
+          ledSuit,
+        );
         if (winningTrumps.isNotEmpty) return _lowest(winningTrumps);
-        return _lowest(trumpCards);
+        return _strategicDump(legalCards, hand, trumpSuit);
       }
     }
 
     return _strategicDump(legalCards, hand, trumpSuit);
   }
 
-  /// 6.2 — Strategic dumping: prefer creating voids and preserving combos.
   static GameCard _strategicDump(
-      List<GameCard> legalCards, List<GameCard> hand, Suit? trumpSuit) {
+    List<GameCard> legalCards,
+    List<GameCard> hand,
+    Suit? trumpSuit,
+  ) {
     final dumpable = legalCards.where((c) => !c.isJoker).toList();
     if (dumpable.isEmpty) return legalCards.first;
 
-    // Prefer singletons in non-trump suits → clears void for future ruffing
     final singletons = dumpable.where((c) {
-      final suitCount =
-          hand.where((h) => !h.isJoker && h.suit == c.suit).length;
+      final suitCount = hand
+          .where((h) => !h.isJoker && h.suit == c.suit)
+          .length;
       return suitCount == 1 && c.suit != trumpSuit;
     }).toList();
     if (singletons.isNotEmpty) {
@@ -345,7 +432,6 @@ class PlayStrategy {
       return singletons.first;
     }
 
-    // Avoid breaking honor combos
     final safeToBreak = dumpable.where((c) {
       if (c.suit == trumpSuit) return false;
       if (c.rank == Rank.king &&
@@ -364,9 +450,7 @@ class PlayStrategy {
       return safeToBreak.first;
     }
 
-    // Fallback: lowest non-trump
-    final nonTrump =
-        dumpable.where((c) => c.suit != trumpSuit).toList();
+    final nonTrump = dumpable.where((c) => c.suit != trumpSuit).toList();
     if (nonTrump.isNotEmpty) {
       nonTrump.sort((a, b) => a.rank!.value.compareTo(b.rank!.value));
       return nonTrump.first;
@@ -382,6 +466,39 @@ class PlayStrategy {
     return nonJoker.first;
   }
 
+  /// Bounded style variation for near-equal tactical choices; always legal cards.
+  static GameCard _personaTieBreak(
+    List<GameCard> candidates,
+    GameContext? context,
+  ) {
+    if (candidates.isEmpty) {
+      throw StateError('persona tie-break requires candidates');
+    }
+    final persona = context?.persona;
+    if (persona == null) return _lowest(candidates);
+
+    switch (persona.style) {
+      case BotStyle.methodical:
+        return _lowest(candidates);
+      case BotStyle.pressure:
+        final sorted = List<GameCard>.from(candidates)
+          ..sort((a, b) {
+            if (a.isJoker != b.isJoker) return a.isJoker ? -1 : 1;
+            if (a.isJoker) return 0;
+            return b.rank!.value.compareTo(a.rank!.value);
+          });
+        return sorted.first;
+      case BotStyle.resource:
+        final trump = context?.trumpSuit;
+        final nonTrump = candidates.where((c) {
+          if (c.isJoker) return false;
+          return trump == null || c.suit != trump;
+        }).toList();
+        if (nonTrump.isNotEmpty) return _lowest(nonTrump);
+        return _lowest(candidates);
+    }
+  }
+
   static ({String playerUid, GameCard card})? _winningPlay(
     List<({String playerUid, GameCard card})> plays,
     Suit? trumpSuit,
@@ -389,7 +506,6 @@ class PlayStrategy {
   ) {
     if (plays.isEmpty) return null;
 
-    // Joker always wins
     for (final play in plays) {
       if (play.card.isJoker) return play;
     }
@@ -400,7 +516,12 @@ class PlayStrategy {
 
     var bestPlay = plays.first;
     for (int i = 1; i < plays.length; i++) {
-      if (TrickResolver.beats(plays[i].card, bestPlay.card, trumpSuit, ledSuit)) {
+      if (TrickResolver.beats(
+        plays[i].card,
+        bestPlay.card,
+        trumpSuit,
+        ledSuit,
+      )) {
         bestPlay = plays[i];
       }
     }
@@ -428,6 +549,22 @@ class PlayStrategy {
           !p.card.isJoker &&
           (p.card.rank == Rank.ace || p.card.rank == Rank.king),
     );
+  }
+
+  static bool _cannotWinWithoutJoker(
+    List<GameCard> nonJokerLegal,
+    List<({String playerUid, GameCard card})> trickPlays,
+    Suit? trumpSuit,
+    Suit? ledSuit,
+  ) {
+    if (nonJokerLegal.isEmpty) return true;
+    final winners = _cardsBeating(
+      nonJokerLegal,
+      trickPlays,
+      trumpSuit,
+      ledSuit,
+    );
+    return winners.isEmpty;
   }
 
   static List<GameCard> _cardsBeating(

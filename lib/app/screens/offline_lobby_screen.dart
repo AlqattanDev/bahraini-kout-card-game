@@ -4,7 +4,6 @@ import 'package:flutter/services.dart';
 import '../app_routes.dart';
 import '../models/game_mode.dart';
 import '../models/seat_config.dart';
-import '../../offline/bot/bot_difficulty.dart';
 import '../../game/theme/kout_theme.dart';
 import '../../game/theme/geometric_patterns.dart';
 import '../widgets/app_action_button.dart';
@@ -17,42 +16,34 @@ class OfflineLobbyScreen extends StatefulWidget {
 }
 
 class _OfflineLobbyScreenState extends State<OfflineLobbyScreen> {
-  BotDifficulty _difficulty = BotDifficulty.balanced;
-
-  List<SeatConfig> get _seats => [
-    const SeatConfig(
-      seatIndex: 0,
-      uid: 'human_0',
-      displayName: 'You',
-      isBot: false,
-    ),
+  List<SeatConfig> get _seats => const [
+    SeatConfig(seatIndex: 0, uid: 'human_0', displayName: 'You', isBot: false),
     SeatConfig(
       seatIndex: 1,
       uid: 'bot_1',
       displayName: 'Bot Khalid',
       isBot: true,
-      difficulty: _difficulty,
     ),
     SeatConfig(
       seatIndex: 2,
       uid: 'bot_2',
       displayName: 'Bot Fatima',
       isBot: true,
-      difficulty: _difficulty,
     ),
     SeatConfig(
       seatIndex: 3,
       uid: 'bot_3',
       displayName: 'Bot Ahmed',
       isBot: true,
-      difficulty: _difficulty,
     ),
   ];
 
   @override
   Widget build(BuildContext context) {
     final seats = _seats;
-    final tableSize = min(300.0, MediaQuery.sizeOf(context).width * 0.75);
+    final mq = MediaQuery.sizeOf(context);
+    // Cap table by width and height so the stack + labels never overflow short screens.
+    final tableSize = min(min(300.0, mq.width * 0.75), mq.height * 0.42);
     final avatarSize = tableSize * 0.21;
 
     return Scaffold(
@@ -76,7 +67,6 @@ class _OfflineLobbyScreenState extends State<OfflineLobbyScreen> {
                 child: Stack(
                   clipBehavior: Clip.none,
                   children: [
-                    // Table background with gold shadow and geometric overlay
                     Positioned.fill(
                       child: Container(
                         decoration: BoxDecoration(
@@ -94,7 +84,6 @@ class _OfflineLobbyScreenState extends State<OfflineLobbyScreen> {
                         child: ClipOval(
                           child: Stack(
                             children: [
-                              // Geometric pattern overlay at 8% opacity
                               Positioned.fill(
                                 child: CustomPaint(
                                   painter: GeometricPatterns.overlayPainter(
@@ -102,7 +91,6 @@ class _OfflineLobbyScreenState extends State<OfflineLobbyScreen> {
                                   ),
                                 ),
                               ),
-                              // Centre text
                               Center(
                                 child: Text(
                                   'Kout',
@@ -121,7 +109,6 @@ class _OfflineLobbyScreenState extends State<OfflineLobbyScreen> {
                         ),
                       ),
                     ),
-                    // Seat 2 (top - partner)
                     Positioned(
                       top: -20,
                       left: 0,
@@ -130,7 +117,6 @@ class _OfflineLobbyScreenState extends State<OfflineLobbyScreen> {
                         child: _seatWidget(seats[2], 'Team A', avatarSize),
                       ),
                     ),
-                    // Seat 1 (left - opponent)
                     Positioned(
                       left: -30,
                       top: 0,
@@ -139,7 +125,6 @@ class _OfflineLobbyScreenState extends State<OfflineLobbyScreen> {
                         child: _seatWidget(seats[1], 'Team B', avatarSize),
                       ),
                     ),
-                    // Seat 3 (right - opponent)
                     Positioned(
                       right: -30,
                       top: 0,
@@ -148,7 +133,6 @@ class _OfflineLobbyScreenState extends State<OfflineLobbyScreen> {
                         child: _seatWidget(seats[3], 'Team B', avatarSize),
                       ),
                     ),
-                    // Seat 0 (bottom - you)
                     Positioned(
                       bottom: -20,
                       left: 0,
@@ -162,45 +146,6 @@ class _OfflineLobbyScreenState extends State<OfflineLobbyScreen> {
               ),
             ),
           ),
-          // Difficulty selector
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text('Bot Style: ', style: KoutTheme.bodyStyle),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  alignment: WrapAlignment.center,
-                  children: BotDifficulty.values
-                      .map(
-                        (d) => ChoiceChip(
-                          label: Text(_difficultyLabel(d)),
-                          selected: _difficulty == d,
-                          onSelected: (_) => setState(() => _difficulty = d),
-                          selectedColor: KoutTheme.accent,
-                          backgroundColor: KoutTheme.primary,
-                          labelStyle: TextStyle(
-                            color: _difficulty == d
-                                ? KoutTheme.table
-                                : KoutTheme.textColor,
-                            fontSize: 12,
-                          ),
-                          side: BorderSide(
-                            color: _difficulty == d
-                                ? KoutTheme.accent
-                                : KoutTheme.secondary,
-                          ),
-                        ),
-                      )
-                      .toList(),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
           Padding(
             padding: const EdgeInsets.all(32.0),
             child: AppPrimaryButton(
@@ -258,12 +203,18 @@ class _OfflineLobbyScreenState extends State<OfflineLobbyScreen> {
           ),
         ),
         const SizedBox(height: 4),
-        Text(
-          seat.displayName,
-          style: TextStyle(
-            color: KoutTheme.textColor,
-            fontSize: 12,
-            fontWeight: isHuman ? FontWeight.bold : FontWeight.normal,
+        SizedBox(
+          width: avatarSize * 1.6,
+          child: Text(
+            seat.displayName,
+            textAlign: TextAlign.center,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: KoutTheme.textColor,
+              fontSize: 12,
+              fontWeight: isHuman ? FontWeight.bold : FontWeight.normal,
+            ),
           ),
         ),
         Text(
@@ -278,10 +229,4 @@ class _OfflineLobbyScreenState extends State<OfflineLobbyScreen> {
       ],
     );
   }
-
-  String _difficultyLabel(BotDifficulty d) => switch (d) {
-    BotDifficulty.conservative => 'Safe',
-    BotDifficulty.balanced => 'Balanced',
-    BotDifficulty.aggressive => 'Bold',
-  };
 }

@@ -812,3 +812,15 @@ Run 1,000 simulated games (not 10,000 — start smaller, scale if needed):
 - `lib/offline/local_game_controller.dart` — creates tracker, feeds plays, passes to bots
 - `lib/offline/player_controller.dart` — updated interface (CardTracker? parameter)
 - `lib/shared/constants/timing.dart` — situation-aware bot thinking times
+
+---
+
+## 2026 update — social play & persona
+
+Implemented on top of CardTracker + `GameContext`:
+
+- **Social-intelligence signals** on `GameContext`: `roundControlUrgency`, `partnerLikelyWinningTrick`, `partnerNeedsProtection`, void hints for led suit, optional `BotPersona`.
+- **Deterministic `BotPersona`** (`BotStyle.methodical | pressure | resource`) from `(seatIndex, roundIndex, trickIndex)` for bounded tie-breaks, not tactical overrides.
+- **Teamwork-first follow**: when partner is winning early in the trick, avoid overtaking unless `roundControlUrgency` is high (~contract at risk); then take the cheapest winning card.
+- **Bid telemetry guardrails** in `bid_distribution_test.dart` (e.g. enough 7s, rare blind Kout in neutral samples).
+- Tests: `persona_variation_test.dart`, extended `play_strategy_test.dart`.

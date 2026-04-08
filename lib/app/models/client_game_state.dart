@@ -27,6 +27,9 @@ const _phaseMap = {
 
 class ClientGameState {
   final GamePhase phase;
+
+  /// Offline: 0-based index of completed scoring rounds (incremented after each round).
+  final int roundIndex;
   final List<String> playerUids;
   final Map<Team, int> scores;
   final Map<Team, int> tricks;
@@ -49,6 +52,7 @@ class ClientGameState {
 
   ClientGameState({
     required this.phase,
+    this.roundIndex = 0,
     required this.playerUids,
     required this.scores,
     required this.tricks,
@@ -126,8 +130,7 @@ class ClientGameState {
         (gameData['currentPlayer'] ?? gameData['currentPlayerUid']) as String?;
 
     // Dealer: Worker sends "dealer", old used "dealerUid"
-    final dealerUid =
-        (gameData['dealer'] ?? gameData['dealerUid']) as String;
+    final dealerUid = (gameData['dealer'] ?? gameData['dealerUid']) as String;
 
     // Trump suit
     final trumpSuitName = gameData['trumpSuit'] as String?;
@@ -146,8 +149,9 @@ class ClientGameState {
       currentBidValue = gameData['currentBid'] as int?;
       bidderUid = gameData['bidderUid'] as String?;
     }
-    final currentBid =
-        currentBidValue != null ? BidAmount.fromValue(currentBidValue) : null;
+    final currentBid = currentBidValue != null
+        ? BidAmount.fromValue(currentBidValue)
+        : null;
 
     // Current trick: Worker sends {lead, plays: [{player, card}]}
     List<({String playerUid, GameCard card})> currentTrickPlays = [];
@@ -158,20 +162,24 @@ class ClientGameState {
       if (plays != null) {
         currentTrickPlays = plays
             .cast<Map<String, dynamic>>()
-            .map((play) => (
-                  playerUid: play['player'] as String,
-                  card: GameCard.decode(play['card'] as String),
-                ))
+            .map(
+              (play) => (
+                playerUid: play['player'] as String,
+                card: GameCard.decode(play['card'] as String),
+              ),
+            )
             .toList();
       }
     } else if (rawTrick is List<dynamic>) {
       // Old Firestore format: [{playerUid, card}]
       currentTrickPlays = rawTrick
           .cast<Map<String, dynamic>>()
-          .map((play) => (
-                playerUid: play['playerUid'] as String,
-                card: GameCard.decode(play['card'] as String),
-              ))
+          .map(
+            (play) => (
+              playerUid: play['playerUid'] as String,
+              card: GameCard.decode(play['card'] as String),
+            ),
+          )
           .toList();
     }
 
@@ -188,21 +196,30 @@ class ClientGameState {
     final rawBidHistory = gameData['bidHistory'] ?? gameData['bid_history'];
     final bidHistory = rawBidHistory != null
         ? (rawBidHistory as List)
-            .cast<Map<String, dynamic>>()
-            .map((e) => (
+              .cast<Map<String, dynamic>>()
+              .map(
+                (e) => (
                   playerUid: e['player'] as String,
                   action: e['action'] as String,
-                ))
-            .toList()
+                ),
+              )
+              .toList()
         : <({String playerUid, String action})>[];
 
     final rawCardCounts = gameData['cardCounts'] as Map<String, dynamic>?;
     final cardCounts = rawCardCounts != null
-        ? rawCardCounts.map((k, v) => MapEntry(int.parse(k), (v as num).toInt()))
+        ? rawCardCounts.map(
+            (k, v) => MapEntry(int.parse(k), (v as num).toInt()),
+          )
         : <int, int>{};
+
+    final roundIndex = ClientGameState._parseIntField(
+      gameData['roundIndex'] ?? 0,
+    );
 
     return ClientGameState(
       phase: phase,
+      roundIndex: roundIndex,
       playerUids: playerUids,
       scores: scores,
       tricks: tricks,

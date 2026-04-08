@@ -9,6 +9,7 @@ import '../components/unified_hud.dart';
 class TurnTimerManager {
   String? _lastCurrentPlayer;
   GamePhase? _lastTimerPhase;
+  String? _lastTurnSignature;
   double _turnElapsed = 0.0;
 
   Stopwatch? _gameTimer;
@@ -23,8 +24,12 @@ class TurnTimerManager {
 
   /// Called every frame from KoutGame.update(). Updates the timer ring on each
   /// seat component and the HUD game clock.
-  void tick(double dt, ClientGameState? state, List<PlayerSeatComponent> seats,
-      {UnifiedHudComponent? hud}) {
+  void tick(
+    double dt,
+    ClientGameState? state,
+    List<PlayerSeatComponent> seats, {
+    UnifiedHudComponent? hud,
+  }) {
     // Tick game timer on HUD every second
     if (_gameTimer != null && hud != null) {
       _hudTickAccum += dt;
@@ -36,16 +41,20 @@ class TurnTimerManager {
 
     if (state == null) return;
 
-    final isActionPhase = state.phase == GamePhase.bidding ||
+    final isActionPhase =
+        state.phase == GamePhase.bidding ||
         state.phase == GamePhase.trumpSelection ||
         state.phase == GamePhase.playing;
 
     if (isActionPhase && state.currentPlayerUid != null) {
+      final turnSignature = _buildTurnSignature(state);
       // Reset timer when active player or phase changes
       if (state.currentPlayerUid != _lastCurrentPlayer ||
-          state.phase != _lastTimerPhase) {
+          state.phase != _lastTimerPhase ||
+          turnSignature != _lastTurnSignature) {
         _lastCurrentPlayer = state.currentPlayerUid;
         _lastTimerPhase = state.phase;
+        _lastTurnSignature = turnSignature;
         _turnElapsed = 0.0;
       }
       _turnElapsed += dt;
@@ -57,14 +66,27 @@ class TurnTimerManager {
 
       for (int i = 0; i < seats.length; i++) {
         final uid = state.playerUids[i];
-        seats[i].timerProgress =
-            uid == state.currentPlayerUid ? progress : 0.0;
+        seats[i].timerProgress = uid == state.currentPlayerUid ? progress : 0.0;
       }
     } else {
       _lastCurrentPlayer = null;
+      _lastTimerPhase = null;
+      _lastTurnSignature = null;
       for (final seat in seats) {
         seat.timerProgress = 0.0;
       }
     }
+  }
+
+  String _buildTurnSignature(ClientGameState state) {
+    return [
+      state.phase.name,
+      state.currentPlayerUid ?? '',
+      state.currentTrickPlays.length.toString(),
+      state.trickWinners.length.toString(),
+      state.bidHistory.length.toString(),
+      state.passedPlayers.length.toString(),
+      state.currentBid?.value.toString() ?? '-',
+    ].join('|');
   }
 }

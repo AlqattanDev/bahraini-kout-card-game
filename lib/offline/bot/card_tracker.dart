@@ -22,26 +22,28 @@ class CardTracker {
   Map<int, Set<Suit>> get knownVoids => Map.unmodifiable(_knownVoids);
 
   int trumpsRemaining(Suit trumpSuit, List<GameCard> myHand) {
-    return remainingCards(myHand)
-        .where((c) => !c.isJoker && c.suit == trumpSuit)
-        .length;
+    return remainingCards(
+      myHand,
+    ).where((c) => !c.isJoker && c.suit == trumpSuit).length;
   }
 
   bool isHighestRemaining(GameCard card, List<GameCard> myHand) {
     if (card.isJoker) return true;
     final suit = card.suit!;
-    final remaining =
-        remainingCards(myHand).where((c) => !c.isJoker && c.suit == suit);
+    final remaining = remainingCards(
+      myHand,
+    ).where((c) => !c.isJoker && c.suit == suit);
     if (remaining.isEmpty) return true;
-    final highestRemaining =
-        remaining.map((c) => c.rank!.value).reduce((a, b) => a > b ? a : b);
+    final highestRemaining = remaining
+        .map((c) => c.rank!.value)
+        .reduce((a, b) => a > b ? a : b);
     return card.rank!.value > highestRemaining;
   }
 
   bool isSuitExhausted(Suit suit, List<GameCard> myHand) {
-    return remainingCards(myHand)
-        .where((c) => !c.isJoker && c.suit == suit)
-        .isEmpty;
+    return remainingCards(
+      myHand,
+    ).where((c) => !c.isJoker && c.suit == suit).isEmpty;
   }
 
   void reset() {

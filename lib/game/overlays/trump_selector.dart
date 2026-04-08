@@ -21,14 +21,11 @@ class TrumpSelectorOverlay extends StatelessWidget {
         fontWeight: FontWeight.bold,
         letterSpacing: 1.2,
       ),
-      content: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (final suit in Suit.values) ...[
-            if (suit != Suit.values.first) const SizedBox(width: 12),
-            _suitButton(suit),
-          ],
-        ],
+      content: Wrap(
+        alignment: WrapAlignment.center,
+        spacing: 12,
+        runSpacing: 12,
+        children: [for (final suit in Suit.values) _suitButton(suit)],
       ),
     );
   }

@@ -140,11 +140,12 @@ class BidOverlay extends StatelessWidget {
             ),
             const SizedBox(height: 10),
           ],
-          Row(
-            mainAxisSize: MainAxisSize.min,
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 12,
+            runSpacing: 12,
             children: [
-              for (int i = 0; i < bids.length; i++) ...[
-                if (i > 0) const SizedBox(width: 12),
+              for (int i = 0; i < bids.length; i++)
                 _StaggeredEntrance(
                   delayIndex: i,
                   child: _BidChip(
@@ -153,7 +154,6 @@ class BidOverlay extends StatelessWidget {
                     onPressed: () => onBid(bids[i].value),
                   ),
                 ),
-              ],
             ],
           ),
         ],

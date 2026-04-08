@@ -110,5 +110,74 @@ void main() {
       expect(action, isA<BidAction>());
       expect((action as BidAction).amount, BidAmount.bab);
     });
+
+    test(
+      'shape floor: 5-card suit bids Bab without strong evaluator score',
+      () {
+        final hand = [
+          GameCard.decode('S7'),
+          GameCard.decode('S8'),
+          GameCard.decode('S9'),
+          GameCard.decode('S10'),
+          GameCard.decode('SJ'),
+          GameCard.decode('H7'),
+          GameCard.decode('C7'),
+          GameCard.decode('D8'),
+        ];
+        expect(BidStrategy.computeShapeFloorBid(hand), BidAmount.bab);
+        final action = BidStrategy.decideBid(hand, null);
+        expect(action, isA<BidAction>());
+        expect((action as BidAction).amount, BidAmount.bab);
+      },
+    );
+
+    test('shape floor: 7 spades + Joker implies Kout', () {
+      final hand = [
+        GameCard.joker(),
+        GameCard.decode('S7'),
+        GameCard.decode('S8'),
+        GameCard.decode('S9'),
+        GameCard.decode('S10'),
+        GameCard.decode('SJ'),
+        GameCard.decode('SQ'),
+        GameCard.decode('SK'),
+      ];
+      expect(BidStrategy.computeShapeFloorBid(hand), BidAmount.kout);
+      final action = BidStrategy.decideBid(hand, null);
+      expect(action, isA<BidAction>());
+      expect((action as BidAction).amount, BidAmount.kout);
+    });
+
+    test('aggressive thresholding pushes very strong hand to at least seven', () {
+      final hand = [
+        GameCard.joker(),
+        GameCard.decode('SA'),
+        GameCard.decode('SK'),
+        GameCard.decode('SQ'),
+        GameCard.decode('SJ'),
+        GameCard.decode('S10'),
+        GameCard.decode('HA'),
+        GameCard.decode('HK'),
+      ];
+      final action = BidStrategy.decideBid(hand, null);
+      expect(action, isA<BidAction>());
+      expect((action as BidAction).amount.value, greaterThanOrEqualTo(7));
+    });
+
+    test('forced bid uses shape floor when above Bab', () {
+      final hand = [
+        GameCard.joker(),
+        GameCard.decode('S7'),
+        GameCard.decode('S8'),
+        GameCard.decode('S9'),
+        GameCard.decode('S10'),
+        GameCard.decode('SJ'),
+        GameCard.decode('SQ'),
+        GameCard.decode('SK'),
+      ];
+      final action = BidStrategy.decideBid(hand, null, isForced: true);
+      expect(action, isA<BidAction>());
+      expect((action as BidAction).amount, BidAmount.kout);
+    });
   });
 }

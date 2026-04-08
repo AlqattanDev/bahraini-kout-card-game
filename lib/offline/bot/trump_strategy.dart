@@ -4,19 +4,28 @@ import 'package:koutbh/shared/logic/card_utils.dart';
 
 /// Per-rank weights for trump suit strength accumulation.
 double _trumpSuitStrengthWeight(Rank rank) => switch (rank) {
-      Rank.ace => 3.0,
-      Rank.king => 2.0,
-      Rank.queen => 1.5,
-      Rank.jack => 1.0,
-      _ => 0.5,
-    };
+  Rank.ace => 3.0,
+  Rank.king => 2.0,
+  Rank.queen => 1.5,
+  Rank.jack => 1.0,
+  _ => 0.5,
+};
 
 /// Side-suit honor bonus while scoring a candidate trump suit.
 double _trumpSideHonorBonus(Rank rank) => switch (rank) {
-      Rank.ace => 0.9,
-      Rank.king => 0.5,
-      _ => 0.0,
-    };
+  Rank.ace => 0.9,
+  Rank.king => 0.5,
+  _ => 0.0,
+};
+
+double _honorTiebreak(List<GameCard> suitCards) {
+  double s = 0;
+  for (final c in suitCards) {
+    if (c.rank == Rank.ace) s += 3.0;
+    if (c.rank == Rank.king) s += 2.0;
+  }
+  return s;
+}
 
 class TrumpStrategy {
   static Suit selectTrump(
@@ -37,28 +46,35 @@ class TrumpStrategy {
           (suitStrength[suit] ?? 0) + _trumpSuitStrengthWeight(card.rank!);
     }
 
-    // Step 4.5: Forced-bid defensive trump — just pick longest suit
     if (isForcedBid) {
       Suit? longest;
       int maxCount = 0;
+      double bestTb = -1;
       for (final entry in suitCounts.entries) {
-        if (entry.value > maxCount) {
-          maxCount = entry.value;
+        final n = entry.value;
+        final tb = _honorTiebreak(
+          hand.where((x) => !x.isJoker && x.suit == entry.key).toList(),
+        );
+        if (n > maxCount) {
+          maxCount = n;
           longest = entry.key;
+          bestTb = tb;
+        } else if (n == maxCount && tb > bestTb) {
+          longest = entry.key;
+          bestTb = tb;
         }
       }
       return longest ?? Suit.spades;
     }
 
-    // Step 4.1: Minimum count gate — prefer suits with 2+ cards
     final validSuits = suitCounts.entries
         .where((e) => e.value >= 2)
         .map((e) => e.key)
         .toSet();
-    final candidates =
-        validSuits.isNotEmpty ? validSuits : suitCounts.keys.toSet();
+    final candidates = validSuits.isNotEmpty
+        ? validSuits
+        : suitCounts.keys.toSet();
 
-    // Step 4.2: Bid-level aware scoring (with difficulty overrides)
     double trumpScore(int count, double strength, BidAmount? bid) {
       final isKout = bid == BidAmount.kout;
       final lw = lengthWeight ?? (isKout ? 1.5 : 2.0);
@@ -68,19 +84,15 @@ class TrumpStrategy {
 
     final hasJoker = hand.any((c) => c.isJoker);
 
-    Suit bestSuit = Suit.spades; // fallback
-    double bestScore = -1;
-
+    final scores = <Suit, double>{};
     for (final candidateSuit in candidates) {
       final count = suitCounts[candidateSuit] ?? 0;
       final strength = suitStrength[candidateSuit] ?? 0;
 
       double score = trumpScore(count, strength, bidLevel);
 
-      // Joker bonus for longer suits
       if (hasJoker && count >= 3) score += 1.0;
 
-      // Step 4.3: Side suit strength — Aces and Kings in other suits
       double sideStrength = 0.0;
       for (final card in hand) {
         if (!card.isJoker && card.suit != candidateSuit) {
@@ -89,13 +101,46 @@ class TrumpStrategy {
       }
       score += sideStrength;
 
-      // Step 4.4: Ruff value — void non-trump suits
       for (final suit in Suit.values) {
         if (suit != candidateSuit && !suitCounts.containsKey(suit)) {
           score += 0.5;
         }
       }
 
+      scores[candidateSuit] = score;
+    }
+
+    if (scores.isEmpty) return Suit.spades;
+
+    final maxScore = scores.values.reduce((a, b) => a > b ? a : b);
+    const closeEpsilon = 0.5;
+    final close = scores.entries
+        .where((e) => (maxScore - e.value) <= closeEpsilon)
+        .map((e) => e.key)
+        .toList();
+
+    // When several suits are nearly tied, prefer A/K honors; then length.
+    if (close.length >= 2) {
+      close.sort((a, b) {
+        final tb =
+            _honorTiebreak(
+              hand.where((c) => !c.isJoker && c.suit == b).toList(),
+            ).compareTo(
+              _honorTiebreak(
+                hand.where((c) => !c.isJoker && c.suit == a).toList(),
+              ),
+            );
+        if (tb != 0) return tb;
+        return (suitCounts[b] ?? 0).compareTo(suitCounts[a] ?? 0);
+      });
+      return close.first;
+    }
+
+    Suit bestSuit = Suit.spades;
+    double bestScore = -1;
+
+    for (final candidateSuit in candidates) {
+      final score = scores[candidateSuit] ?? -1;
       if (score > bestScore) {
         bestScore = score;
         bestSuit = candidateSuit;

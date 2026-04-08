@@ -39,70 +39,78 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: KoutTheme.table,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              'Bahraini Kout',
-              style: KoutTheme.headingStyle.copyWith(fontSize: 32),
-            ),
-            const SizedBox(height: 48),
-            if (_isLoading)
-              Column(
-                children: [
-                  CircularProgressIndicator(color: KoutTheme.accent),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Signing in...',
-                    style: KoutTheme.bodyStyle.copyWith(
-                      color: KoutTheme.accent,
-                    ),
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  'Bahraini Kout',
+                  style: KoutTheme.headingStyle.copyWith(fontSize: 32),
+                ),
+                const SizedBox(height: 48),
+                if (_isLoading)
+                  Column(
+                    children: [
+                      CircularProgressIndicator(color: KoutTheme.accent),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Signing in...',
+                        style: KoutTheme.bodyStyle.copyWith(
+                          color: KoutTheme.accent,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            AnimatedOpacity(
-              opacity: _isLoading ? 0.0 : 1.0,
-              duration: const Duration(milliseconds: 400),
-              child: Column(
-                children: [
-                  if (!_isLoading)
-                    AppPrimaryButton(
-                      width: appButtonWidth(context),
-                      label: 'Play Online',
-                      onPressed: withLightHaptic(() {
-                        Navigator.pushNamed(
-                          context,
-                          AppRoutes.matchmaking,
-                          arguments: MatchmakingArgs(
-                            uid: _authService.currentUid ?? '',
-                            token: _authService.token ?? '',
-                          ),
-                        );
-                      }),
-                    ),
-                  const SizedBox(height: 16),
-                  if (!_isLoading)
-                    AppPrimaryButton(
-                      width: appButtonWidth(context),
-                      label: 'Play with Friend',
-                      onPressed: withLightHaptic(() {
-                        _showRoomOptions();
-                      }),
-                    ),
-                  const SizedBox(height: 16),
-                  if (!_isLoading)
-                    AppPrimaryButton(
-                      width: appButtonWidth(context),
-                      label: 'Play Offline',
-                      onPressed: withLightHaptic(() {
-                        Navigator.pushNamed(context, AppRoutes.offlineLobby);
-                      }),
-                    ),
-                ],
-              ),
+                AnimatedOpacity(
+                  opacity: _isLoading ? 0.0 : 1.0,
+                  duration: const Duration(milliseconds: 400),
+                  child: Column(
+                    children: [
+                      if (!_isLoading)
+                        AppPrimaryButton(
+                          width: appButtonWidth(context),
+                          label: 'Play Online',
+                          onPressed: withLightHaptic(() {
+                            Navigator.pushNamed(
+                              context,
+                              AppRoutes.matchmaking,
+                              arguments: MatchmakingArgs(
+                                uid: _authService.currentUid ?? '',
+                                token: _authService.token ?? '',
+                              ),
+                            );
+                          }),
+                        ),
+                      const SizedBox(height: 16),
+                      if (!_isLoading)
+                        AppPrimaryButton(
+                          width: appButtonWidth(context),
+                          label: 'Play with Friend',
+                          onPressed: withLightHaptic(() {
+                            _showRoomOptions();
+                          }),
+                        ),
+                      const SizedBox(height: 16),
+                      if (!_isLoading)
+                        AppPrimaryButton(
+                          width: appButtonWidth(context),
+                          label: 'Play Offline',
+                          onPressed: withLightHaptic(() {
+                            Navigator.pushNamed(
+                              context,
+                              AppRoutes.offlineLobby,
+                            );
+                          }),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

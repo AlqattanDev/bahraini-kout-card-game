@@ -1,10 +1,128 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:koutbh/app/models/client_game_state.dart';
+import 'package:koutbh/shared/models/bid.dart';
 import 'package:koutbh/shared/models/card.dart';
+import 'package:koutbh/shared/models/game_state.dart';
 import 'package:koutbh/offline/player_controller.dart';
+import 'package:koutbh/offline/bot/bot_persona.dart';
+import 'package:koutbh/offline/bot/game_context.dart';
 import 'package:koutbh/offline/bot/play_strategy.dart';
 
+GameContext _teamworkContext({
+  double roundControlUrgency = 0.2,
+  BotPersona? persona,
+}) {
+  return GameContext(
+    mySeat: 0,
+    myTeam: Team.a,
+    scores: const {Team.a: 0, Team.b: 0},
+    currentBid: BidAmount.six,
+    bidderSeat: 0,
+    isBiddingTeam: true,
+    isForcedBid: false,
+    trickCounts: const {Team.a: 2, Team.b: 1},
+    trickWinners: const [],
+    trumpSuit: Suit.hearts,
+    persona: persona,
+    roundControlUrgency: roundControlUrgency,
+  );
+}
+
 void main() {
+  group('GameContext social signals', () {
+    test('roundControlUrgency is clamped 0..1 with partial round pressure', () {
+      final state = ClientGameState(
+        phase: GamePhase.playing,
+        roundIndex: 0,
+        playerUids: const ['p0', 'p1', 'p2', 'p3'],
+        scores: const {Team.a: 0, Team.b: 0},
+        tricks: const {Team.a: 2, Team.b: 1},
+        currentPlayerUid: 'p0',
+        dealerUid: 'p3',
+        trumpSuit: Suit.hearts,
+        currentBid: BidAmount.six,
+        bidderUid: 'p0',
+        currentTrickPlays: const [],
+        myHand: const [],
+        myUid: 'p0',
+        trickWinners: const [Team.a, Team.b, Team.a],
+      );
+      final ctx = GameContext.fromClientState(state, 0);
+      expect(ctx.tricksPlayed, 3);
+      expect(ctx.roundControlUrgency, greaterThanOrEqualTo(0.0));
+      expect(ctx.roundControlUrgency, lessThanOrEqualTo(1.0));
+    });
+  });
+
   group('PlayStrategy', () {
+    test(
+      'does not overtake partner in middle position unless equity-critical',
+      () {
+        final result = PlayStrategy.selectCard(
+          hand: [GameCard.decode('SA'), GameCard.decode('S8')],
+          trickPlays: [(playerUid: 'partner', card: GameCard.decode('SK'))],
+          trumpSuit: Suit.hearts,
+          ledSuit: Suit.spades,
+          mySeat: 0,
+          partnerUid: 'partner',
+          context: _teamworkContext(roundControlUrgency: 0.2),
+        );
+        expect(result.card, GameCard.decode('S8'));
+      },
+    );
+
+    test('overtakes partner when failure boundary is imminent', () {
+      final result = PlayStrategy.selectCard(
+        hand: [GameCard.decode('SA'), GameCard.decode('S8')],
+        trickPlays: [(playerUid: 'partner', card: GameCard.decode('SK'))],
+        trumpSuit: Suit.hearts,
+        ledSuit: Suit.spades,
+        mySeat: 0,
+        partnerUid: 'partner',
+        context: _teamworkContext(roundControlUrgency: 0.95),
+      );
+      expect(result.card, GameCard.decode('SA'));
+    });
+
+    test(
+      'partner-protect follow does not always pick same card across personas',
+      () {
+        final hand = [
+          GameCard.decode('S10'),
+          GameCard.decode('S9'),
+          GameCard.decode('S8'),
+        ];
+        final trickPlays = [
+          (playerUid: 'partner', card: GameCard.decode('SK')),
+        ];
+        final methodical = PlayStrategy.selectCard(
+          hand: hand,
+          trickPlays: trickPlays,
+          trumpSuit: Suit.hearts,
+          ledSuit: Suit.spades,
+          mySeat: 0,
+          partnerUid: 'partner',
+          context: _teamworkContext(
+            roundControlUrgency: 0.2,
+            persona: const BotPersona(BotStyle.methodical),
+          ),
+        );
+        final pressure = PlayStrategy.selectCard(
+          hand: hand,
+          trickPlays: trickPlays,
+          trumpSuit: Suit.hearts,
+          ledSuit: Suit.spades,
+          mySeat: 0,
+          partnerUid: 'partner',
+          context: _teamworkContext(
+            roundControlUrgency: 0.2,
+            persona: const BotPersona(BotStyle.pressure),
+          ),
+        );
+        expect(methodical.card, isNot(equals(pressure.card)));
+      },
+    );
+
     test('follows suit when holding suit cards', () {
       final hand = [
         const GameCard(suit: Suit.spades, rank: Rank.ace),
@@ -16,7 +134,10 @@ void main() {
       final result = PlayStrategy.selectCard(
         hand: hand,
         trickPlays: [
-          (playerUid: 'p1', card: const GameCard(suit: Suit.spades, rank: Rank.king)),
+          (
+            playerUid: 'p1',
+            card: const GameCard(suit: Suit.spades, rank: Rank.king),
+          ),
         ],
         trumpSuit: Suit.hearts,
         ledSuit: Suit.spades,
@@ -37,7 +158,10 @@ void main() {
       final result = PlayStrategy.selectCard(
         hand: hand,
         trickPlays: [
-          (playerUid: 'p1', card: const GameCard(suit: Suit.spades, rank: Rank.king)),
+          (
+            playerUid: 'p1',
+            card: const GameCard(suit: Suit.spades, rank: Rank.king),
+          ),
         ],
         trumpSuit: Suit.hearts,
         ledSuit: Suit.spades,
@@ -58,9 +182,18 @@ void main() {
       final result = PlayStrategy.selectCard(
         hand: hand,
         trickPlays: [
-          (playerUid: 'p1', card: const GameCard(suit: Suit.spades, rank: Rank.nine)),
-          (playerUid: 'p2', card: const GameCard(suit: Suit.spades, rank: Rank.king)),
-          (playerUid: 'p3', card: const GameCard(suit: Suit.spades, rank: Rank.eight)),
+          (
+            playerUid: 'p1',
+            card: const GameCard(suit: Suit.spades, rank: Rank.nine),
+          ),
+          (
+            playerUid: 'p2',
+            card: const GameCard(suit: Suit.spades, rank: Rank.king),
+          ),
+          (
+            playerUid: 'p3',
+            card: const GameCard(suit: Suit.spades, rank: Rank.eight),
+          ),
         ],
         trumpSuit: Suit.hearts,
         ledSuit: Suit.spades,
@@ -81,7 +214,10 @@ void main() {
       final result = PlayStrategy.selectCard(
         hand: hand,
         trickPlays: [
-          (playerUid: 'p1', card: const GameCard(suit: Suit.spades, rank: Rank.ace)),
+          (
+            playerUid: 'p1',
+            card: const GameCard(suit: Suit.spades, rank: Rank.ace),
+          ),
         ],
         trumpSuit: Suit.hearts,
         ledSuit: Suit.spades,
@@ -120,7 +256,10 @@ void main() {
       final result = PlayStrategy.selectCard(
         hand: hand,
         trickPlays: [
-          (playerUid: 'p1', card: const GameCard(suit: Suit.clubs, rank: Rank.ace)),
+          (
+            playerUid: 'p1',
+            card: const GameCard(suit: Suit.clubs, rank: Rank.ace),
+          ),
         ],
         trumpSuit: Suit.hearts,
         ledSuit: Suit.clubs,
@@ -143,8 +282,14 @@ void main() {
       final result = PlayStrategy.selectCard(
         hand: hand,
         trickPlays: [
-          (playerUid: 'p1', card: const GameCard(suit: Suit.spades, rank: Rank.king)),
-          (playerUid: 'p3', card: const GameCard(suit: Suit.hearts, rank: Rank.ace)),
+          (
+            playerUid: 'p1',
+            card: const GameCard(suit: Suit.spades, rank: Rank.king),
+          ),
+          (
+            playerUid: 'p3',
+            card: const GameCard(suit: Suit.hearts, rank: Rank.ace),
+          ),
         ],
         trumpSuit: Suit.hearts,
         ledSuit: Suit.spades,
@@ -152,6 +297,34 @@ void main() {
       );
 
       // Opponent trumped → Joker steals the contested trick
+      expect(result.card.isJoker, isTrue);
+    });
+
+    test('uses Joker when non-joker legal cards cannot win trick', () {
+      final hand = [
+        GameCard.joker(),
+        const GameCard(suit: Suit.clubs, rank: Rank.seven),
+        const GameCard(suit: Suit.diamonds, rank: Rank.eight),
+      ];
+
+      final result = PlayStrategy.selectCard(
+        hand: hand,
+        trickPlays: [
+          (
+            playerUid: 'p1',
+            card: const GameCard(suit: Suit.hearts, rank: Rank.ace),
+          ),
+          (
+            playerUid: 'p3',
+            card: const GameCard(suit: Suit.hearts, rank: Rank.king),
+          ),
+        ],
+        trumpSuit: Suit.spades,
+        ledSuit: Suit.hearts,
+        mySeat: 2,
+        partnerUid: 'p0',
+      );
+
       expect(result.card.isJoker, isTrue);
     });
 
@@ -169,7 +342,10 @@ void main() {
       final result = PlayStrategy.selectCard(
         hand: hand,
         trickPlays: [
-          (playerUid: 'p1', card: const GameCard(suit: Suit.spades, rank: Rank.seven)),
+          (
+            playerUid: 'p1',
+            card: const GameCard(suit: Suit.spades, rank: Rank.seven),
+          ),
         ],
         trumpSuit: Suit.hearts,
         ledSuit: Suit.spades,
@@ -181,9 +357,7 @@ void main() {
     });
 
     test('returns a valid PlayCardAction', () {
-      final hand = [
-        const GameCard(suit: Suit.spades, rank: Rank.ace),
-      ];
+      final hand = [const GameCard(suit: Suit.spades, rank: Rank.ace)];
 
       final result = PlayStrategy.selectCard(
         hand: hand,

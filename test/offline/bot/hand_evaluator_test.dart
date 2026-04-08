@@ -3,6 +3,19 @@ import 'package:koutbh/shared/models/card.dart';
 import 'package:koutbh/offline/bot/hand_evaluator.dart';
 
 void main() {
+  group('HandEvaluator.suitDistribution', () {
+    test('groups non-joker cards by suit', () {
+      final hand = [
+        GameCard.decode('SA'),
+        GameCard.decode('S7'),
+        GameCard.joker(),
+      ];
+      final d = HandEvaluator.suitDistribution(hand);
+      expect(d[Suit.spades]?.length, 2);
+      expect(d.length, 1);
+    });
+  });
+
   group('HandEvaluator — Phase 2 honor valuation', () {
     test('King in 2-card suit scores 0.6', () {
       // Build minimal hands to isolate King contribution.
@@ -52,15 +65,16 @@ void main() {
 
       // Jack = 0.2 + voids(C,D)=0.2. Ten = 0.1 + voids(C,D)=0.2.
       expect(jackScore.expectedWinners, greaterThan(tenScore.expectedWinners));
-      expect(jackScore.expectedWinners - tenScore.expectedWinners, closeTo(0.1, 0.01));
+      expect(
+        jackScore.expectedWinners - tenScore.expectedWinners,
+        closeTo(0.1, 0.01),
+      );
     });
   });
 
   group('HandEvaluator — Phase 2 trump honor bonus', () {
     test('Trump Ace total = 0.9 + 0.5 = 1.4 contribution', () {
-      final hand = [
-        const GameCard(suit: Suit.spades, rank: Rank.ace),
-      ];
+      final hand = [const GameCard(suit: Suit.spades, rank: Rank.ace)];
 
       final withoutTrump = HandEvaluator.evaluate(hand);
       final withTrump = HandEvaluator.evaluate(hand, trumpSuit: Suit.spades);
@@ -76,9 +90,7 @@ void main() {
     });
 
     test('Trump 7 total = 0.0 + 0.3 = 0.3 contribution', () {
-      final hand = [
-        const GameCard(suit: Suit.spades, rank: Rank.seven),
-      ];
+      final hand = [const GameCard(suit: Suit.spades, rank: Rank.seven)];
 
       final withoutTrump = HandEvaluator.evaluate(hand);
       final withTrump = HandEvaluator.evaluate(hand, trumpSuit: Suit.spades);
@@ -88,7 +100,10 @@ void main() {
       expect(withoutTrump.expectedWinners, closeTo(0.3, 0.01));
       expect(withTrump.expectedWinners, closeTo(1.2, 0.01));
       // The trump 7 itself contributes 0.3
-      expect(withTrump.expectedWinners - withoutTrump.expectedWinners, closeTo(0.9, 0.01));
+      expect(
+        withTrump.expectedWinners - withoutTrump.expectedWinners,
+        closeTo(0.9, 0.01),
+      );
     });
   });
 

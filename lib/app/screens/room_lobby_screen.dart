@@ -118,10 +118,7 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen>
 
   void _copyCode() {
     Clipboard.setData(ClipboardData(text: _roomCode));
-    context.showInfoSnack(
-      'Code copied!',
-      duration: const Duration(seconds: 1),
-    );
+    context.showInfoSnack('Code copied!', duration: const Duration(seconds: 1));
   }
 
   void _shareCode() {
@@ -151,6 +148,8 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen>
         backgroundColor: KoutTheme.primary,
         title: Text(
           'Room $_roomCode',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: KoutTheme.headingStyle.copyWith(fontSize: 18),
         ),
         leading: IconButton(
@@ -159,75 +158,78 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen>
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Room code display — tap to copy
-            Tooltip(
-              message: 'Copy room code',
-              child: Semantics(
-                button: true,
-                label: 'Tap to copy room code',
-                child: GestureDetector(
-                  onTap: _copyCode,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 16,
-                    ),
-                    decoration: BoxDecoration(
-                      color: KoutTheme.primary,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: KoutTheme.accent, width: 2),
-                    ),
-                    child: Text(
-                      _roomCode,
-                      style: KoutTheme.headingStyle.copyWith(
-                        fontSize: 36,
-                        letterSpacing: 8,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Room code display — tap to copy
+              Tooltip(
+                message: 'Copy room code',
+                child: Semantics(
+                  button: true,
+                  label: 'Tap to copy room code',
+                  child: GestureDetector(
+                    onTap: _copyCode,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 16,
+                      ),
+                      decoration: BoxDecoration(
+                        color: KoutTheme.primary,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: KoutTheme.accent, width: 2),
+                      ),
+                      child: Text(
+                        _roomCode,
+                        style: KoutTheme.headingStyle.copyWith(
+                          fontSize: 36,
+                          letterSpacing: 8,
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Tap to copy',
-              style: KoutTheme.bodyStyle.copyWith(fontSize: 12),
-            ),
-            const SizedBox(height: 32),
-
-            // Seat cards
-            if (_lobbyState != null) ..._buildSeats(),
-            if (_lobbyState == null)
-              CircularProgressIndicator(color: KoutTheme.accent),
-
-            const SizedBox(height: 32),
-
-            // Action buttons
-            if (_isHost) ...[
-              AppPrimaryButton(
-                width: 220,
-                label: 'Share Code',
-                onPressed: _shareCode,
-              ),
-              const SizedBox(height: 12),
-              AppPrimaryButton(
-                width: 220,
-                label: _starting ? 'Starting...' : 'Start Game',
-                onPressed: (_lobbyState?.isFull == true && !_starting)
-                    ? _startGame
-                    : null,
-              ),
-            ] else ...[
+              const SizedBox(height: 8),
               Text(
-                'Waiting for host to start...',
-                style: KoutTheme.bodyStyle.copyWith(color: KoutTheme.accent),
+                'Tap to copy',
+                style: KoutTheme.bodyStyle.copyWith(fontSize: 12),
               ),
+              const SizedBox(height: 32),
+
+              // Seat cards
+              if (_lobbyState != null) ..._buildSeats(),
+              if (_lobbyState == null)
+                CircularProgressIndicator(color: KoutTheme.accent),
+
+              const SizedBox(height: 32),
+
+              // Action buttons
+              if (_isHost) ...[
+                AppPrimaryButton(
+                  width: 220,
+                  label: 'Share Code',
+                  onPressed: _shareCode,
+                ),
+                const SizedBox(height: 12),
+                AppPrimaryButton(
+                  width: 220,
+                  label: _starting ? 'Starting...' : 'Start Game',
+                  onPressed: (_lobbyState?.isFull == true && !_starting)
+                      ? _startGame
+                      : null,
+                ),
+              ] else ...[
+                Text(
+                  'Waiting for host to start...',
+                  style: KoutTheme.bodyStyle.copyWith(color: KoutTheme.accent),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );

@@ -100,104 +100,103 @@ class _RoundResultOverlayState extends State<RoundResultOverlay>
         letterSpacing: 1.5,
       ),
       constraints: const BoxConstraints(minWidth: 300, maxWidth: 340),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // 2. Trick breakdown box ([OverlayPanel] already adds sectionGap after title)
-            Container(
-              width: double.infinity,
-              padding: OverlayStyles.infoBoxPadding,
-              decoration: OverlayStyles.infoBoxDecoration(),
-              child: Column(
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // 2. Trick breakdown box ([OverlayPanel] already adds sectionGap after title)
+          Container(
+            width: double.infinity,
+            padding: OverlayStyles.infoBoxPadding,
+            decoration: OverlayStyles.infoBoxDecoration(),
+            child: Column(
+              children: [
+                _trickRow(
+                  'Your Team',
+                  '$myTricks tricks',
+                  KoutTheme.teamAColor,
+                ),
+                const SizedBox(height: 6),
+                _trickRow(
+                  'Opponent',
+                  '$opponentTricks tricks',
+                  KoutTheme.teamBColor,
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'Bid: $bidLabel ($bidderLabel) - $bidStatusText',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: KoutTheme.textColor,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 18),
+
+          // 3. Tug-of-war score change
+          AnimatedBuilder(
+            animation: _progressAnimation,
+            builder: (context, _) {
+              final t = _progressAnimation.value;
+              final displayScore = (prevTug + (curTug - prevTug) * t).round();
+              final scoreColor = curLeader == Team.a
+                  ? KoutTheme.teamAColor
+                  : curLeader == Team.b
+                  ? KoutTheme.teamBColor
+                  : KoutTheme.textColor;
+              final leaderLabel = curLeader == null
+                  ? 'Tied'
+                  : curLeader == myTeam
+                  ? 'Your Team leads'
+                  : 'Opponent leads';
+              return Column(
                 children: [
-                  _trickRow(
-                    'Your Team',
-                    '$myTricks tricks',
-                    KoutTheme.teamAColor,
-                  ),
-                  const SizedBox(height: 6),
-                  _trickRow(
-                    'Opponent',
-                    '$opponentTricks tricks',
-                    KoutTheme.teamBColor,
-                  ),
-                  const SizedBox(height: 10),
                   Text(
-                    'Bid: $bidLabel ($bidderLabel) - $bidStatusText',
-                    style: const TextStyle(
-                      color: KoutTheme.textColor,
-                      fontSize: 13,
+                    '$displayScore',
+                    style: TextStyle(
+                      color: scoreColor,
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    leaderLabel,
+                    style: TextStyle(
+                      color: scoreColor,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ],
-              ),
-            ),
-            const SizedBox(height: 18),
+              );
+            },
+          ),
+          const SizedBox(height: 18),
 
-            // 3. Tug-of-war score change
-            AnimatedBuilder(
-              animation: _progressAnimation,
-              builder: (context, _) {
-                final t = _progressAnimation.value;
-                final displayScore = (prevTug + (curTug - prevTug) * t).round();
-                final scoreColor = curLeader == Team.a
-                    ? KoutTheme.teamAColor
-                    : curLeader == Team.b
-                    ? KoutTheme.teamBColor
-                    : KoutTheme.textColor;
-                final leaderLabel = curLeader == null
-                    ? 'Tied'
-                    : curLeader == myTeam
-                    ? 'Your Team leads'
-                    : 'Opponent leads';
-                return Column(
-                  children: [
-                    Text(
-                      '$displayScore',
-                      style: TextStyle(
-                        color: scoreColor,
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      leaderLabel,
-                      style: TextStyle(
-                        color: scoreColor,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
-            const SizedBox(height: 18),
-
-            // 4. Single tug-of-war progress bar
-            AnimatedBuilder(
-              animation: _progressAnimation,
-              builder: (context, _) {
-                final t = _progressAnimation.value;
-                final scoreColor = curLeader == Team.a
-                    ? KoutTheme.teamAColor
-                    : curLeader == Team.b
-                    ? KoutTheme.teamBColor
-                    : KoutTheme.textColor;
-                return _progressBar(
-                  label: 'Score',
-                  fromScore: prevTug,
-                  toScore: curTug,
-                  t: t,
-                  color: scoreColor,
-                );
-              },
-            ),
-            const SizedBox(height: 22),
-          ],
-        ),
+          // 4. Single tug-of-war progress bar
+          AnimatedBuilder(
+            animation: _progressAnimation,
+            builder: (context, _) {
+              final t = _progressAnimation.value;
+              final scoreColor = curLeader == Team.a
+                  ? KoutTheme.teamAColor
+                  : curLeader == Team.b
+                  ? KoutTheme.teamBColor
+                  : KoutTheme.textColor;
+              return _progressBar(
+                label: 'Score',
+                fromScore: prevTug,
+                toScore: curTug,
+                t: t,
+                color: scoreColor,
+              );
+            },
+          ),
+          const SizedBox(height: 22),
+        ],
       ),
       actions: [
         Center(
@@ -218,14 +217,19 @@ class _RoundResultOverlayState extends State<RoundResultOverlay>
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: color,
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
+        Expanded(
+          child: Text(
+            label,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: color,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
+        const SizedBox(width: 8),
         Text(
           value,
           style: const TextStyle(color: KoutTheme.textColor, fontSize: 14),
@@ -252,12 +256,16 @@ class _RoundResultOverlayState extends State<RoundResultOverlay>
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              label,
-              style: TextStyle(
-                color: color,
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
+            Expanded(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
             Text(

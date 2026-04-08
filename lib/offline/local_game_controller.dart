@@ -96,9 +96,7 @@ class LocalGameController {
     _state.phase = GamePhase.dealing;
     final deck = Deck.fourPlayer();
     final dealt = deck.deal(4);
-    _state.hands = {
-      for (int i = 0; i < 4; i++) i: dealt[i],
-    };
+    _state.hands = {for (int i = 0; i < 4; i++) i: dealt[i]};
 
     // Validate all hands have exactly 8 cards
     for (int i = 0; i < 4; i++) {
@@ -124,22 +122,32 @@ class LocalGameController {
   }
 
   /// Context-aware bot delay for any phase.
-  Future<void> _botDelay(int seat, {bool isBidding = false, bool isPassing = false, bool isForced = false, BidAmount? amount, int legalMoves = 1}) async {
+  Future<void> _botDelay(
+    int seat, {
+    bool isBidding = false,
+    bool isPassing = false,
+    bool isForced = false,
+    BidAmount? amount,
+    int legalMoves = 1,
+  }) async {
     if (controllers[seat] is! HumanPlayerController && enableDelays) {
-      await Future.delayed(GameTiming.botThinkingDelay(
-        legalMoves: legalMoves,
-        trickNumber: isBidding ? 0 : _state.trickNumber,
-        isBidding: isBidding,
-        isPassing: isPassing,
-        isForcedBid: isForced,
-        bidAmount: amount,
-      ));
+      await Future.delayed(
+        GameTiming.botThinkingDelay(
+          legalMoves: legalMoves,
+          trickNumber: isBidding ? 0 : _state.trickNumber,
+          isBidding: isBidding,
+          isPassing: isPassing,
+          isForcedBid: isForced,
+          bidAmount: amount,
+        ),
+      );
     }
   }
 
   Future<bool> _bidding() async {
     _state.phase = GamePhase.bidding;
     _state.currentSeat = nextSeat(_state.dealerSeat);
+    final actedPlayers = <int>{};
     _emitState();
 
     while (!_disposed) {
@@ -164,10 +172,13 @@ class LocalGameController {
         isForced: isForced,
         passedPlayers: List.unmodifiable(_state.passedPlayers),
       );
-      final action = await controllers[_state.currentSeat]!
-          .decideAction(clientState, context);
+      final action = await controllers[_state.currentSeat]!.decideAction(
+        clientState,
+        context,
+      );
       if (_disposed) return false;
 
+      var actionAccepted = false;
       if (action is BidAction) {
         final result = BidValidator.validateBid(
           bidAmount: action.amount,
@@ -179,6 +190,7 @@ class LocalGameController {
           _state.bid = action.amount;
           _state.bidderSeat = _state.currentSeat;
           _bidWasForced = isForced; // Track forced bid for play phase
+          actionAccepted = true;
           _state.bidHistory = [
             ..._state.bidHistory,
             (seat: _state.currentSeat, action: '${action.amount.value}'),
@@ -198,12 +210,22 @@ class LocalGameController {
         );
         if (result.isValid) {
           _state.passedPlayers = [..._state.passedPlayers, _state.currentSeat];
+          actionAccepted = true;
           _state.bidHistory = [
             ..._state.bidHistory,
             (seat: _state.currentSeat, action: 'pass'),
           ];
           _emitState();
         }
+      }
+
+      if (actionAccepted) {
+        actedPlayers.add(_state.currentSeat);
+      }
+
+      // End bidding after a single full table cycle.
+      if (actedPlayers.length >= seats.length) {
+        return _state.bid != null;
       }
 
       // Check if bidding complete (3 passed, 1 bidder with a bid)
@@ -227,8 +249,10 @@ class LocalGameController {
     await _botDelay(_state.bidderSeat!, isBidding: true, amount: _state.bid);
 
     final clientState = _toClientState(_state, _state.bidderSeat!);
-    final action = await controllers[_state.bidderSeat!]!
-        .decideAction(clientState, TrumpContext());
+    final action = await controllers[_state.bidderSeat!]!.decideAction(
+      clientState,
+      TrumpContext(isForcedBid: _bidWasForced),
+    );
     if (_disposed) return;
 
     if (action is TrumpAction) {
@@ -306,15 +330,13 @@ class LocalGameController {
 
   /// Resolve trick winner and update trick counts.
   Future<int> _resolveTrick(List<TrickPlay> trickPlays, int leaderSeat) async {
-    final resolvedTrick = Trick(
-      leadPlayerIndex: leaderSeat,
-      plays: trickPlays,
+    final resolvedTrick = Trick(leadPlayerIndex: leaderSeat, plays: trickPlays);
+    final winnerSeat = TrickResolver.resolve(
+      resolvedTrick,
+      trumpSuit: _state.trumpSuit!,
     );
-    final winnerSeat =
-        TrickResolver.resolve(resolvedTrick, trumpSuit: _state.trumpSuit!);
     final winnerTeam = teamForSeat(winnerSeat);
-    _state.trickCounts[winnerTeam] =
-        (_state.trickCounts[winnerTeam] ?? 0) + 1;
+    _state.trickCounts[winnerTeam] = (_state.trickCounts[winnerTeam] ?? 0) + 1;
     _state.trickWinners = [..._state.trickWinners, winnerTeam];
     _emitState();
     return winnerSeat;
@@ -359,9 +381,15 @@ class LocalGameController {
     // Retry loop: bots always play valid cards; humans might tap invalid.
     while (!_disposed) {
       final clientState = _toClientState(_state, seat);
-      final context = PlayContext(ledSuit: ledSuit, isForced: _bidWasForced);
-      final action = await controllers[seat]!
-          .decideAction(clientState, context);
+      final context = PlayContext(
+        ledSuit: ledSuit,
+        isForced: _bidWasForced,
+        tracker: tracker,
+      );
+      final action = await controllers[seat]!.decideAction(
+        clientState,
+        context,
+      );
       if (_disposed) return _PlayResult.ok;
 
       if (action is! PlayCardAction) continue;
@@ -433,7 +461,9 @@ class LocalGameController {
 
     // Kout success = instant win (set to 31). Kout failure = 16 penalty (regular scoring).
     final bidderTeam = teamForSeat(_state.bidderSeat!);
-    if (!poisonJoker && _state.bid!.isKout && result.winningTeam == bidderTeam) {
+    if (!poisonJoker &&
+        _state.bid!.isKout &&
+        result.winningTeam == bidderTeam) {
       _state.scores = Scorer.applyKout(winningTeam: result.winningTeam);
     } else {
       _state.scores = Scorer.applyScore(
@@ -446,6 +476,7 @@ class LocalGameController {
     _emitState();
 
     if (enableDelays) await Future.delayed(GameTiming.scoringDelay);
+    _state.roundIndex++;
   }
 
   Suit? _getLedSuit() {
@@ -462,6 +493,7 @@ class LocalGameController {
 
     return ClientGameState(
       phase: full.phase,
+      roundIndex: full.roundIndex,
       playerUids: full.players.map((p) => p.uid).toList(),
       scores: full.scores,
       tricks: full.trickCounts,
@@ -473,9 +505,7 @@ class LocalGameController {
           ? full.players[full.bidderSeat!].uid
           : null,
       currentTrickPlays: full.currentTrickPlays
-          .map(
-            (p) => (playerUid: full.players[p.seat].uid, card: p.card),
-          )
+          .map((p) => (playerUid: full.players[p.seat].uid, card: p.card))
           .toList(),
       myHand: List<GameCard>.from(full.hands[forSeat] ?? []),
       myUid: full.players[forSeat].uid,
@@ -488,8 +518,9 @@ class LocalGameController {
       debugAllHands: kDebugMode
           ? {
               for (int i = 0; i < full.players.length; i++)
-                full.players[i].uid:
-                    List<GameCard>.from(full.hands[i] ?? const []),
+                full.players[i].uid: List<GameCard>.from(
+                  full.hands[i] ?? const [],
+                ),
             }
           : null,
     );

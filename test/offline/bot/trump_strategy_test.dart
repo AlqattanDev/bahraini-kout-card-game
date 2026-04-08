@@ -67,8 +67,11 @@ void main() {
       ];
 
       final trump = TrumpStrategy.selectTrump(hand);
-      expect(trump, isNot(Suit.spades),
-          reason: 'Single-card suit should not be chosen over 2+ card suits');
+      expect(
+        trump,
+        isNot(Suit.spades),
+        reason: 'Single-card suit should not be chosen over 2+ card suits',
+      );
     });
 
     test('Kout prefers A-K-Q in 3 cards over 7-8-9-10 in 4 cards', () {
@@ -84,10 +87,12 @@ void main() {
         const GameCard(suit: Suit.diamonds, rank: Rank.seven),
       ];
 
-      final trump =
-          TrumpStrategy.selectTrump(hand, bidLevel: BidAmount.kout);
-      expect(trump, Suit.hearts,
-          reason: 'Kout should prefer strength over length');
+      final trump = TrumpStrategy.selectTrump(hand, bidLevel: BidAmount.kout);
+      expect(
+        trump,
+        Suit.hearts,
+        reason: 'Kout should prefer strength over length',
+      );
     });
 
     test('Bab prefers 5 low cards over 3 high cards', () {
@@ -108,10 +113,12 @@ void main() {
         const GameCard(suit: Suit.diamonds, rank: Rank.seven),
       ];
 
-      final trump =
-          TrumpStrategy.selectTrump(hand, bidLevel: BidAmount.bab);
-      expect(trump, Suit.clubs,
-          reason: 'Bab should prefer length over strength');
+      final trump = TrumpStrategy.selectTrump(hand, bidLevel: BidAmount.bab);
+      expect(
+        trump,
+        Suit.clubs,
+        reason: 'Bab should prefer length over strength',
+      );
     });
 
     test('side suit A-K boosts score', () {
@@ -156,8 +163,11 @@ void main() {
       // Hearts should win: internal strength (10.0) + side King (0.5) = 10.5
       // Spades: 7.5 + side Ace+King (1.4) = 8.9
       // Clubs: 6.5 + side Ace (0.9) = 7.4
-      expect(trump, Suit.hearts,
-          reason: 'Side suit Aces/Kings should boost trump selection');
+      expect(
+        trump,
+        Suit.hearts,
+        reason: 'Side suit Aces/Kings should boost trump selection',
+      );
       // Also verify that clubs (with K) doesn't beat spades (no honors)
       // despite having a King — length matters more.
       expect(trump, isNot(Suit.clubs));
@@ -198,12 +208,12 @@ void main() {
         const GameCard(suit: Suit.diamonds, rank: Rank.seven),
       ];
 
-      final trump = TrumpStrategy.selectTrump(
-        hand,
-        isForcedBid: true,
+      final trump = TrumpStrategy.selectTrump(hand, isForcedBid: true);
+      expect(
+        trump,
+        Suit.clubs,
+        reason: 'Forced bid should pick longest suit regardless of strength',
       );
-      expect(trump, Suit.clubs,
-          reason: 'Forced bid should pick longest suit regardless of strength');
     });
   });
 }

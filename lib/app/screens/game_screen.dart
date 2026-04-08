@@ -73,10 +73,7 @@ class _GameScreenState extends State<GameScreen> {
         final controllers = <int, PlayerController>{};
         for (final seat in seats) {
           controllers[seat.seatIndex] = seat.isBot
-              ? BotPlayerController(
-                  seatIndex: seat.seatIndex,
-                  difficulty: seat.difficulty,
-                )
+              ? BotPlayerController(seatIndex: seat.seatIndex)
               : humanController;
         }
         _localController = LocalGameController(
@@ -104,9 +101,7 @@ class _GameScreenState extends State<GameScreen> {
   @override
   Widget build(BuildContext context) {
     if (_koutGame == null) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     // Read safe area insets and pass to game engine
@@ -119,100 +114,100 @@ class _GameScreenState extends State<GameScreen> {
           GameWidget(
             game: _koutGame!,
             overlayBuilderMap: {
-          'bid': (context, game) {
-            final koutGame = game as KoutGame;
-            final state = koutGame.currentState;
-            return BidOverlay(
-              currentHighBid: state?.currentBid,
-              isForced: koutGame.isHumanForced,
-              onBid: (amount) {
-                koutGame.overlays.remove('bid');
-                final bidAmount = BidAmount.fromValue(amount);
-                if (bidAmount != null) {
-                  koutGame.inputSink.placeBid(bidAmount);
-                }
-              },
-              onPass: () {
-                koutGame.overlays.remove('bid');
-                koutGame.inputSink.pass();
-              },
-            );
-          },
-          'trump': (context, game) {
-            final koutGame = game as KoutGame;
-            return TrumpSelectorOverlay(
-              onSelect: (suit) {
-                koutGame.overlays.remove('trump');
-                koutGame.inputSink.selectTrump(
-                  Suit.values.firstWhere((e) => e.name == suit),
+              'bid': (context, game) {
+                final koutGame = game as KoutGame;
+                final state = koutGame.currentState;
+                return BidOverlay(
+                  currentHighBid: state?.currentBid,
+                  isForced: koutGame.isHumanForced,
+                  onBid: (amount) {
+                    koutGame.overlays.remove('bid');
+                    final bidAmount = BidAmount.fromValue(amount);
+                    if (bidAmount != null) {
+                      koutGame.inputSink.placeBid(bidAmount);
+                    }
+                  },
+                  onPass: () {
+                    koutGame.overlays.remove('bid');
+                    koutGame.inputSink.pass();
+                  },
                 );
               },
-            );
-          },
-          'bidAnnouncement': (context, game) {
-            final koutGame = game as KoutGame;
-            final state = koutGame.currentState;
-            if (state == null) return const SizedBox.shrink();
-            return BidAnnouncementOverlay(state: state);
-          },
-          'roundResult': (context, game) {
-            final koutGame = game as KoutGame;
-            final state = koutGame.currentState;
-            if (state == null) return const SizedBox.shrink();
-            return RoundResultOverlay(
-              state: state,
-              previousScoreA: koutGame.previousScoreA,
-              previousScoreB: koutGame.previousScoreB,
-              onContinue: () {
-                koutGame.overlays.remove('roundResult');
-              },
-            );
-          },
-          'gameOver': (context, game) {
-            final koutGame = game as KoutGame;
-            final state = koutGame.currentState;
-            if (state == null) return const SizedBox.shrink();
-            return GameOverOverlay(
-              state: state,
-              onPlayAgain: () {
-                koutGame.overlays.remove('gameOver');
-                if (_gameMode is OfflineGameMode) {
-                  Navigator.of(context).pushReplacementNamed(
-                    AppRoutes.game,
-                    arguments: _gameMode,
-                  );
-                } else {
-                  Navigator.of(context)
-                      .pushNamedAndRemoveUntil(AppRoutes.home, (route) => false);
-                }
-              },
-              onReturnToMenu: () {
-                koutGame.overlays.remove('gameOver');
-                Navigator.of(context).pushNamedAndRemoveUntil(
-                  AppRoutes.home,
-                  (route) => false,
+              'trump': (context, game) {
+                final koutGame = game as KoutGame;
+                return TrumpSelectorOverlay(
+                  onSelect: (suit) {
+                    koutGame.overlays.remove('trump');
+                    koutGame.inputSink.selectTrump(
+                      Suit.values.firstWhere((e) => e.name == suit),
+                    );
+                  },
                 );
               },
-              onVictoryAnimationReady: () {
-                koutGame.spawnVictoryParticles();
+              'bidAnnouncement': (context, game) {
+                final koutGame = game as KoutGame;
+                final state = koutGame.currentState;
+                if (state == null) return const SizedBox.shrink();
+                return BidAnnouncementOverlay(state: state);
               },
-            );
-          },
-          'connectionStatus': (context, game) {
-            final koutGame = game as KoutGame;
-            return ConnectionStatusOverlay(
-              status: koutGame.connectionStatus,
-              reconnectAttempt: koutGame.reconnectAttempt,
-              onReturnToMenu: () {
-                koutGame.overlays.remove('connectionStatus');
-                Navigator.of(context).pushNamedAndRemoveUntil(
-                  AppRoutes.home,
-                  (route) => false,
+              'roundResult': (context, game) {
+                final koutGame = game as KoutGame;
+                final state = koutGame.currentState;
+                if (state == null) return const SizedBox.shrink();
+                return RoundResultOverlay(
+                  state: state,
+                  previousScoreA: koutGame.previousScoreA,
+                  previousScoreB: koutGame.previousScoreB,
+                  onContinue: () {
+                    koutGame.overlays.remove('roundResult');
+                  },
                 );
               },
-            );
-          },
-        },
+              'gameOver': (context, game) {
+                final koutGame = game as KoutGame;
+                final state = koutGame.currentState;
+                if (state == null) return const SizedBox.shrink();
+                return GameOverOverlay(
+                  state: state,
+                  onPlayAgain: () {
+                    koutGame.overlays.remove('gameOver');
+                    if (_gameMode is OfflineGameMode) {
+                      Navigator.of(context).pushReplacementNamed(
+                        AppRoutes.game,
+                        arguments: _gameMode,
+                      );
+                    } else {
+                      Navigator.of(context).pushNamedAndRemoveUntil(
+                        AppRoutes.home,
+                        (route) => false,
+                      );
+                    }
+                  },
+                  onReturnToMenu: () {
+                    koutGame.overlays.remove('gameOver');
+                    Navigator.of(
+                      context,
+                    ).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false);
+                  },
+                  onVictoryAnimationReady: () {
+                    koutGame.spawnVictoryParticles();
+                  },
+                );
+              },
+              'connectionStatus': (context, game) {
+                final koutGame = game as KoutGame;
+                return ConnectionStatusOverlay(
+                  status: koutGame.connectionStatus,
+                  reconnectAttempt: koutGame.reconnectAttempt,
+                  onReturnToMenu: () {
+                    koutGame.overlays.remove('connectionStatus');
+                    Navigator.of(
+                      context,
+                    ).pushNamedAndRemoveUntil(AppRoutes.home, (route) => false);
+                  },
+                );
+              },
+            },
           ),
         ],
       ),
