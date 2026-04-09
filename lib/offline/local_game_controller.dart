@@ -356,8 +356,9 @@ class LocalGameController {
   }) async {
     final hand = _state.hands[seat]!;
 
-    // Poison Joker: last card is joker → automatic loss
-    if (PlayValidator.detectPoisonJoker(hand)) {
+    // Poison Joker: only triggers when must lead and only card is Joker.
+    // When following, Joker is a legal play — no poison.
+    if (isLead && PlayValidator.detectPoisonJoker(hand)) {
       _state.currentSeat = seat;
       _emitState();
       return _PlayResult.poisonJoker;
