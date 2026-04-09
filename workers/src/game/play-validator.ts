@@ -21,6 +21,11 @@ export function validatePlay(
 
   const cardObj = decodeCard(card);
 
+  // Joker can never be led.
+  if (isLeadPlay && cardObj.isJoker) {
+    return { valid: false, error: 'joker-cannot-lead' };
+  }
+
   // Kout rule: first trick leader must play trump if they have it.
   if (isKout && isLeadPlay && isFirstTrick && trumpSuit) {
     const hasTrump = hand.some((c) => {
@@ -31,8 +36,6 @@ export function validatePlay(
       return { valid: false, error: 'must-lead-trump' };
     }
   }
-
-  // Joker CAN be led — but triggers immediate round loss (handled by game room).
 
   if (!isLeadPlay && ledSuit !== null) {
     const hasLedSuit = hand.some((c) => {
@@ -53,8 +56,3 @@ export function detectPoisonJoker(hand: string[]): boolean {
   return card.isJoker;
 }
 
-/** Returns true when a Joker is played as the lead card of a trick. */
-export function detectJokerLead(card: string, isLeadPlay: boolean): boolean {
-  const decoded = decodeCard(card);
-  return isLeadPlay && decoded.isJoker;
-}
