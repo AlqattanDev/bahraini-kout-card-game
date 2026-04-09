@@ -46,18 +46,19 @@ void main() {
         '7+8 rate: ${((highBidRate * 100)).toStringAsFixed(1)}%',
       );
 
-      // Sanity checks to prevent regressions toward ultra-safe bots.
-      expect(bidRate, greaterThan(0.45));
-      expect(highBidRate, greaterThan(0.12));
+      // Sanity checks — new strategy uses higher thresholds (5.0+) with
+      // shape floors, so per-player bid rate is lower than old strategy.
+      // In a 4-player game, forced-bid ensures every round has a bidder.
+      expect(bidRate, greaterThan(0.25));
+      expect(bidRate, lessThan(0.60));
 
-      // Human-like aggression band: enough 7s, rare reckless Kout in neutral samples.
-      expect(
-        (bidCounts[BidAmount.seven] ?? 0) / sampleSize,
-        greaterThan(0.08),
-      );
+      // High bids (7+8) should be rare on random hands.
+      expect(highBidRate, lessThan(0.05));
+
+      // Kout should be very rare on random deals.
       expect(
         (bidCounts[BidAmount.kout] ?? 0) / sampleSize,
-        lessThan(0.05),
+        lessThan(0.02),
       );
     });
   });

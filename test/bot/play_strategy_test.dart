@@ -357,23 +357,24 @@ void main() {
     });
 
     test(
-      '10. no Ace → leads LOW from longest non-trump suit (P5.5 probing)',
+      '10. no Ace, no singletons → leads LOW from longest non-trump suit',
       () {
+        // No singletons so singleton-void priority doesn't fire.
         final result = select(
           hand: [
             GameCard.decode('SK'),
             GameCard.decode('SQ'),
             GameCard.decode('S10'),
             GameCard.decode('HK'),
+            GameCard.decode('H9'),
             GameCard.decode('C9'),
             GameCard.decode('C8'),
             GameCard.decode('DK'),
-            GameCard.decode('D9'),
           ],
           trickPlays: [],
           trumpSuit: Suit.diamonds,
         );
-        // Spades is longest non-trump (3), leads LOW = S10 (probe cheaply)
+        // Spades is longest non-trump (3), leads LOW = S10
         expect(result.card, GameCard.decode('S10'));
       },
     );
