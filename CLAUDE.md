@@ -14,7 +14,7 @@ These are non-obvious domain rules that can't be derived from reading code alone
 
 **Dealer rotation:** Random at start. After each round, losing team deals. Dealer stays if already on losing team, otherwise rotates one step CCW to land on losing team. Tied = dealer stays.
 
-**Bidding:** Bids 5 (Bab), 6, 7, 8 (Kout). Must exceed current highest. Starts with seat after dealer, goes CCW. Pass = permanently out. Kout ends bidding immediately. **Forced bid:** if 3 pass with no bid, last player MUST bid Bab. If someone already bid, last player CAN pass. No malzoom/reshuffle.
+**Bidding:** Bids 5 (Bab), 6, 7, 8 (Kout). Must exceed current highest. **Single CCW orbit:** each player bids or passes once (no second lap). Starts with seat after dealer, goes CCW. Pass = permanently out. Kout ends bidding immediately. **Forced bid:** if 3 pass with no bid, last player MUST bid Bab. If someone already bid, last player CAN pass. No malzoom/reshuffle.
 
 **Trump:** Winning bidder picks trump suit.
 

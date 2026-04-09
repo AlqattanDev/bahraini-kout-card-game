@@ -1,11 +1,13 @@
 import { DurableObject } from "cloudflare:workers";
 import type { Env } from "../env";
-import type {
-  GameDocument,
-  TeamName,
-  SuitName,
-  TrickPlay,
-  PendingEvent,
+import {
+  type GameDocument,
+  type BiddingState,
+  type TeamName,
+  type SuitName,
+  type TrickPlay,
+  type PendingEvent,
+  PLAYER_COUNT,
 } from "./types";
 import { buildFourPlayerDeck, dealHands } from "./deck";
 import { decodeCard } from "./card";
@@ -434,6 +436,25 @@ export class GameRoom extends DurableObject<Env> {
 
   // ─── Game Action Handlers ────────────────────────────────────────────────
 
+  /** One CCW orbit: each player has exactly one bid or pass (Kout ends earlier). */
+  private async finishBiddingAfterSingleOrbit(
+    game: GameDocument,
+    biddingState: BiddingState
+  ): Promise<void> {
+    if (biddingState.highestBid === null || biddingState.highestBidder === null) {
+      throw new Error("Bidding orbit complete without a winning bid");
+    }
+    game.phase = "TRUMP_SELECTION";
+    game.bid = {
+      player: biddingState.highestBidder,
+      amount: biddingState.highestBid,
+    };
+    game.biddingState = biddingState;
+    game.currentPlayer = biddingState.highestBidder;
+    await this.persistAndBroadcast();
+    await this.checkAndScheduleBotTurn();
+  }
+
   private async handleBid(uid: string, bidAmount: number): Promise<void> {
     const game = this.game!;
     if (game.phase !== "BIDDING") throw new Error("Not in BIDDING phase");
@@ -453,7 +474,8 @@ export class GameRoom extends DurableObject<Env> {
       if (!validation.valid) throw new Error(validation.error!);
 
       const newPassed = [...biddingState.passed, uid];
-      game.bidHistory = [...(game.bidHistory ?? []), { player: uid, action: "pass" }];
+      const newHistory = [...(game.bidHistory ?? []), { player: uid, action: "pass" }];
+      game.bidHistory = newHistory;
 
       // Check if bidding is complete (3 passed + existing bid)
       const complete = checkBiddingComplete(
@@ -472,16 +494,23 @@ export class GameRoom extends DurableObject<Env> {
         return;
       }
 
+      const afterPass: BiddingState = { ...biddingState, passed: newPassed };
+      if (newHistory.length >= PLAYER_COUNT) {
+        await this.finishBiddingAfterSingleOrbit(game, afterPass);
+        return;
+      }
+
       // Advance to next bidder
       const currentIndex = game.players.indexOf(uid);
       const nextPlayer = this.nextBidder(game.players, currentIndex, newPassed);
-      game.biddingState = { ...biddingState, passed: newPassed, currentBidder: nextPlayer };
+      game.biddingState = { ...afterPass, currentBidder: nextPlayer };
       game.currentPlayer = nextPlayer;
     } else {
       const validation = validateBid(bidAmount, biddingState.highestBid, biddingState.passed, uid);
       if (!validation.valid) throw new Error(validation.error!);
 
-      game.bidHistory = [...(game.bidHistory ?? []), { player: uid, action: String(bidAmount) }];
+      const newHistory = [...(game.bidHistory ?? []), { player: uid, action: String(bidAmount) }];
+      game.bidHistory = newHistory;
 
       // Check if Kout (bid 8) — immediate end of bidding
       if (bidAmount === 8) {
@@ -500,12 +529,22 @@ export class GameRoom extends DurableObject<Env> {
 
       const currentIndex = game.players.indexOf(uid);
       const nextPlayer = this.nextBidder(game.players, currentIndex, biddingState.passed);
-      game.biddingState = {
+      const updated: BiddingState = {
         ...biddingState,
         highestBid: bidAmount,
         highestBidder: uid,
         currentBidder: nextPlayer,
       };
+
+      if (newHistory.length >= PLAYER_COUNT) {
+        await this.finishBiddingAfterSingleOrbit(game, {
+          ...updated,
+          currentBidder: uid,
+        });
+        return;
+      }
+
+      game.biddingState = updated;
       game.currentPlayer = nextPlayer;
     }
 

@@ -47,7 +47,7 @@ Fonts: IBM Plex Mono (Latin), Noto Kufi Arabic (Arabic).
 - 4 players, 2 teams: seats 0,2 = Team A, seats 1,3 = Team B
 - Counter-clockwise play: `nextSeat(i) = (i - 1 + 4) % 4`
 - Card encoding: suit letter + rank. "SA" = Ace of Spades, "JO" = Joker
-- Bids: 5 (Bab), 6, 7, 8 (Kout). Kout ends bidding immediately.
+- Bids: 5 (Bab), 6, 7, 8 (Kout). One CCW orbit per player (bid or pass once); Kout ends bidding immediately.
 
 ## Conventions
 
