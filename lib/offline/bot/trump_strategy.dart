@@ -1,6 +1,7 @@
 import 'package:koutbh/shared/models/card.dart';
 import 'package:koutbh/shared/models/bid.dart';
 import 'package:koutbh/shared/logic/card_utils.dart';
+import 'package:koutbh/offline/bot/bot_settings.dart';
 
 /// Per-rank weights for trump suit strength accumulation.
 double _trumpSuitStrengthWeight(Rank rank) => switch (rank) {
@@ -31,7 +32,6 @@ class TrumpStrategy {
   static Suit selectTrump(
     List<GameCard> hand, {
     BidAmount? bidLevel,
-    bool isForcedBid = false,
     double? lengthWeight,
     double? strengthWeight,
   }) {
@@ -46,27 +46,6 @@ class TrumpStrategy {
           (suitStrength[suit] ?? 0) + _trumpSuitStrengthWeight(card.rank!);
     }
 
-    if (isForcedBid) {
-      Suit? longest;
-      int maxCount = 0;
-      double bestTb = -1;
-      for (final entry in suitCounts.entries) {
-        final n = entry.value;
-        final tb = _honorTiebreak(
-          hand.where((x) => !x.isJoker && x.suit == entry.key).toList(),
-        );
-        if (n > maxCount) {
-          maxCount = n;
-          longest = entry.key;
-          bestTb = tb;
-        } else if (n == maxCount && tb > bestTb) {
-          longest = entry.key;
-          bestTb = tb;
-        }
-      }
-      return longest ?? Suit.spades;
-    }
-
     final validSuits = suitCounts.entries
         .where((e) => e.value >= 2)
         .map((e) => e.key)
@@ -77,8 +56,8 @@ class TrumpStrategy {
 
     double trumpScore(int count, double strength, BidAmount? bid) {
       final isKout = bid == BidAmount.kout;
-      final lw = lengthWeight ?? (isKout ? 1.5 : 2.0);
-      final sw = strengthWeight ?? (isKout ? 2.0 : 1.0);
+      final lw = lengthWeight ?? (isKout ? 1.5 : BotSettings.trumpLengthWeight);
+      final sw = strengthWeight ?? (isKout ? 2.0 : BotSettings.trumpStrengthWeight);
       return count * lw + strength * sw;
     }
 

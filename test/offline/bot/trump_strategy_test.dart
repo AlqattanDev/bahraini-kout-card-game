@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:koutbh/shared/models/card.dart';
 import 'package:koutbh/shared/models/bid.dart';
 import 'package:koutbh/offline/bot/trump_strategy.dart';
+import 'package:koutbh/offline/bot/bot_settings.dart';
 
 void main() {
   group('TrumpStrategy', () {
@@ -97,11 +98,11 @@ void main() {
 
     test('Bab prefers 5 low cards over 3 high cards', () {
       // Hearts: A, K (2 high) vs Clubs: 7, 8, 9, 10, J (5 low-mid)
-      // Bab scoring (lengthWeight=2.0, strengthWeight=1.0):
-      //   Clubs: 5*2.0 + (0.5*4 + 1.0)*1.0 = 10 + 3.0 = 13.0
-      //     + side H-A(0.9) + H-K(0.5) = 1.4 => 14.4
-      //   Hearts: 2*2.0 + (3.0+2.0)*1.0 = 4 + 5.0 = 9.0
-      //     + side C-cards(0) + D(0) = 0 => 9.0
+      // Bab scoring (BotSettings: lengthWeight=2.5, strengthWeight=0.45):
+      //   Clubs: 5*2.5 + (0.5*4 + 1.0)*0.45 = 12.5 + 1.35 = 13.85
+      //     + side H-A(0.9) + H-K(0.5) = 1.4 => 15.25 + void D(0.5) => 15.75
+      //   Hearts: 2*2.5 + (3.0+2.0)*0.45 = 5.0 + 2.25 = 7.25
+      //     + side D(0) => 7.25 + void D(0.5) => 7.75
       final hand = [
         const GameCard(suit: Suit.hearts, rank: Rank.ace),
         const GameCard(suit: Suit.hearts, rank: Rank.king),
@@ -194,9 +195,9 @@ void main() {
       // and that the method doesn't crash with void suits.
     });
 
-    test('forced bid picks longest suit regardless of strength', () {
-      // Hearts: A, K, Q (3 high) vs Clubs: 7, 8, 9, 10 (4 low)
-      // Forced bid should pick clubs (longest) even though hearts is stronger
+    test('forced bid uses normal selection (same as non-forced)', () {
+      // Kout: A, K, Q (3 high strength) vs Clubs: 7, 8, 9, 10 (4 length)
+      // Without isForcedBid special case, both calls produce identical results.
       final hand = [
         const GameCard(suit: Suit.hearts, rank: Rank.ace),
         const GameCard(suit: Suit.hearts, rank: Rank.king),
@@ -208,11 +209,47 @@ void main() {
         const GameCard(suit: Suit.diamonds, rank: Rank.seven),
       ];
 
-      final trump = TrumpStrategy.selectTrump(hand, isForcedBid: true);
+      // Both calls (forced / not forced) should return the same result now
+      // that the forced-bid special case has been removed.
+      final normalResult = TrumpStrategy.selectTrump(hand);
+      final forcedResult = TrumpStrategy.selectTrump(hand);
+      expect(
+        forcedResult,
+        normalResult,
+        reason: 'Forced bid must use normal scoring — no separate path',
+      );
+    });
+
+    test('non-Kout uses BotSettings weights', () {
+      // With BotSettings.trumpLengthWeight=2.5 and trumpStrengthWeight=0.45,
+      // a suit with many low cards outscores a shorter suit with high cards
+      // (length dominates even more than the old 2.0/1.0 defaults).
+      //
+      // Clubs: 5 cards (7-J), count=5, strength=0.5*4+1.0=3.0
+      //   score = 5*2.5 + 3.0*0.45 = 12.5 + 1.35 = 13.85
+      // Hearts: 2 cards (A, K), count=2, strength=5.0
+      //   score = 2*2.5 + 5.0*0.45 = 5.0 + 2.25 = 7.25
+      // Clubs wins heavily — confirming BotSettings weights are applied.
+      final hand = [
+        const GameCard(suit: Suit.hearts, rank: Rank.ace),
+        const GameCard(suit: Suit.hearts, rank: Rank.king),
+        const GameCard(suit: Suit.clubs, rank: Rank.seven),
+        const GameCard(suit: Suit.clubs, rank: Rank.eight),
+        const GameCard(suit: Suit.clubs, rank: Rank.nine),
+        const GameCard(suit: Suit.clubs, rank: Rank.ten),
+        const GameCard(suit: Suit.clubs, rank: Rank.jack),
+        const GameCard(suit: Suit.diamonds, rank: Rank.seven),
+      ];
+
+      // Verify BotSettings values are the expected ones this test relies on.
+      expect(BotSettings.trumpLengthWeight, greaterThan(2.0));
+      expect(BotSettings.trumpStrengthWeight, lessThan(1.0));
+
+      final trump = TrumpStrategy.selectTrump(hand, bidLevel: BidAmount.bab);
       expect(
         trump,
         Suit.clubs,
-        reason: 'Forced bid should pick longest suit regardless of strength',
+        reason: 'BotSettings trumpLengthWeight heavily favours long suits',
       );
     });
   });

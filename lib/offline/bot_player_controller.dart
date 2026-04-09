@@ -2,7 +2,6 @@ import 'package:koutbh/app/models/client_game_state.dart';
 import 'package:koutbh/shared/models/game_state.dart';
 import 'player_controller.dart';
 import 'bot/game_context.dart';
-import 'bot/bot_settings.dart';
 import 'bot/bid_strategy.dart';
 import 'bot/trump_strategy.dart';
 import 'bot/play_strategy.dart';
@@ -28,13 +27,10 @@ class BotPlayerController implements PlayerController {
           mySeat: seatIndex,
           bidHistory: _convertBidHistory(state),
         ),
-      TrumpContext(:final isForcedBid) => TrumpAction(
+      TrumpContext() => TrumpAction(
         TrumpStrategy.selectTrump(
           state.myHand,
           bidLevel: state.currentBid,
-          isForcedBid: isForcedBid,
-          lengthWeight: BotSettings.trumpLengthWeight,
-          strengthWeight: BotSettings.trumpStrengthWeight,
         ),
       ),
       PlayContext(:final ledSuit, :final isForced, :final tracker) =>

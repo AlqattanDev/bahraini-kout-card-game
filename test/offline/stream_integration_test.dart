@@ -26,8 +26,8 @@ class AutoRespondController implements PlayerController {
     return switch (context) {
       BidContext(:final currentHighBid, :final isForced) =>
         BidStrategy.decideBid(state.myHand, currentHighBid, isForced: isForced),
-      TrumpContext(:final isForcedBid) => TrumpAction(
-        TrumpStrategy.selectTrump(state.myHand, isForcedBid: isForcedBid),
+      TrumpContext() => TrumpAction(
+        TrumpStrategy.selectTrump(state.myHand),
       ),
       PlayContext(:final ledSuit, :final isForced, :final tracker) =>
         PlayStrategy.selectCard(
