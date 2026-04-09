@@ -4,13 +4,11 @@ import 'package:koutbh/shared/models/bid.dart';
 import 'package:koutbh/shared/models/card.dart';
 import 'package:koutbh/shared/models/game_state.dart';
 import 'package:koutbh/offline/player_controller.dart';
-import 'package:koutbh/offline/bot/bot_persona.dart';
 import 'package:koutbh/offline/bot/game_context.dart';
 import 'package:koutbh/offline/bot/play_strategy.dart';
 
 GameContext _teamworkContext({
   double roundControlUrgency = 0.2,
-  BotPersona? persona,
 }) {
   return GameContext(
     mySeat: 0,
@@ -23,7 +21,6 @@ GameContext _teamworkContext({
     trickCounts: const {Team.a: 2, Team.b: 1},
     trickWinners: const [],
     trumpSuit: Suit.hearts,
-    persona: persona,
     roundControlUrgency: roundControlUrgency,
   );
 }
@@ -83,45 +80,6 @@ void main() {
       );
       expect(result.card, GameCard.decode('SA'));
     });
-
-    test(
-      'partner-protect follow does not always pick same card across personas',
-      () {
-        final hand = [
-          GameCard.decode('S10'),
-          GameCard.decode('S9'),
-          GameCard.decode('S8'),
-        ];
-        final trickPlays = [
-          (playerUid: 'partner', card: GameCard.decode('SK')),
-        ];
-        final methodical = PlayStrategy.selectCard(
-          hand: hand,
-          trickPlays: trickPlays,
-          trumpSuit: Suit.hearts,
-          ledSuit: Suit.spades,
-          mySeat: 0,
-          partnerUid: 'partner',
-          context: _teamworkContext(
-            roundControlUrgency: 0.2,
-            persona: const BotPersona(BotStyle.methodical),
-          ),
-        );
-        final pressure = PlayStrategy.selectCard(
-          hand: hand,
-          trickPlays: trickPlays,
-          trumpSuit: Suit.hearts,
-          ledSuit: Suit.spades,
-          mySeat: 0,
-          partnerUid: 'partner',
-          context: _teamworkContext(
-            roundControlUrgency: 0.2,
-            persona: const BotPersona(BotStyle.pressure),
-          ),
-        );
-        expect(methodical.card, isNot(equals(pressure.card)));
-      },
-    );
 
     test('follows suit when holding suit cards', () {
       final hand = [

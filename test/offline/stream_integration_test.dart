@@ -8,7 +8,6 @@ import 'package:koutbh/offline/bot_player_controller.dart';
 import 'package:koutbh/offline/player_controller.dart';
 import 'package:koutbh/offline/bot/bid_strategy.dart';
 import 'package:koutbh/offline/bot/trump_strategy.dart';
-import 'package:koutbh/offline/bot/bot_persona.dart';
 import 'package:koutbh/offline/bot/play_strategy.dart';
 import 'package:koutbh/offline/bot/game_context.dart';
 
@@ -43,11 +42,6 @@ class AutoRespondController implements PlayerController {
             seatIndex,
             isForcedBid: isForced,
             tracker: tracker,
-            persona: BotPersona.fromSeed(
-              seatIndex,
-              state.roundIndex,
-              state.trickWinners.length,
-            ),
           ),
         ),
     };

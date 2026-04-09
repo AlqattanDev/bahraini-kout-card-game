@@ -6,8 +6,6 @@ import 'package:koutbh/shared/logic/card_utils.dart';
 import 'package:koutbh/offline/player_controller.dart';
 import 'package:koutbh/offline/bot/card_tracker.dart';
 import 'package:koutbh/offline/bot/game_context.dart';
-import 'package:koutbh/offline/bot/bot_persona.dart';
-import 'package:koutbh/offline/bot/bot_settings.dart';
 
 class PlayStrategy {
   static PlayCardAction selectCard({
@@ -297,17 +295,17 @@ class PlayStrategy {
       final shouldProtectPartner =
           partnerWinning && myPosition <= 2 && urgency < 0.8;
       if (shouldProtectPartner) {
-        return _personaTieBreak(legalCards, context);
+        return _lowest(legalCards);
       }
       final mustSecureNow =
           partnerWinning && urgency >= 0.8 && canBeat.isNotEmpty;
       if (mustSecureNow) {
-        return _personaTieBreak(canBeat, context);
+        return _lowest(canBeat);
       }
 
       // Last to play: if partner already has the trick, do not overtake.
       if (partnerWinning && myPosition == 3) {
-        return _personaTieBreak(legalCards, context);
+        return _lowest(legalCards);
       }
       if (myPosition == 3) {
         final winners = _cardsBeating(
@@ -316,10 +314,7 @@ class PlayStrategy {
           trumpSuit,
           ledSuit,
         );
-        return _personaTieBreak(
-          winners.isNotEmpty ? winners : legalCards,
-          context,
-        );
+        return _lowest(winners.isNotEmpty ? winners : legalCards);
       } else {
         final winners = _cardsBeating(
           legalCards,
@@ -328,9 +323,9 @@ class PlayStrategy {
           ledSuit,
         );
         if (winners.isNotEmpty) {
-          return _personaTieBreak(winners, context);
+          return _lowest(winners);
         }
-        return _personaTieBreak(legalCards, context);
+        return _lowest(legalCards);
       }
     }
 
@@ -375,8 +370,8 @@ class PlayStrategy {
 
       if (partnerWinning) urgency -= 0.8;
 
-      final jokerThreshold = BotSettings.jokerUrgencyThreshold;
-      if (urgency >= jokerThreshold) {
+      // Threshold inlined; PlayStrategy will be rewritten in Task 8.
+      if (urgency >= 0.08) {
         return legalCards.firstWhere((c) => c.isJoker);
       }
     }
@@ -464,39 +459,6 @@ class PlayStrategy {
     if (nonJoker.isEmpty) return cards.first;
     nonJoker.sort((a, b) => a.rank!.value.compareTo(b.rank!.value));
     return nonJoker.first;
-  }
-
-  /// Bounded style variation for near-equal tactical choices; always legal cards.
-  static GameCard _personaTieBreak(
-    List<GameCard> candidates,
-    GameContext? context,
-  ) {
-    if (candidates.isEmpty) {
-      throw StateError('persona tie-break requires candidates');
-    }
-    final persona = context?.persona;
-    if (persona == null) return _lowest(candidates);
-
-    switch (persona.style) {
-      case BotStyle.methodical:
-        return _lowest(candidates);
-      case BotStyle.pressure:
-        final sorted = List<GameCard>.from(candidates)
-          ..sort((a, b) {
-            if (a.isJoker != b.isJoker) return a.isJoker ? -1 : 1;
-            if (a.isJoker) return 0;
-            return b.rank!.value.compareTo(a.rank!.value);
-          });
-        return sorted.first;
-      case BotStyle.resource:
-        final trump = context?.trumpSuit;
-        final nonTrump = candidates.where((c) {
-          if (c.isJoker) return false;
-          return trump == null || c.suit != trump;
-        }).toList();
-        if (nonTrump.isNotEmpty) return _lowest(nonTrump);
-        return _lowest(candidates);
-    }
   }
 
   static ({String playerUid, GameCard card})? _winningPlay(

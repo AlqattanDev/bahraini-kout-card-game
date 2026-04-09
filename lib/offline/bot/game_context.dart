@@ -6,7 +6,6 @@ import 'package:koutbh/shared/models/bid.dart';
 import 'package:koutbh/shared/models/game_state.dart';
 import 'package:koutbh/shared/logic/trick_resolver.dart';
 import 'card_tracker.dart';
-import 'bot_persona.dart';
 
 class GameContext {
   final int mySeat;
@@ -20,7 +19,6 @@ class GameContext {
   final List<Team> trickWinners;
   final Suit? trumpSuit;
   final CardTracker? tracker;
-  final BotPersona? persona;
 
   /// 0.0 = low pressure, 1.0 = every remaining trick matters for bid contract.
   final double roundControlUrgency;
@@ -46,7 +44,6 @@ class GameContext {
     required this.trickWinners,
     this.trumpSuit,
     this.tracker,
-    this.persona,
     this.roundControlUrgency = 0.0,
     this.partnerLikelyWinningTrick = false,
     this.partnerNeedsProtection = false,
@@ -72,7 +69,6 @@ class GameContext {
     int seatIndex, {
     CardTracker? tracker,
     bool isForcedBid = false,
-    BotPersona? persona,
   }) {
     final myTeam = teamForSeat(seatIndex);
     final bidderSeat = state.bidderUid != null
@@ -100,7 +96,6 @@ class GameContext {
       trickWinners: state.trickWinners,
       trumpSuit: state.trumpSuit,
       tracker: tracker,
-      persona: persona,
       roundControlUrgency: urgency,
       partnerLikelyWinningTrick: trickSignals.partnerLikelyWinning,
       partnerNeedsProtection: trickSignals.partnerNeedsProtection,
