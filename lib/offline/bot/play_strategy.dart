@@ -310,7 +310,13 @@ class PlayStrategy {
       return _highest(canBeat);
     }
 
-    // Cannot beat → play lowest.
+    // Cannot beat with suit cards.
+    // Last to play + have Joker → play Joker to win instead of losing.
+    if (myPosition == 3 && legalCards.any((c) => c.isJoker)) {
+      return legalCards.firstWhere((c) => c.isJoker);
+    }
+
+    // Not last or no Joker → play lowest suit card.
     return _lowest(suitCards);
   }
 
@@ -434,12 +440,18 @@ class PlayStrategy {
       return safeToBreak.first;
     }
 
-    // Tier 3: Lowest non-trump, or lowest trump if only trump remains.
+    // Tier 3: Lowest non-trump. Never dump trump — it's too valuable.
     final nonTrump = dumpable.where((c) => c.suit != trumpSuit).toList();
     if (nonTrump.isNotEmpty) {
       nonTrump.sort((a, b) => a.rank!.value.compareTo(b.rank!.value));
       return nonTrump.first;
     }
+
+    // Only trump remains — play Joker if available (better than wasting trump).
+    final joker = legalCards.where((c) => c.isJoker).toList();
+    if (joker.isNotEmpty) return joker.first;
+
+    // Truly no choice: play lowest trump as absolute last resort.
     dumpable.sort((a, b) => a.rank!.value.compareTo(b.rank!.value));
     return dumpable.first;
   }
