@@ -9,10 +9,20 @@ import 'package:koutbh/shared/models/game_state.dart';
 
 void main() {
   group('BotSettings', () {
-    test('has a single sharp tuning profile', () {
-      expect(BotSettings.bidAdjust, greaterThan(0.2));
+    test('trump selection weights are positive', () {
       expect(BotSettings.trumpLengthWeight, greaterThan(2.0));
-      expect(BotSettings.jokerUrgencyThreshold, lessThan(0.15));
+      expect(BotSettings.trumpStrengthWeight, greaterThan(0.0));
+    });
+
+    test('partner estimates are ordered pass < default < bid', () {
+      expect(BotSettings.partnerEstimatePass,
+          lessThan(BotSettings.partnerEstimateDefault));
+      expect(BotSettings.partnerEstimateDefault,
+          lessThan(BotSettings.partnerEstimateBid));
+    });
+
+    test('desperation threshold is positive', () {
+      expect(BotSettings.desperationThreshold, greaterThan(0.0));
     });
 
     test('PlayStrategy leads a legal card with GameContext', () {

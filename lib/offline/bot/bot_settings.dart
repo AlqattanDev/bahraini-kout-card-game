@@ -1,13 +1,16 @@
-/// Fixed tuning for offline AI opponents — one strong profile only (no tiers).
+/// Bot tuning constants — single difficulty level (hardest).
 class BotSettings {
   BotSettings._();
 
-  /// Positive = bids more readily (sharp, contesting auctions).
-  static const double bidAdjust = 1.1;
-
+  // Trump selection weights
   static const double trumpLengthWeight = 2.5;
   static const double trumpStrengthWeight = 0.45;
 
-  /// Lower = play Joker sooner when the trick is contested.
-  static const double jokerUrgencyThreshold = 0.08;
+  // Partner contribution estimates (tricks)
+  static const double partnerEstimateDefault = 1.0;
+  static const double partnerEstimateBid = 1.5;
+  static const double partnerEstimatePass = 0.5;
+
+  // Desperation: threshold reduction when losing means opponent wins
+  static const double desperationThreshold = 1.0;
 }
