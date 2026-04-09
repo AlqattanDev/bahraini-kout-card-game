@@ -418,13 +418,6 @@ class LocalGameController {
 
       _emitState();
 
-      // Joker led = immediate round loss
-      if (PlayValidator.detectJokerLead(action.card, isLead)) {
-        _state.currentSeat = seat;
-        if (enableDelays) await Future.delayed(GameTiming.cardPlayDelay);
-        return _PlayResult.poisonJoker;
-      }
-
       // Delay between cards so the user can see each play
       if (enableDelays && !isLastPlay) {
         await Future.delayed(GameTiming.cardPlayDelay);

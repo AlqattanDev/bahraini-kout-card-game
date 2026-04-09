@@ -18,14 +18,17 @@ class PlayValidator {
     bool isFirstTrick = false,
   }) {
     if (!hand.contains(card)) return const PlayValidationResult.invalid('card-not-in-hand');
+    // Joker can never be led.
+    if (isLeadPlay && card.isJoker) {
+      return const PlayValidationResult.invalid('joker-cannot-lead');
+    }
     // Kout rule: first trick leader must play trump if they have it.
     if (isKout && isLeadPlay && isFirstTrick && trumpSuit != null) {
       final hasTrump = hand.any((c) => !c.isJoker && c.suit == trumpSuit);
-      if (hasTrump && !card.isJoker && card.suit != trumpSuit) {
+      if (hasTrump && card.suit != trumpSuit) {
         return const PlayValidationResult.invalid('must-lead-trump');
       }
     }
-    // Joker CAN be led — but triggers immediate round loss (handled by game controller).
     if (!isLeadPlay && ledSuit != null) {
       final hasLedSuit = hand.any((c) => !c.isJoker && c.suit == ledSuit);
       if (hasLedSuit && !card.isJoker && card.suit != ledSuit) {
@@ -62,8 +65,10 @@ class PlayValidator {
   /// Playable cards for the current trick using the same inputs UI and bots use.
   ///
   /// [trickHasNoPlaysYet] — true when this seat is leading (no cards on the trick yet).
-  /// [ledSuit] — suit led; when following a joker lead this may be null even though
-  /// [trickHasNoPlaysYet] is false, so do not infer lead vs follow from [ledSuit] alone.
+  /// When leading, Joker is excluded from candidates. If the only card in hand
+  /// is Joker, returns empty set — caller should check [detectPoisonJoker].
+  /// [ledSuit] — suit led; may be null when following if the led card had no suit,
+  /// so do not infer lead vs follow from [ledSuit] alone.
   /// [noTricksCompletedYet] — true while the round has not finished any trick
   /// (`trickWinners.isEmpty`); drives the Kout “lead trump first trick” rule only when leading.
   static Set<GameCard> playableForCurrentTrick({
@@ -88,10 +93,4 @@ class PlayValidator {
     return hand.length == 1 && hand.first.isJoker;
   }
 
-  /// Returns true when a Joker is played as the lead card of a trick.
-  /// This is a legal play but triggers an immediate round loss for the
-  /// leading player's team (+10 to opponent, same as poison joker).
-  static bool detectJokerLead(GameCard card, bool isLeadPlay) {
-    return isLeadPlay && card.isJoker;
-  }
 }
