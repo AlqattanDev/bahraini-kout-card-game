@@ -13,9 +13,6 @@ const int tricksPerRound = 8;
 /// Number of players in a standard game.
 const int playerCount = 4;
 
-/// Penalty points awarded when Poison Joker rule triggers.
-const int poisonJokerPenalty = 10;
-
 // ---------------------------------------------------------------------------
 // Card encoding maps
 // ---------------------------------------------------------------------------

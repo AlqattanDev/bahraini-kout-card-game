@@ -20,6 +20,7 @@ import {
   calculatePoisonJokerResult,
   applyScore,
   applyKout,
+  applyPoisonJoker,
   checkGameOver,
   isRoundDecided,
 } from "./scorer";
@@ -619,7 +620,7 @@ export class GameRoom extends DurableObject<Env> {
     const game = this.game!;
     const poisonTeam = this.getTeamForPlayer(uid);
     const roundResult = calculatePoisonJokerResult(poisonTeam);
-    const newScores = applyScore(game.scores, roundResult.winningTeam, roundResult.points);
+    const newScores = applyPoisonJoker(poisonTeam);
 
     game.scores = newScores;
     this.hands.set(uid, []);

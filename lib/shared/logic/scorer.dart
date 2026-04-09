@@ -27,10 +27,15 @@ class Scorer {
   }
 
   static RoundResult calculatePoisonJokerResult({
-    required Team biddingTeam,
     required Team jokerHolderTeam,
   }) {
-    return RoundResult(winningTeam: jokerHolderTeam.opponent, pointsAwarded: poisonJokerPenalty);
+    // Poison joker = instant game loss; pointsAwarded is unused (applyPoisonJoker handles scoring).
+    return RoundResult(winningTeam: jokerHolderTeam.opponent, pointsAwarded: 0);
+  }
+
+  /// Poison Joker instant loss: uses the same mechanism as Kout — sets opponent to [targetScore].
+  static Map<Team, int> applyPoisonJoker({required Team jokerHolderTeam}) {
+    return applyKout(winningTeam: jokerHolderTeam.opponent);
   }
 
   /// Tug-of-war scoring: points first reduce the opponent's score,

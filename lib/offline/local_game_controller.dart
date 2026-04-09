@@ -435,29 +435,28 @@ class LocalGameController {
     if (poisonJoker) {
       final jokerHolderTeam = teamForSeat(_state.currentSeat);
       result = Scorer.calculatePoisonJokerResult(
-        biddingTeam: teamForSeat(_state.bidderSeat!),
         jokerHolderTeam: jokerHolderTeam,
       );
+      // Poison joker = instant game loss (same as Kout).
+      _state.scores = Scorer.applyPoisonJoker(jokerHolderTeam: jokerHolderTeam);
     } else {
       result = Scorer.calculateRoundResult(
         bid: _state.bid!,
         biddingTeam: teamForSeat(_state.bidderSeat!),
         tricksWon: _state.trickCounts,
       );
-    }
 
-    // Kout success = instant win (set to 31). Kout failure = 16 penalty (regular scoring).
-    final bidderTeam = teamForSeat(_state.bidderSeat!);
-    if (!poisonJoker &&
-        _state.bid!.isKout &&
-        result.winningTeam == bidderTeam) {
-      _state.scores = Scorer.applyKout(winningTeam: result.winningTeam);
-    } else {
-      _state.scores = Scorer.applyScore(
-        scores: _state.scores,
-        winningTeam: result.winningTeam,
-        points: result.pointsAwarded,
-      );
+      // Kout success = instant win (set to 31). Kout failure = 16 penalty (regular scoring).
+      final bidderTeam = teamForSeat(_state.bidderSeat!);
+      if (_state.bid!.isKout && result.winningTeam == bidderTeam) {
+        _state.scores = Scorer.applyKout(winningTeam: result.winningTeam);
+      } else {
+        _state.scores = Scorer.applyScore(
+          scores: _state.scores,
+          winningTeam: result.winningTeam,
+          points: result.pointsAwarded,
+        );
+      }
     }
 
     _emitState();

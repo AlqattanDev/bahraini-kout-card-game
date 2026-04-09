@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   calculateRoundResult,
   calculatePoisonJokerResult,
+  applyPoisonJoker,
   applyScore,
   applyKout,
   checkGameOver,
@@ -61,9 +62,19 @@ describe("checkGameOver", () => {
 });
 
 describe("poisonJoker", () => {
-  it("gives 10 points to opponent", () => {
+  it("winning team is opponent of joker holder", () => {
     const result = calculatePoisonJokerResult("teamA");
-    expect(result).toEqual({ winningTeam: "teamB", points: 10 });
+    expect(result.winningTeam).toBe("teamB");
+  });
+
+  it("applyPoisonJoker sets opponent to 31 (instant game loss)", () => {
+    const scores = applyPoisonJoker("teamA");
+    expect(scores).toEqual({ teamA: 0, teamB: 31 });
+  });
+
+  it("applyPoisonJoker causes game over", () => {
+    const scores = applyPoisonJoker("teamB");
+    expect(checkGameOver(scores)).toBe("teamA");
   });
 });
 

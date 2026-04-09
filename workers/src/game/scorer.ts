@@ -1,4 +1,4 @@
-import { TeamName, BID_SUCCESS_POINTS, BID_FAILURE_POINTS, TARGET_SCORE, POISON_JOKER_PENALTY, TRICKS_PER_ROUND } from './types';
+import { TeamName, BID_SUCCESS_POINTS, BID_FAILURE_POINTS, TARGET_SCORE, TRICKS_PER_ROUND } from './types';
 
 export interface RoundResult {
   winningTeam: TeamName;
@@ -25,7 +25,14 @@ export function calculatePoisonJokerResult(
   poisonTeam: TeamName
 ): RoundResult {
   const opponent: TeamName = poisonTeam === 'teamA' ? 'teamB' : 'teamA';
-  return { winningTeam: opponent, points: POISON_JOKER_PENALTY };
+  // Poison joker = instant game loss; points field unused (applyPoisonJoker handles scoring).
+  return { winningTeam: opponent, points: 0 };
+}
+
+/** Poison Joker instant loss: uses the same mechanism as Kout — sets opponent to TARGET_SCORE. */
+export function applyPoisonJoker(poisonTeam: TeamName): Record<TeamName, number> {
+  const opponent: TeamName = poisonTeam === 'teamA' ? 'teamB' : 'teamA';
+  return applyKout(opponent);
 }
 
 /** Tug-of-war scoring: points reduce opponent's score first, remainder goes to winner. */

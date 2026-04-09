@@ -65,26 +65,18 @@ void main() {
       expect(result.pointsAwarded, 16);
     });
 
-    test('poison joker → +10 to opponent regardless of bid', () {
+    test('poison joker → winning team is opponent of joker holder', () {
       final result = Scorer.calculatePoisonJokerResult(
-        biddingTeam: Team.a,
         jokerHolderTeam: Team.b,
       );
-      // jokerHolderTeam.opponent = Team.a; the team that caught the poison joker
-      // loses, so the other team gets points
       expect(result.winningTeam, Team.a);
-      expect(result.pointsAwarded, 10);
     });
 
-    test('joker lead → +10 to opponent (same as poison joker)', () {
-      // When a player leads the Joker, their team loses the round.
-      // Uses the same scoring path as poison joker.
+    test('joker lead → winning team is opponent of joker holder', () {
       final result = Scorer.calculatePoisonJokerResult(
-        biddingTeam: Team.b,
-        jokerHolderTeam: Team.a, // Team A led the Joker
+        jokerHolderTeam: Team.a,
       );
       expect(result.winningTeam, Team.b);
-      expect(result.pointsAwarded, 10);
     });
   });
 
@@ -153,6 +145,25 @@ void main() {
       final scores = Scorer.applyKout(winningTeam: Team.b);
       expect(scores[Team.a], 0);
       expect(scores[Team.b], 31);
+    });
+  });
+
+  group('Scorer.applyPoisonJoker', () {
+    test('sets opponent of joker holder to 31 (instant game loss)', () {
+      final scores = Scorer.applyPoisonJoker(jokerHolderTeam: Team.a);
+      expect(scores[Team.a], 0);
+      expect(scores[Team.b], 31);
+    });
+
+    test('sets opponent of joker holder to 31 (team B holds joker)', () {
+      final scores = Scorer.applyPoisonJoker(jokerHolderTeam: Team.b);
+      expect(scores[Team.a], 31);
+      expect(scores[Team.b], 0);
+    });
+
+    test('poison joker causes game over', () {
+      final scores = Scorer.applyPoisonJoker(jokerHolderTeam: Team.a);
+      expect(Scorer.checkGameOver(scores), Team.b);
     });
   });
 
