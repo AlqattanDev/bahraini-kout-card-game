@@ -9,7 +9,7 @@ import 'package:koutbh/shared/models/game_state.dart';
 void main() {
   // Helper to verify hand strength before using in bid tests
   double strength(List<GameCard> hand) =>
-      HandEvaluator.evaluate(hand).expectedWinners;
+      HandEvaluator.evaluate(hand).personalTricks;
 
   group('decideBid basics', () {
     test('strong hand bids', () {
@@ -82,7 +82,7 @@ void main() {
     });
 
     test('currentHighBid at bab with strong hand → outbids to Six', () {
-      // Strength ~5.1: cannot pass under bab when Six is legal and worthwhile.
+      // Strength ~5.75: cannot pass under bab when Six is legal and worthwhile.
       final hand = [
         GameCard.joker(),
         GameCard.decode('SA'),
@@ -94,7 +94,7 @@ void main() {
         GameCard.decode('D8'),
       ];
       expect(strength(hand), greaterThanOrEqualTo(4.5));
-      expect(strength(hand), lessThan(5.5));
+      expect(strength(hand), lessThan(6.5));
       final action = BidStrategy.decideBid(hand, BidAmount.bab);
       expect(action, isA<BidAction>());
       expect((action as BidAction).amount, BidAmount.six);

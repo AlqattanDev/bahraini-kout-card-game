@@ -238,7 +238,7 @@ class BidStrategy {
         (hasJoker ? 1.0 : 0.0);
 
     final adjustedStrength =
-        strength.expectedWinners + thresholdAdjust + shapeBoost + powerCardBoost;
+        strength.personalTricks + thresholdAdjust + shapeBoost + powerCardBoost;
     final thresholdBid = _strengthToBid(adjustedStrength);
     final rawShape = computeShapeFloorBid(hand);
     final shapeFloor = _adjustFloorForDifficulty(rawShape, difficultyAdjust);

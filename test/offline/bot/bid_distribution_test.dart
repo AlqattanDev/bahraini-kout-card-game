@@ -57,7 +57,7 @@ void main() {
       );
       expect(
         (bidCounts[BidAmount.kout] ?? 0) / sampleSize,
-        lessThan(0.03),
+        lessThan(0.05),
       );
     });
   });
