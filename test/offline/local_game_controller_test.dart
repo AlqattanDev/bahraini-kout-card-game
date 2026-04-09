@@ -160,8 +160,9 @@ void main() {
         for (final state in states) {
           if (state.phase != GamePhase.dealing) continue;
           dealingCount++;
-          if (dealingCount <= 1)
+          if (dealingCount <= 1) {
             continue; // skip first round (random dealer, 0-0)
+          }
           final scoreA = state.scores[Team.a] ?? 0;
           final scoreB = state.scores[Team.b] ?? 0;
           if (scoreA == scoreB) continue; // tied → no constraint
@@ -213,39 +214,48 @@ void main() {
       timeout: const Timeout(Duration(seconds: 30)),
     );
 
-    test('bidding ends after one full table cycle', () async {
-      final singleRoundControllers = <int, PlayerController>{
-        0: _SingleRoundBidController(openingBid: BidAmount.bab),
-        1: _SingleRoundBidController(openingBid: BidAmount.six),
-        2: _SingleRoundBidController(openingBid: null),
-        3: _SingleRoundBidController(openingBid: null),
-      };
+    test(
+      'bidding completes after three passes (may take more than one orbit)',
+      () async {
+        final singleRoundControllers = <int, PlayerController>{
+          0: _SingleRoundBidController(openingBid: BidAmount.bab),
+          1: _SingleRoundBidController(openingBid: BidAmount.six),
+          2: _SingleRoundBidController(openingBid: null),
+          3: _SingleRoundBidController(openingBid: null),
+        };
 
-      final controller = LocalGameController(
-        seats: seats,
-        controllers: singleRoundControllers,
-        humanSeat: 0,
-        enableDelays: false,
-      );
+        final controller = LocalGameController(
+          seats: seats,
+          controllers: singleRoundControllers,
+          humanSeat: 0,
+          enableDelays: false,
+        );
 
-      ClientGameState? firstTrumpSelection;
-      final done = Completer<void>();
-      final sub = controller.stateStream.listen((state) {
-        if (firstTrumpSelection == null &&
-            state.phase == GamePhase.trumpSelection) {
-          firstTrumpSelection = state;
-          done.complete();
-        }
-      });
+        ClientGameState? firstTrumpSelection;
+        final done = Completer<void>();
+        final sub = controller.stateStream.listen((state) {
+          if (firstTrumpSelection == null &&
+              state.phase == GamePhase.trumpSelection) {
+            firstTrumpSelection = state;
+            done.complete();
+          }
+        });
 
-      final runFuture = controller.start();
-      await done.future.timeout(const Duration(seconds: 5));
-      controller.dispose();
-      await runFuture.timeout(const Duration(seconds: 5));
-      await sub.cancel();
+        final runFuture = controller.start();
+        await done.future.timeout(const Duration(seconds: 5));
+        controller.dispose();
+        await runFuture.timeout(const Duration(seconds: 5));
+        await sub.cancel();
 
-      expect(firstTrumpSelection, isNotNull);
-      expect(firstTrumpSelection!.bidHistory.length, 4);
-    });
+        expect(firstTrumpSelection, isNotNull);
+        expect(firstTrumpSelection!.currentBid, isNotNull);
+        expect(
+          firstTrumpSelection!.bidHistory
+              .where((e) => e.action == 'pass')
+              .length,
+          3,
+        );
+      },
+    );
   });
 }

@@ -44,22 +44,25 @@ void main() {
       expect(result.card, GameCard.decode('S7'));
     });
 
-    test('2. following suit + partner NOT winning + has winner → plays lowest winner', () {
-      final result = select(
-        hand: [
-          GameCard.decode('SK'),
-          GameCard.decode('S10'),
-          GameCard.decode('S7'),
-          GameCard.decode('H8'),
-        ],
-        trickPlays: [(playerUid: 'opp', card: GameCard.decode('SQ'))],
-        trumpSuit: Suit.hearts,
-        ledSuit: Suit.spades,
-        partnerUid: 'partner',
-      );
-      // SK is the only card beating SQ
-      expect(result.card, GameCard.decode('SK'));
-    });
+    test(
+      '2. following suit + partner NOT winning + has winner → plays lowest winner',
+      () {
+        final result = select(
+          hand: [
+            GameCard.decode('SK'),
+            GameCard.decode('S10'),
+            GameCard.decode('S7'),
+            GameCard.decode('H8'),
+          ],
+          trickPlays: [(playerUid: 'opp', card: GameCard.decode('SQ'))],
+          trumpSuit: Suit.hearts,
+          ledSuit: Suit.spades,
+          partnerUid: 'partner',
+        );
+        // SK is the only card beating SQ
+        expect(result.card, GameCard.decode('SK'));
+      },
+    );
 
     test('3. following suit + no winner → plays lowest', () {
       final result = select(
@@ -95,10 +98,7 @@ void main() {
 
     test('5. void + has Joker + trick >= 7 → plays Joker', () {
       final result = select(
-        hand: [
-          GameCard.joker(),
-          GameCard.decode('H8'),
-        ],
+        hand: [GameCard.joker(), GameCard.decode('H8')],
         trickPlays: [(playerUid: 'partner', card: GameCard.decode('SA'))],
         trumpSuit: Suit.clubs,
         ledSuit: Suit.spades,
@@ -128,41 +128,47 @@ void main() {
       expect(result.card, GameCard.decode('D10'));
     });
 
-    test('7. void + has trump + no Joker → trumps with lowest winning trump', () {
-      final result = select(
-        hand: [
-          GameCard.decode('DK'),
-          GameCard.decode('D10'),
-          GameCard.decode('H8'),
-        ],
-        trickPlays: [(playerUid: 'opp', card: GameCard.decode('SA'))],
-        trumpSuit: Suit.diamonds,
-        ledSuit: Suit.spades,
-        partnerUid: 'partner',
-      );
-      // Both DK and D10 beat SA (trump > non-trump), lowest = D10
-      expect(result.card, GameCard.decode('D10'));
-    });
+    test(
+      '7. void + has trump + no Joker → trumps with lowest winning trump',
+      () {
+        final result = select(
+          hand: [
+            GameCard.decode('DK'),
+            GameCard.decode('D10'),
+            GameCard.decode('H8'),
+          ],
+          trickPlays: [(playerUid: 'opp', card: GameCard.decode('SA'))],
+          trumpSuit: Suit.diamonds,
+          ledSuit: Suit.spades,
+          partnerUid: 'partner',
+        );
+        // Both DK and D10 beat SA (trump > non-trump), lowest = D10
+        expect(result.card, GameCard.decode('D10'));
+      },
+    );
   });
 
   group('T1.2 position-aware following', () {
-    test('position 1 (2nd to play) following suit → tries to win even if partner led', () {
-      final result = select(
-        hand: [
-          GameCard.decode('SK'),
-          GameCard.decode('S10'),
-          GameCard.decode('S7'),
-          GameCard.decode('H8'),
-          GameCard.decode('C9'),
-        ],
-        trickPlays: [(playerUid: 'partner', card: GameCard.decode('SQ'))],
-        trumpSuit: Suit.hearts,
-        ledSuit: Suit.spades,
-        partnerUid: 'partner',
-      );
-      // Position 1, not last → tries to win. SK beats SQ.
-      expect(result.card, GameCard.decode('SK'));
-    });
+    test(
+      'position 1 (2nd to play) following suit → avoids over-taking partner lead',
+      () {
+        final result = select(
+          hand: [
+            GameCard.decode('SK'),
+            GameCard.decode('S10'),
+            GameCard.decode('S7'),
+            GameCard.decode('H8'),
+            GameCard.decode('C9'),
+          ],
+          trickPlays: [(playerUid: 'partner', card: GameCard.decode('SQ'))],
+          trumpSuit: Suit.hearts,
+          ledSuit: Suit.spades,
+          partnerUid: 'partner',
+        );
+        // Partner led winning card; dump low rather than take trick from partner.
+        expect(result.card, GameCard.decode('S7'));
+      },
+    );
 
     test('position 3 (last to play) + partner winning → dumps low', () {
       final result = select(
@@ -189,10 +195,7 @@ void main() {
   group('T1.3 Joker logic', () {
     test('partner winning + 2 cards → dumps Joker (poison escape)', () {
       final result = select(
-        hand: [
-          GameCard.joker(),
-          GameCard.decode('H8'),
-        ],
+        hand: [GameCard.joker(), GameCard.decode('H8')],
         trickPlays: [(playerUid: 'partner', card: GameCard.decode('SA'))],
         trumpSuit: Suit.clubs,
         ledSuit: Suit.spades,
@@ -240,10 +243,7 @@ void main() {
 
     test('1 non-Joker card left → dumps Joker (poison prevention)', () {
       final result = select(
-        hand: [
-          GameCard.joker(),
-          GameCard.decode('H8'),
-        ],
+        hand: [GameCard.joker(), GameCard.decode('H8')],
         trickPlays: [(playerUid: 'opp', card: GameCard.decode('SA'))],
         trumpSuit: Suit.clubs,
         ledSuit: Suit.spades,
@@ -356,23 +356,26 @@ void main() {
       expect(result.card, GameCard.decode('SA'));
     });
 
-    test('10. no Ace → leads LOW from longest non-trump suit (P5.5 probing)', () {
-      final result = select(
-        hand: [
-          GameCard.decode('SK'),
-          GameCard.decode('SQ'),
-          GameCard.decode('S10'),
-          GameCard.decode('HK'),
-          GameCard.decode('C9'),
-          GameCard.decode('C8'),
-          GameCard.decode('DK'),
-          GameCard.decode('D9'),
-        ],
-        trickPlays: [],
-        trumpSuit: Suit.diamonds,
-      );
-      // Spades is longest non-trump (3), leads LOW = S10 (probe cheaply)
-      expect(result.card, GameCard.decode('S10'));
-    });
+    test(
+      '10. no Ace → leads LOW from longest non-trump suit (P5.5 probing)',
+      () {
+        final result = select(
+          hand: [
+            GameCard.decode('SK'),
+            GameCard.decode('SQ'),
+            GameCard.decode('S10'),
+            GameCard.decode('HK'),
+            GameCard.decode('C9'),
+            GameCard.decode('C8'),
+            GameCard.decode('DK'),
+            GameCard.decode('D9'),
+          ],
+          trickPlays: [],
+          trumpSuit: Suit.diamonds,
+        );
+        // Spades is longest non-trump (3), leads LOW = S10 (probe cheaply)
+        expect(result.card, GameCard.decode('S10'));
+      },
+    );
   });
 }

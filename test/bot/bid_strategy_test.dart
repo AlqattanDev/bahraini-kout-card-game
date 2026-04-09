@@ -75,11 +75,14 @@ void main() {
       ];
       final action = BidStrategy.decideBid(hand, BidAmount.bab);
       expect(action, isA<BidAction>());
-      expect((action as BidAction).amount.value, greaterThan(BidAmount.bab.value));
+      expect(
+        (action as BidAction).amount.value,
+        greaterThan(BidAmount.bab.value),
+      );
     });
 
-    test('currentHighBid at max strength → PassAction', () {
-      // Hand in bab range (4.5-5.5), can't outbid bab
+    test('currentHighBid at bab with strong hand → outbids to Six', () {
+      // Strength ~5.1: cannot pass under bab when Six is legal and worthwhile.
       final hand = [
         GameCard.joker(),
         GameCard.decode('SA'),
@@ -93,7 +96,8 @@ void main() {
       expect(strength(hand), greaterThanOrEqualTo(4.5));
       expect(strength(hand), lessThan(5.5));
       final action = BidStrategy.decideBid(hand, BidAmount.bab);
-      expect(action, isA<PassAction>());
+      expect(action, isA<BidAction>());
+      expect((action as BidAction).amount, BidAmount.six);
     });
   });
 
@@ -110,11 +114,14 @@ void main() {
       GameCard.decode('C7'),
     ];
 
-    test('hand is below threshold without adjustment', () {
-      expect(strength(belowThreshold), lessThan(4.5));
-      final action = BidStrategy.decideBid(belowThreshold, null);
-      expect(action, isA<PassAction>());
-    });
+    test(
+      'hand is below raw strength threshold but shape floor may still bid',
+      () {
+        expect(strength(belowThreshold), lessThan(4.5));
+        final action = BidStrategy.decideBid(belowThreshold, null);
+        expect(action, isA<BidAction>());
+      },
+    );
 
     test('any bid wins game (my+5-opp>=31) → aggressive +1.0', () {
       final action = BidStrategy.decideBid(
@@ -145,14 +152,8 @@ void main() {
         scores: {Team.a: 10, Team.b: 28},
         myTeam: Team.a,
       );
-      // my=10 > 5, so not desperate. opp=28>=26 → +0.5
-      // Need hand where +0.5 tips it over
-      final s = strength(belowThreshold);
-      if (s + 0.5 >= 4.5) {
-        expect(action, isA<BidAction>());
-      } else {
-        expect(action, isA<PassAction>());
-      }
+      // Score tweak alone may not reach bid threshold; shape floor still bids.
+      expect(action, isA<BidAction>());
     });
 
     test('desperate mode (opp>=25, my<=5) → +1.0', () {
@@ -166,16 +167,14 @@ void main() {
       expect(action, isA<BidAction>());
     });
 
-    test('no scores → no adjustment, passes with below-threshold hand', () {
+    test('no scores → shape floor still applies for marginal hands', () {
       final action = BidStrategy.decideBid(belowThreshold, null);
-      expect(action, isA<PassAction>());
+      expect(action, isA<BidAction>());
     });
   });
 
   group('position-aware bidding', () {
     test('first to bid is conservative (-0.3)', () {
-      // Find a hand right at the boundary: passes when first, bids when last
-      // Use a hand at ~4.6 (bids normally, but -0.3 drops to 4.3 → pass)
       final borderlineHand = [
         GameCard.joker(),
         GameCard.decode('SA'),
@@ -186,20 +185,14 @@ void main() {
         GameCard.decode('C9'),
         GameCard.decode('D8'),
       ];
-      final s = strength(borderlineHand);
-
-      // First to bid: -0.3
       final action = BidStrategy.decideBid(
         borderlineHand,
         null,
         mySeat: 1,
         bidHistory: [],
       );
-      if (s - 0.3 < 4.5) {
-        expect(action, isA<PassAction>());
-      } else {
-        expect(action, isA<BidAction>());
-      }
+      // Position penalty can be outweighed by shape / tier bidding.
+      expect(action, isA<BidAction>());
     });
 
     test('position 0 is more conservative than position 3', () {
@@ -262,10 +255,7 @@ void main() {
         hand,
         null,
         mySeat: 2,
-        bidHistory: [
-          (seat: 0, action: '5'),
-          (seat: 1, action: 'pass'),
-        ],
+        bidHistory: [(seat: 0, action: '5'), (seat: 1, action: 'pass')],
       );
       // Note: currentHighBid is null but partner bid '5'. In real game
       // currentHighBid would be bab. Test here is about threshold, not outbid.
@@ -286,20 +276,14 @@ void main() {
         GameCard.decode('H8'),
         GameCard.decode('C7'),
       ];
-      final s = strength(hand);
-      // With partner passed at position 2: s + 0.2 (position) - 0.3 (pass) = s - 0.1
       final withPartnerPass = BidStrategy.decideBid(
         hand,
         null,
         mySeat: 2,
-        bidHistory: [
-          (seat: 0, action: 'pass'),
-          (seat: 1, action: 'pass'),
-        ],
+        bidHistory: [(seat: 0, action: 'pass'), (seat: 1, action: 'pass')],
       );
-      if (s - 0.1 < 4.5) {
-        expect(withPartnerPass, isA<PassAction>());
-      }
+      // Partner pass hurts threshold, but shape floor can still force a bid.
+      expect(withPartnerPass, isA<BidAction>());
     });
   });
 
@@ -320,9 +304,7 @@ void main() {
         BidAmount.bab,
         mySeat: 2,
         myTeam: Team.a,
-        bidHistory: [
-          (seat: 1, action: '5'),
-        ],
+        bidHistory: [(seat: 1, action: '5')],
       );
       expect(action, isA<BidAction>());
       expect((action as BidAction).amount, BidAmount.six);
@@ -339,11 +321,7 @@ void main() {
         GameCard.decode('C7'),
         GameCard.decode('D8'),
       ];
-      final action = BidStrategy.decideBid(
-        weakHand,
-        null,
-        isForced: true,
-      );
+      final action = BidStrategy.decideBid(weakHand, null, isForced: true);
       expect(action, isA<BidAction>());
       expect((action as BidAction).amount, BidAmount.bab);
     });

@@ -147,7 +147,6 @@ class LocalGameController {
   Future<bool> _bidding() async {
     _state.phase = GamePhase.bidding;
     _state.currentSeat = nextSeat(_state.dealerSeat);
-    final actedPlayers = <int>{};
     _emitState();
 
     while (!_disposed) {
@@ -219,13 +218,9 @@ class LocalGameController {
         }
       }
 
-      if (actionAccepted) {
-        actedPlayers.add(_state.currentSeat);
-      }
-
-      // End bidding after a single full table cycle.
-      if (actedPlayers.length >= seats.length) {
-        return _state.bid != null;
+      // Invalid bid/pass: same seat tries again (do not advance).
+      if (!actionAccepted) {
+        continue;
       }
 
       // Check if bidding complete (3 passed, 1 bidder with a bid)
