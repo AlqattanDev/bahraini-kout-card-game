@@ -300,9 +300,14 @@ class PlayStrategy {
       return _lowest(suitCards);
     }
 
-    // Opponent winning + can beat → play lowest winner.
+    // Opponent winning + can beat.
     if (canBeat.isNotEmpty) {
-      return _lowest(canBeat);
+      // Last to play → lowest winner (safe, conserve high cards).
+      // Not last → highest winner (guarantee trick, opponent plays after us).
+      if (myPosition == 3) {
+        return _lowest(canBeat);
+      }
+      return _highest(canBeat);
     }
 
     // Cannot beat → play lowest.
@@ -448,6 +453,14 @@ class PlayStrategy {
     final nonJoker = cards.where((c) => !c.isJoker).toList();
     if (nonJoker.isEmpty) return cards.first;
     nonJoker.sort((a, b) => a.rank!.value.compareTo(b.rank!.value));
+    return nonJoker.first;
+  }
+
+  /// Return the highest-ranked non-Joker card.
+  static GameCard _highest(List<GameCard> cards) {
+    final nonJoker = cards.where((c) => !c.isJoker).toList();
+    if (nonJoker.isEmpty) return cards.first;
+    nonJoker.sort((a, b) => b.rank!.value.compareTo(a.rank!.value));
     return nonJoker.first;
   }
 

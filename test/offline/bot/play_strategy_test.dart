@@ -229,7 +229,7 @@ void main() {
       expect(result.card, _c('S7'));
     });
 
-    test('plays lowest winner when opponent winning and can beat', () {
+    test('plays highest winner when opponent winning and not last to play', () {
       final hand = [_c('SA'), _c('SK'), _c('S7')];
       final result = _select(
         hand: hand,
@@ -239,7 +239,23 @@ void main() {
         ledSuit: Suit.spades,
         mySeat: 2,
       );
-      // SK is the lowest card that beats SQ.
+      // SA is highest winner — guarantees trick since opponent plays after us.
+      expect(result.card, _c('SA'));
+    });
+
+    test('plays lowest winner when last to play', () {
+      final hand = [_c('SA'), _c('SK'), _c('S7')];
+      final result = _select(
+        hand: hand,
+        trickPlays: [
+          (playerUid: 'p1', card: _c('SQ')),
+          (playerUid: 'p2', card: _c('S8')),
+          (playerUid: 'p3', card: _c('S9')),
+        ],
+        ledSuit: Suit.spades,
+        mySeat: 0,
+      );
+      // Last to play — lowest winner is safe, conserve the Ace.
       expect(result.card, _c('SK'));
     });
 
