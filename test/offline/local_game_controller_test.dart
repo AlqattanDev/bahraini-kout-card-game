@@ -215,7 +215,7 @@ void main() {
     );
 
     test(
-      'bidding completes after three passes (may take more than one orbit)',
+      'bidding completes in one orbit (each seat acts once; Kout excepted)',
       () async {
         final singleRoundControllers = <int, PlayerController>{
           0: _SingleRoundBidController(openingBid: BidAmount.bab),
@@ -249,12 +249,7 @@ void main() {
 
         expect(firstTrumpSelection, isNotNull);
         expect(firstTrumpSelection!.currentBid, isNotNull);
-        expect(
-          firstTrumpSelection!.bidHistory
-              .where((e) => e.action == 'pass')
-              .length,
-          3,
-        );
+        expect(firstTrumpSelection!.bidHistory.length, seats.length);
       },
     );
   });

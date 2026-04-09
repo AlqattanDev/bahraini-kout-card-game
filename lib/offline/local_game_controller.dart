@@ -147,6 +147,8 @@ class LocalGameController {
   Future<bool> _bidding() async {
     _state.phase = GamePhase.bidding;
     _state.currentSeat = nextSeat(_state.dealerSeat);
+    // One CCW orbit: each seat has exactly one successful bid or pass (Kout ends early).
+    final seatsActed = <int>{};
     _emitState();
 
     while (!_disposed) {
@@ -223,13 +225,10 @@ class LocalGameController {
         continue;
       }
 
-      // Check if bidding complete (3 passed, 1 bidder with a bid)
-      final outcome = BidValidator.checkBiddingComplete(
-        passedPlayers: _state.passedPlayers,
-        currentHighest: _state.bid,
-        highestBidderIndex: _state.bidderSeat,
-      );
-      if (outcome.isComplete) return true;
+      seatsActed.add(_state.currentSeat);
+      if (seatsActed.length >= seats.length) {
+        return _state.bid != null;
+      }
 
       _state.currentSeat = nextSeat(_state.currentSeat);
     }
