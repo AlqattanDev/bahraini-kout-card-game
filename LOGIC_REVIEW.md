@@ -1,20 +1,6 @@
-# Koutbh Logic Review
+# Koutbh Logic Review — Current State
 
-Everything extracted from the codebase. Reviewed with owner — decisions marked below.
-
----
-
-## CONFIRMED CHANGES (from review session)
-
-1. **Poison joker = instant game loss** — opponent score set to 31, not +10. Triggers only when player must LEAD and only card is Joker (not when following).
-2. **Remove "Khallou" name** — Joker is just "Joker" everywhere.
-3. **Joker cannot be led** — not a legal lead card. Remove the old "joker lead = round loss" code path entirely.
-4. **Forced bid = free choice** — last player must bid but can choose ANY level (not forced to Bab).
-5. **Trump timeout auto-pick** — auto-select best suit (count + rank strength). Add countdown timer + visual warning. Both offline and online modes.
-6. **Remove bot personas** — no Methodical/Pressure/Resource styles. Always play strongest option in tiebreaks.
-7. **Bot strategy needs brainstorm** — bidding thresholds too aggressive (especially Seven), play priorities, following logic, hand evaluation all need tuning session.
-8. **Check trump weight wiring** — verify BotSettings 2.5/0.45 weights are actually passed to TrumpStrategy.
-9. **Bot partner awareness bug** — bots sometimes overtake their own partner's winning trick. Investigate and fix.
+Extracted from codebase on 2026-04-09. Reflects all recent changes.
 
 ---
 
@@ -27,18 +13,21 @@ Everything extracted from the codebase. Reviewed with owner — decisions marked
 | Target score | 31 | Tug-of-war, first to 31 wins |
 | Tricks per round | 8 | 32 cards / 4 players |
 | Player count | 4 | 6-player not implemented |
-| Poison joker penalty | **INSTANT GAME LOSS** | ~~+10~~ → opponent score set to 31 **(CHANGED)** |
+
+**Removed**: `poisonJokerPenalty` constant no longer exists in Dart. Poison joker now uses `applyKout` (instant game loss, score set to 31).
+
+**TS still has** `POISON_JOKER_PENALTY = 10` removed from `types.ts` — confirmed removed.
 
 ### 1.2 Deck Composition
 
 - **Spades**: A, K, Q, J, 10, 9, 8, 7 (8 cards)
 - **Hearts**: A, K, Q, J, 10, 9, 8, 7 (8 cards)
 - **Clubs**: A, K, Q, J, 10, 9, 8, 7 (8 cards)
-- **Diamonds**: A, K, Q, J, 10, 9, 8 (7 cards — **no 7 of diamonds**)
-- **Joker**: 1 card **(renamed — removed "Khallou")**
+- **Diamonds**: A, K, Q, J, 10, 9, 8 (7 cards — no 7 of diamonds)
+- **Joker**: 1 card
 - **Total**: 32 cards, 8 per player
 
-### 1.3 Rank Values (for comparison)
+### 1.3 Rank Values
 
 | Rank | Value |
 |---|---|
@@ -55,59 +44,27 @@ Everything extracted from the codebase. Reviewed with owner — decisions marked
 
 Format: `{suit initial}{rank}`. Joker = `JO`.
 
-| Suit | Initial |
-|---|---|
-| Spades | S |
-| Hearts | H |
-| Clubs | C |
-| Diamonds | D |
-
-Examples: `SA` = Ace of Spades, `D10` = 10 of Diamonds, `HK` = King of Hearts.
+S = Spades, H = Hearts, C = Clubs, D = Diamonds. Examples: `SA` = Ace of Spades, `D10` = 10 of Diamonds.
 
 ---
 
 ## 2. TEAMS & SEATING
 
-### 2.1 Teams
-
 - **Team A**: Seats 0, 2 (partners across)
 - **Team B**: Seats 1, 3 (partners across)
 - Rule: `seatIndex.isEven ? Team.a : Team.b`
-
-### 2.2 Counter-Clockwise Seating
-
-```
-nextSeat(i) = (i - 1 + 4) % 4
-```
-
-Order: 0 → 3 → 2 → 1 → 0
-
-### 2.3 Partner Seat
-
-```
-partnerSeat = (mySeat + 2) % 4
-```
+- **CCW order**: `nextSeat(i) = (i - 1 + 4) % 4` → 0 → 3 → 2 → 1 → 0
+- **Partner**: `partnerSeat = (mySeat + 2) % 4`
 
 ---
 
 ## 3. DEALER ROTATION
 
-- **First round**: Random dealer (0–3).
-- **After each round**: Losing team deals.
-  - If current dealer is already on the losing team → dealer stays.
-  - If current dealer is on the winning team → rotate one step CCW to land on losing team.
-  - If tied (both scores equal) → dealer stays.
-
-```dart
-int nextDealerSeat(int currentDealer, Map<Team, int> scores) {
-  if (scoreA == scoreB) return currentDealer;          // tie = stay
-  final losingTeam = scoreA < scoreB ? Team.a : Team.b;
-  if (teamForSeat(currentDealer) == losingTeam) return currentDealer;  // already on losing team
-  return nextSeat(currentDealer);                      // rotate CCW once
-}
-```
-
-**✅ CONFIRMED**: Losing team = lower score. Correct for tug-of-war.
+- First round: random dealer (0–3).
+- After each round: losing team deals.
+  - Current dealer already on losing team → stays.
+  - Current dealer on winning team → rotate one CCW to land on losing team.
+  - Tied scores → dealer stays.
 
 ---
 
@@ -115,31 +72,29 @@ int nextDealerSeat(int currentDealer, Map<Team, int> scores) {
 
 ### 4.1 Bid Amounts
 
-| Bid | Value (tricks needed) | Success Points | Failure Points |
+| Bid | Tricks Needed | Success Points | Failure Points |
 |---|---|---|---|
-| Bab | 5 | +5 | +10 (to opponent) |
+| Bab | 5 | +5 | +10 |
 | Six | 6 | +6 | +12 |
 | Seven | 7 | +7 | +14 |
-| Kout | 8 | Score set to 31 (instant win) | +16 (to opponent) |
-
-Note: `BidAmount.nextAbove(current)` returns the next higher bid. `nextAbove(null)` = Bab.
+| Kout | 8 | Score → 31 (instant win) | +16 |
 
 ### 4.2 Bidding Flow
 
-1. **Start**: Seat after dealer, going CCW.
-2. **Single orbit**: Each player bids or passes exactly once.
-3. **Must exceed**: New bid must be strictly higher than current highest.
-4. **Pass = permanent**: Once you pass, you're out.
-5. **Kout = immediate end**: If someone bids 8 (Kout), bidding ends instantly.
-6. **Forced bid**: If 3 players pass with NO bid on the table, the last player MUST bid — but can choose ANY bid level, not just Bab **(CHANGED)**. If someone already bid, the last player CAN pass.
-7. **No malzoom/reshuffle**: No redeal mechanism.
+1. Start: seat after dealer, going CCW.
+2. Single orbit: each player bids or passes exactly once.
+3. Must exceed: new bid must be strictly higher than current highest.
+4. Pass = permanent: once you pass, you're out.
+5. Kout = immediate end: bidding stops instantly.
+6. Forced bid: if 3 pass with no bid, last player MUST bid — can choose ANY level (not forced to Bab). If someone already bid, last player CAN pass.
+7. No reshuffle.
 
-### 4.3 Bid Validation (Dart)
+### 4.3 Bid Validation
 
 ```
 validateBid:
   - already passed? → invalid
-  - bid not higher than current? → invalid
+  - bid ≤ current highest? → invalid
   - else → valid
 
 validatePass:
@@ -148,28 +103,22 @@ validatePass:
   - else → valid
 
 isLastBidder:
-  - not in passed list AND only 1 active player remaining
+  - not passed AND only 1 active player remaining
 
 checkBiddingComplete:
-  - 3+ passed AND current bid exists AND bidder exists → won
+  - 3+ passed AND bid exists AND bidder exists → won
   - else → ongoing
 ```
 
-### 4.4 Bid Validation (TypeScript — Workers)
-
-Same logic, uses string player IDs instead of seat indices. Functionally identical.
-
-**⚠️ REVIEW**: Dart uses `passedPlayers.length >= 3` and TS uses the same. Both check `>= 3` which is correct for 4 players (3 passed = 1 winner).
+Dart uses seat indices, TS uses string player IDs. Functionally identical.
 
 ---
 
 ## 5. TRUMP SELECTION
 
-After bidding, the winning bidder picks a trump suit.
+Winning bidder picks any of the 4 suits. No validation constraints.
 
-No validation constraints — any of the 4 suits is valid. The bidder's hand composition influences the choice but it's a free pick.
-
-**Timeout behavior (NEW):** If player doesn't pick in time, auto-select the best suit based on card count + rank strength. Show countdown timer and visual warning as time runs low. Applies to both offline and online modes.
+Trump timeout auto-pick is planned (not yet implemented in code): auto-select best suit by count + rank strength, with countdown timer.
 
 ---
 
@@ -177,28 +126,26 @@ No validation constraints — any of the 4 suits is valid. The bidder's hand com
 
 ### 6.1 Rules
 
-1. **Card must be in hand.**
-2. **Kout first trick lead**: If bid is Kout AND it's the first trick AND you're leading, you MUST play trump if you have it. (Joker is exempt — you CAN play Joker instead of trump.)
-3. **Must follow suit**: If not leading and you have cards of the led suit, you must play one. Joker is exempt (playable anytime regardless of led suit).
-4. **Joker CANNOT be led** — it is not a legal lead card **(CHANGED)**. This is why poison joker exists: if your only card is the Joker and you must lead, you can't play — instant game loss.
+1. Card must be in hand.
+2. **Joker cannot be led** — returns `joker-cannot-lead` error. This is the fundamental rule.
+3. **Kout first trick lead**: If Kout AND first trick AND leading → must play trump if you have it. (Since Joker can't lead, this only applies to suited cards.)
+4. **Must follow suit**: If not leading and you have cards of the led suit, you must play one. Joker is exempt (playable anytime when following).
 
-### 6.2 Playable Cards Helper
+### 6.2 Poison Joker
 
-`playableForCurrentTrick()` combines all rules into a single filter. Takes:
-- hand, trickHasNoPlaysYet (= leading), ledSuit, trumpSuit, bidIsKout, noTricksCompletedYet
+`detectPoisonJoker`: `hand.length == 1 && hand.first.isJoker`
 
-Returns the set of legally playable cards.
+Triggers **only when the player must lead** (checked in controller: `isLead && detectPoisonJoker(hand)`). When following, Joker is a normal legal play.
 
-### 6.3 Special Detections
+Result: **instant game loss** — opponent score set to 31 via `Scorer.applyPoisonJoker()` which calls `applyKout()`.
 
-- **Poison Joker**: Player must lead but only card is Joker → **instant game loss**, opponent score set to 31 **(CHANGED)**. Only triggers when leading, not when following.
-- ~~**Joker Lead**~~: **REMOVED** — Joker simply cannot be led. No separate penalty path needed.
+### 6.3 Removed
 
-**✅ RESOLVED**: Joker lead code path removed. Poison joker is the only special Joker detection, and it now causes instant game loss.
+- `detectJokerLead` — removed entirely. Joker cannot be led, so no separate detection needed.
 
-### 6.4 Dart vs TypeScript Parity
+### 6.4 Playable Cards Helper
 
-Both implementations have identical validation logic. TS version works with string card codes, Dart with GameCard objects.
+`playableForCurrentTrick()` returns the set of legally playable cards. When leading, Joker is excluded by the validator. If only Joker remains, returns empty set — caller checks `detectPoisonJoker`.
 
 ---
 
@@ -206,24 +153,19 @@ Both implementations have identical validation logic. TS version works with stri
 
 ### 7.1 Winner Priority
 
-1. **Joker always wins** — first joker found in plays wins the trick.
-2. **Highest trump** — if any trump was played, highest trump rank wins.
-3. **Highest of led suit** — among cards that followed the led suit, highest rank wins.
+1. **Joker always wins** (only appears when following).
+2. **Highest trump** — if any trump was played.
+3. **Highest of led suit**.
 
-### 7.2 `beats(a, b)` comparison
+### 7.2 `beats(a, b)` (Dart only)
 
-Used by bot play strategy to compare individual cards:
-- Joker beats everything.
-- Trump beats non-trump.
-- Same suit: higher rank wins.
-- Led suit beats off-suit non-trump.
+Joker > trump > same-suit rank > led-suit over off-suit.
 
 ### 7.3 Led Suit
 
-- First card played in a trick determines led suit.
-- ~~If first card is Joker → led suit is `null`~~ — **N/A, Joker cannot lead anymore.**
+First card determines led suit. Since Joker can't lead, led suit is always defined.
 
-**✅ RESOLVED**: Since Joker can't be led, led suit is always defined. Remove null-ledSuit handling from PlayValidator.
+Note: `Trick.ledSuit` getter still returns null if first card is Joker (legacy code path). In practice this never happens since Joker can't lead.
 
 ---
 
@@ -238,7 +180,7 @@ else:
   winner = opponent, points = failurePoints
 ```
 
-### 8.2 Tug-of-War Application
+### 8.2 Tug-of-War
 
 ```
 applyScore(scores, winningTeam, points):
@@ -247,28 +189,30 @@ applyScore(scores, winningTeam, points):
   if net < 0:  winner = 0, loser = -net
 ```
 
-**Invariant**: Only one team ever has a non-zero score.
-
-Example: Team A has 5. Team B wins 10 points. Net = 0 + 10 - 5 = 5. Result: Team A = 0, Team B = 5.
+Invariant: only one team ever has non-zero score.
 
 ### 8.3 Kout Scoring
 
-- **Kout success**: Winning team score set to 31 (instant game win), loser set to 0.
-- **Kout failure**: Regular scoring with failurePoints = 16. NOT instant loss — just a big penalty.
-
-**✅ CONFIRMED**: Kout failure = +16 via tug-of-war, NOT instant loss. Correct as-is.
+- Success: `applyKout(winningTeam)` → score set to 31, opponent to 0.
+- Failure: regular `applyScore` with 16 points. NOT instant loss.
 
 ### 8.4 Poison Joker Scoring
 
-```
-calculatePoisonJokerResult(jokerHolderTeam):
+```dart
+Scorer.calculatePoisonJokerResult(jokerHolderTeam):
   winner = jokerHolderTeam.opponent
-  winner.score = 31  // instant game loss for joker holder
+  pointsAwarded = 0  // unused, applyPoisonJoker handles it
+
+Scorer.applyPoisonJoker(jokerHolderTeam):
+  return applyKout(winningTeam: jokerHolderTeam.opponent)
+  // → opponent score = 31, joker holder = 0
 ```
 
-**✅ CONFIRMED + CHANGED**: Poison joker = instant game loss (score 31), not +10. Winner is always the team opposing the joker holder. The unused `biddingTeam` param can be removed.
+Instant game loss. Same mechanism as Kout success (for the other team).
 
-### 8.5 Game Over Check
+**TS parity**: `scorer.ts` has matching `calculatePoisonJokerResult` and `applyPoisonJoker` functions. Points field is 0, actual scoring done via `applyKout`.
+
+### 8.5 Game Over
 
 Any team reaching `>= 31` wins.
 
@@ -276,11 +220,9 @@ Any team reaching `>= 31` wins.
 
 ```
 isRoundDecided:
-  bidderTricks >= bidValue  (bidder already made it)
-  OR opponentTricks > 8 - bidValue  (opponent blocked it)
+  bidderTricks >= bidValue
+  OR opponentTricks > 8 - bidValue
 ```
-
-Example: Bid is 6. If opponent has 3 tricks (> 8-6 = 2), bidder can't reach 6 in remaining tricks.
 
 ---
 
@@ -288,169 +230,156 @@ Example: Bid is 6. If opponent has 3 tricks (> 8-6 = 2), bidder can't reach 6 in
 
 ### 9.1 Round Structure
 
-```
 1. Deal (shuffle, 8 cards each)
 2. Bidding (single CCW orbit)
 3. Trump Selection (bidder picks)
-4. Bid Announcement (pause for UI)
+4. Bid Announcement (UI pause)
 5. Play 8 Tricks
 6. Round Scoring
-7. Check game over → if not, new round with updated dealer
-```
+7. Check game over → new round with updated dealer
 
 ### 9.2 Trick Play Flow
 
-- **First trick leader**: Seat after bidder (CCW).
-- **Subsequent trick leader**: Previous trick winner.
-- Each trick: 4 cards played CCW from leader.
-- After each play: card tracked, voids inferred if off-suit.
-- Poison joker check only when player must LEAD and only card is Joker **(CHANGED)**.
-- ~~Joker lead check~~ — **REMOVED** (Joker can't be led).
-- Early termination check after each trick resolution.
+- First trick leader: seat after bidder (CCW).
+- Subsequent: previous trick winner leads.
+- Each trick: 4 cards CCW from leader.
+- Poison joker check: **only when leading** (`isLead && detectPoisonJoker`).
+- After each play: card tracked, void inferred if off-suit.
+- Early termination after each trick.
 
-### 9.3 Card Tracking (in-trick)
+### 9.3 Controller Scoring Path
 
-The controller creates one `CardTracker` per round. After each card:
-- `recordPlay(seat, card)` — adds to played set.
-- If following and played off-suit → `inferVoid(seat, ledSuit)`.
+```dart
+if (poisonJoker):
+  scores = Scorer.applyPoisonJoker(jokerHolderTeam)  // instant loss → 31
+else if (bid.isKout && winner == bidderTeam):
+  scores = Scorer.applyKout(winningTeam)  // instant win → 31
+else:
+  scores = Scorer.applyScore(scores, winningTeam, points)  // tug-of-war
+```
 
 ### 9.4 Forced Bid Tracking
 
-`_bidWasForced` boolean tracks if the winning bid was a forced bid. Passed to `TrumpContext.isForcedBid` and `PlayContext.isForced` so bots can adjust strategy.
-
-### 9.5 Kout Scoring Path in Controller
-
-```dart
-if (!poisonJoker && bid.isKout && result.winningTeam == bidderTeam):
-  scores = Scorer.applyKout(winningTeam)  // instant 31
-else:
-  scores = Scorer.applyScore(scores, winningTeam, points)  // normal tug-of-war
-```
-
-So Kout failure goes through normal `applyScore` with 16 points penalty.
+`_bidWasForced` tracks if winning bid was forced. Passed to `TrumpContext.isForcedBid` and `PlayContext.isForced`.
 
 ---
 
-## 10. BOT STRATEGY
+## 10. BOT STRATEGY (Dart — Offline)
 
-### 10.1 Bot Settings (Single Difficulty)
+### 10.1 Bot Settings
 
 ```
-bidAdjust = 1.1           (positive = bids more readily)
 trumpLengthWeight = 2.5
 trumpStrengthWeight = 0.45
-jokerUrgencyThreshold = 0.08  (lower = use joker sooner)
+partnerEstimateDefault = 1.0  (unknown partner)
+partnerEstimateBid = 1.5      (partner bid)
+partnerEstimatePass = 0.5     (partner passed)
+desperationThreshold = 1.0    (lower thresholds when losing)
 ```
 
-No difficulty tiers — one strong profile.
+No difficulty tiers. No bot personas (removed).
 
-### ~~10.2 Bot Persona (Style Variation)~~ — **REMOVED**
+### 10.2 Hand Evaluator
 
-~~Three styles~~ → Always play strongest option in tiebreaks. Simplification — personas added unnecessary complexity for marginal variety.
+Returns `HandStrength { personalTricks: 0.0–8.0, strongestSuit }`.
 
-### 10.3 Hand Evaluator
+**Step 1**: Find strongest suit by raw trick potential (sum of base probs).
 
-Produces `HandStrength { expectedWinners: 0.0–8.0, strongestSuit }`.
+**Per-card base probability (no trump):**
 
-**Per-card scoring:**
-
-| Rank | Base Value | With ≥3 in suit | Trump Bonus |
-|---|---|---|---|
-| Ace | 0.9 | 0.9 | +0.5 |
-| King | 0.6 | 0.8 | +0.4 |
-| Queen | 0.3 | 0.5 | +0.3 |
-| Jack | 0.2 | 0.2 | +0.2 |
-| Ten | 0.1 | 0.1 | +0.3 |
-| 9/8/7 | 0.0 | 0.0 | +0.3 |
-| Joker | 1.0 (flat) | — | — |
-
-**Suit texture bonuses:**
-- AKQ in same suit: +0.5
-- AK in same suit: +0.3
-- KQ (no A) in same suit: +0.2
-
-**Distribution bonuses:**
-- 4+ cards in a suit: +0.3
-- Void in non-trump suit (with trump in hand): +0.3 (ruffing potential)
-- Void in non-trump suit (no trump): +0.1
-- Void in trump suit: +0.0 (bad)
-
-### 10.4 Bid Strategy
-
-**Threshold-based bidding:**
-
-| Bid | Strength Threshold |
+| Rank | Base Prob |
 |---|---|
-| Bab (5) | 3.7 |
-| Six | 4.3 |
-| Seven | 5.0 |
-| Kout (8) | 5.8 |
+| Ace | 0.85 |
+| King | 0.65 |
+| Queen | 0.35 |
+| Jack | 0.15 |
+| 10 and below | 0.05 |
+| Joker | 1.0 (flat) |
 
-**Threshold adjustments (cumulative):**
+**Step 2**: Score each card: base + trump bonus if in strongest suit.
 
-| Condition | Adjustment |
+**Trump bonus (for strongest suit only):**
+
+| Rank | Bonus |
 |---|---|
-| My team can win with Bab (+5 minus opp) | +1.0 |
-| My team score + 5 ≥ 31 | +0.8 |
-| Opponent ≥ 25 and I ≤ 5 (desperate) | +1.0 |
-| My team ≥ 26 (close to winning) | +0.5 |
-| Opponent ≥ 26 (must contest) | +0.5 |
-| First to act (position 0) | +0.2 |
-| Third to act (position 2) | +0.2 |
-| Fourth to act (position 3+) | +0.3 |
-| Partner bid (not pass) | +0.5 |
-| Partner passed | -0.1 |
-| BotSettings.bidAdjust | +1.1 |
+| Ace | +0.15 |
+| King | +0.25 |
+| Queen | +0.25 |
+| Jack | +0.25 |
+| 10 and below | +0.30 |
 
-**Shape boost (on top of threshold):**
-- Longest suit ≥ 7: +0.8
-- Longest suit = 6 + Joker: +0.5
+**Step 3**: Suit texture bonuses:
+- AKQ: +0.5
+- AK: +0.3
+- KQ (no A): +0.2
 
-**Power card boost:**
-- Per Ace: +0.35
-- Per King: +0.25
-- Per Queen: +0.12
-- Joker: +1.0
+**Step 4**: Long suit bonus: +0.1 per card beyond 3 (for suits with 4+).
 
-**Shape floor bids** (minimum bid regardless of strength score):
+**Step 5**: Void bonuses:
+- Void in non-trump with trump in hand: +1.0 (ruffing)
+- Void in non-trump without trump: +0.1
+- Void in own trump: no bonus
 
-| Hand Shape | Floor Bid |
+**Effective tricks** = personalTricks + partner estimate:
+- Partner unknown: +1.0
+- Partner bid: +1.5
+- Partner passed: +0.5
+
+### 10.3 Bid Strategy
+
+**Thresholds (effectiveTricks needed):**
+
+| Bid | Threshold |
 |---|---|
-| 7+ in a suit + Joker | Kout |
-| 7+ in a suit | Seven |
-| 6 in a suit + Joker + AKQ | Kout |
-| 6 in a suit + Joker | Seven |
-| 6 in a suit + off-suit A + off-suit K | Seven |
-| 6 in a suit | Six |
-| 5 in a suit + Joker | Six |
-| 5 in a suit + off-suit A | Six |
-| 5 in a suit | Bab |
-| 4 in a suit + Joker | Bab |
-| 4 in a suit + (off-suit A or K) | Bab |
-| AKQ in 3-card suit + Joker + off-suit A | Bab |
+| Bab (5) | 5.0 |
+| Six | 6.0 |
+| Seven | 7.0 |
+| Kout (8) | 8.0 |
 
-**Kout gate** (even if strength says Kout, must pass one of):
-- Longest suit ≥ 7
-- Joker + longest suit ≥ 6 + AKQ block in some suit
-- Joker + longest suit ≥ 5 + 3 Aces
-- Adjusted strength ≥ 7.6
+**Desperation offset**: +1.0 if opponent score >= 21 (targetScore - 10).
 
-**Opponent contest**: If opponent placed the current high bid, bot will bid one higher IF strength exceeds that bid's threshold by +0.3.
+**Shape floor** (minimum bid from hand shape):
 
-**Forced bid**: If forced (last player, no bids), plays best possible bid up to ceiling. If someone already bid higher, tries next above. Fallback: Bab.
+| Shape | Floor |
+|---|---|
+| 7+ in suit + Joker | Kout |
+| 7+ in suit | Seven |
+| 6 in suit + Joker + AKQ | Kout |
+| 6 in suit + Joker | Seven |
+| 6 in suit | Six |
+| 5 in suit + Joker | Six |
+| 5 in suit | Bab |
 
-### 10.5 Trump Strategy
+Ceiling = max(thresholdBid, shapeFloor), then gated.
+
+**Seven gate** (must pass one):
+- 6+ cards in any suit
+- Joker + 5+ cards in suit with A-K
+- 3+ Aces + Joker
+
+**Kout gate** (must pass one):
+- Longest suit >= 7
+- Joker + 6+ cards + AKQ block
+- Joker + 5+ cards + 3 Aces
+- effectiveTricks >= 7.6
+
+**Partner rule**: Never outbid partner unless going Kout.
+
+**Opponent contest**: If opponent placed high bid, only outbid if effectiveTricks (+ desperation) >= new level.
+
+**Forced bid**: Bot picks best bid up to ceiling. If must outbid, tries nextAbove. Forced player can choose any level.
+
+### 10.4 Trump Strategy
 
 **Candidate scoring:**
 ```
 score = count * lengthWeight + strength * strengthWeight
 ```
 
-Default weights: `lengthWeight = 2.0`, `strengthWeight = 1.0`.
-Kout weights: `lengthWeight = 1.5`, `strengthWeight = 2.0`.
-BotSettings overrides: `lengthWeight = 2.5`, `strengthWeight = 0.45`.
+Weights from BotSettings: `lengthWeight = 2.5`, `strengthWeight = 0.45` (non-Kout).
+Kout: `lengthWeight = 1.5`, `strengthWeight = 2.0`.
 
-**⚠️ REVIEW**: BotSettings defines `trumpLengthWeight = 2.5` and `trumpStrengthWeight = 0.45`, but `TrumpStrategy.selectTrump` uses default values `2.0` / `1.0` unless explicitly passed. The BotPlayerController would need to pass these. Check if BotSettings values are actually used or dead code.
+**Confirmed**: BotSettings weights ARE wired up — `TrumpStrategy.selectTrump` defaults to `BotSettings.trumpLengthWeight` / `BotSettings.trumpStrengthWeight` when no explicit weights passed.
 
 **Per-rank trump strength weights:**
 
@@ -468,96 +397,129 @@ BotSettings overrides: `lengthWeight = 2.5`, `strengthWeight = 0.45`.
 - Side-suit honors: Ace = +0.9, King = +0.5
 
 **Filters:**
-- Prefer suits with ≥ 2 cards.
-- If no suit has 2+, consider all.
-- For forced bids: just pick longest suit (honor tiebreak).
+- Prefer suits with >= 2 cards. If none, consider all.
+- `isForcedBid` param removed from TrumpStrategy — no longer used.
 
 **Tiebreak (within 0.5 score):**
-- Higher AK honor tiebreak → then longer suit.
+- Higher AK honor count → then longer suit.
 
-### 10.6 Play Strategy — Leading
+### 10.5 Play Strategy — Leading
 
 Priority order:
-1. **Master cards** (highest remaining in suit, tracked): Play non-trump masters first, highest rank.
-2. **Off-trump Aces**: Prefer ace with a king in same suit (sets up next trick). Then singleton aces. Then any ace.
-3. **Trump strip** (bidding team only): If 3+ trumps, lead highest trump to strip opponents.
-4. **Partner void exploit**: Lead into a suit partner is void in (they can trump).
-5. **Non-trump singletons** (defending team): Create void for future ruffing.
+1. **Master cards** (highest remaining via tracker): non-trump masters first, highest rank.
+2. **Non-trump Aces**: prefer Ace with King in same suit, then any Ace.
+3. **Singleton voids**: singleton non-trump card when you have trump (creates void for ruffing).
+4. **Trump strip** (bidding team only): 3+ trumps → lead highest trump.
+5. **Partner void exploit**: lead into suit partner is void in.
 6. **Longest non-trump suit**, lowest card.
-7. **Fallback**: Highest available non-joker. Last resort: joker.
+7. **Fallback**: highest non-Joker.
 
-**Bot never leads Joker** (filtered out unless it's the only legal play).
+Bot never leads Joker (validator prevents it; strategy double-checks).
 
-### 10.7 Play Strategy — Following
+### 10.6 Play Strategy — Following
 
-**Pre-checks:**
-- If bidding team already made their bid → dump mode (play low).
-- If defending and bidder already made bid → dump mode.
-- If defending and bidder already mathematically lost → dump mode.
-- If defending and bidder needs exactly 1 more trick → play Joker if available, else winning trump.
+**Pre-checks (before suit analysis):**
+- **Trick countdown**: If <= 2 tricks remaining and have Joker → play Joker now (avoid poison later).
+- **Poison prevention**: If hand <= 2 cards and one is Joker → play Joker immediately.
 
-**Partner interactions:**
-- Partner led low + partner currently winning → play low (support).
-- Forced bid context → play aces if following suit, else dump.
-- If only 2 cards left and one is Joker → play Joker immediately (avoid poison).
+**Following suit (have cards in led suit):**
+- Partner winning + last to play → lowest.
+- Partner winning + opponent still to play → lowest.
+- Opponent winning + can beat:
+  - Last to play → lowest winner (conserve).
+  - Not last → highest winner (guarantee).
+- Can't beat with suit + last to play + have Joker → play Joker.
+- Can't beat → lowest suit card.
 
-**Following same suit:**
-- Partner winning + early position + low urgency → play lowest (let partner keep it).
-- Partner winning + high urgency + can beat → overtake to secure.
-- Partner winning + last to play → play lowest.
-- Last to play + partner not winning → play winning card if possible, else lowest.
-- Otherwise → try to beat, else play lowest.
+**Void in led suit:**
+- Partner winning + last to play → dump.
+- Partner winning + opponent to play:
+  - Have trump + tracker says no outstanding trumps → lowest trump (guarantee).
+  - Have trump + highest trump beats all remaining trumps → play it.
+  - Otherwise → dump.
+- Opponent winning + winning trump available → lowest winning trump.
+- Opponent winning + trump but can't beat → lowest trump (still better than nothing).
+- No trump can win + have Joker + no non-Joker can win → Joker.
+- Nothing wins → dump.
 
-**Off-suit (void in led suit):**
-- Partner winning → dump (strategic dump, avoid joker poison risk).
-- Joker logic:
-  - Can't win without joker + partner not winning → play joker.
-  - Poison risk (≤ 1–2 non-joker cards, suits not exhausted) → play joker.
-  - Urgency threshold (needs 1 trick, opponent trumped, few cards left) → play joker if urgency ≥ 0.08.
-- Trump conservation: If only 1 trump left and ≤ 1 trump outstanding, don't trump low tricks (save for later).
-- Has trump → play lowest winning trump. Can't win with trump → dump.
-- No trump → dump.
+### 10.7 Strategic Dump (3-tier)
 
-### 10.8 Strategic Dump Logic
-
-Priority:
-1. **Non-trump singletons** (lowest rank) — creates void for future ruffing.
-2. **Safe to break** (not trumps, not breaking AK/KQ combos) — lowest rank.
+1. **Non-trump singletons** (lowest rank) — creates voids.
+2. **Safe to break** (non-trump, not breaking AK/KQ combos) — lowest rank.
 3. **Non-trump** — lowest rank.
-4. **Anything** — lowest rank.
+4. If only trump remains: play Joker if available, else lowest trump.
 
-### 10.9 Joker Poison Risk Detection
+### 10.8 Card Tracker
 
-```
-jokerPoisonRisk(nonJokerLegal, hand, tracker):
-  - 0 non-joker legal cards → true
-  - ≤ 1 non-joker legal cards → true
-  - ≤ 2 non-joker legal + tracker shows suit not exhausted → true
-```
-
-### 10.10 Card Tracker
-
-Maintained per round:
-- `playedCards` — set of all cards played this round.
-- `knownVoids` — map of seat → set of suits they've shown void in.
+Per-round state:
+- `playedCards` — set of all played cards.
+- `knownVoids` — seat → set of void suits.
 - `remainingCards(myHand)` — fullDeck - played - myHand.
-- `isHighestRemaining(card, hand)` — is this card the highest unplayed of its suit?
-- `trumpsRemaining(trumpSuit, hand)` — count of unplayed trumps not in my hand.
-- `isSuitExhausted(suit, hand)` — no more cards of this suit in play.
+- `isHighestRemaining(card, hand)` — is card highest unplayed of its suit?
+- `trumpsRemaining(trumpSuit, hand)` — unplayed trumps not in my hand.
+- `isSuitExhausted(suit, hand)` — no more of this suit in play.
 
-### 10.11 Game Context
+### 10.9 Game Context
 
-Computed from `ClientGameState`:
-
-- `roundControlUrgency`: 0.0–1.0. `need / remaining` where need = bid - bidderTricks, remaining = 8 - tricksPlayed. 0 if bid already made, 1.0 if need > remaining (impossible).
+From `ClientGameState`:
+- `roundControlUrgency`: 0.0–1.0. `need / remaining` where need = bid - bidderTricks.
 - `tricksNeededForBid`: bid value - bidding team tricks.
-- `partnerLikelyWinningTrick`: Is partner's card currently the best in the partial trick?
-- `partnerNeedsProtection`: Partner winning but trump hasn't been played yet (could be stolen).
-- `opponentLikelyVoidInLedSuit` / `partnerLikelyVoidInLedSuit`: Based on tracked voids.
+- `partnerLikelyWinningTrick`: partner's card is best in partial trick.
+- `partnerNeedsProtection`: partner winning but trump not yet played.
+- `opponentLikelyVoidInLedSuit` / `partnerLikelyVoidInLedSuit`: from tracked voids.
+
+**Removed from GameContext**: `persona` field (bot personas removed).
 
 ---
 
-## 11. TIMING
+## 11. BOT STRATEGY (TypeScript — Workers)
+
+### 11.1 Hand Evaluator (TS)
+
+Same scoring as Dart: base probability + trump bonus + texture + long suit + voids. Identical formula.
+
+### 11.2 Bid Strategy (TS)
+
+**Different thresholds than Dart:**
+
+| Bid | TS Threshold | Dart Threshold |
+|---|---|---|
+| Bab (5) | 4.5 | 5.0 |
+| Six | 5.5 | 6.0 |
+| Seven | 6.5 | 7.0 |
+| Kout | 7.5 | 8.0 |
+
+**TS threshold adjustments:**
+- Score-based: same patterns (+1.0 if can win with Bab, +0.8 if close, etc.)
+- Position: first to act = -0.3 (more conservative), 2+ acted = +0.2/+0.3
+- Partner bid = +0.3, partner pass = -0.3
+- **No shape floor, no gates** in TS version.
+
+**⚠️ PARITY GAP**: TS bid strategy is simpler — no shape floor, no Seven/Kout gates, no partner "never outbid" rule, different thresholds. These should be aligned.
+
+### 11.3 Trump Strategy (TS)
+
+Same structure but **uses hardcoded weights** `lengthWeight = 2.0`, `strengthWeight = 1.0` instead of BotSettings values (2.5 / 0.45).
+
+No forced-bid fast path (just picks longest).
+
+**⚠️ PARITY GAP**: TS trump weights differ from Dart BotSettings.
+
+### 11.4 Play Strategy (TS)
+
+Similar structure: lead priorities (masters, aces, trump strip, singletons, longest suit), follow logic (poison prevention, suit following, void handling, joker urgency, trump, dump).
+
+**Key differences from Dart:**
+- No trick countdown check (play Joker with <= 2 tricks remaining).
+- Joker urgency uses simple 0.3 threshold (Dart uses more nuanced multi-factor).
+- No partner trump guarantee logic in void follow.
+- Follow suit: always plays lowest winner (Dart differentiates by position — highest if not last).
+
+**⚠️ PARITY GAP**: TS play strategy is simpler. Missing trick countdown, position-aware follow, partner protection with trump guarantee.
+
+---
+
+## 12. TIMING
 
 | Event | Duration |
 |---|---|
@@ -582,29 +544,28 @@ Computed from `ClientGameState`:
 
 ---
 
-## 12. DART ↔ TYPESCRIPT PARITY CHECK
+## 13. DART ↔ TYPESCRIPT PARITY
 
-| Module | Dart | TypeScript | Notes |
-|---|---|---|---|
-| Bid Validator | ✅ seat indices | ✅ player IDs | Functionally identical |
-| Play Validator | ✅ GameCard objects | ✅ string codes | Functionally identical |
-| Trick Resolver | ✅ returns seat index | ✅ returns player ID | Same priority: Joker > Trump > Led |
-| Scorer | ✅ full (tug-of-war, kout, poison, early term) | ✅ full | Same formulas |
-| Deck | ✅ 32 cards | ✅ 32 cards | Both exclude 7♦ |
-
-**⚠️ REVIEW**: The TS `trick-resolver.ts` does NOT have a `beats()` helper — only the full `resolveTrick()`. The Dart version has both. Not a bug, just asymmetry.
+| Module | Status | Notes |
+|---|---|---|
+| Deck | ✅ Match | Both 32 cards, exclude 7♦ |
+| Bid Validator | ✅ Match | Dart uses seat indices, TS uses player IDs |
+| Play Validator | ✅ Match | Both have joker-cannot-lead, poison joker detection. TS removed detectJokerLead. |
+| Trick Resolver | ✅ Match | Same priority: Joker > Trump > Led. TS lacks `beats()` helper (not needed server-side). |
+| Scorer | ✅ Match | Both have applyPoisonJoker → applyKout. Both removed old +10 penalty. |
+| Hand Evaluator | ✅ Match | Same formula (base + trump bonus + texture + long suit + voids) |
+| Bid Strategy | ⚠️ Diverged | TS: lower thresholds (4.5/5.5/6.5/7.5), no shape floor, no gates, no partner rule |
+| Trump Strategy | ⚠️ Diverged | TS: hardcoded 2.0/1.0 weights vs Dart 2.5/0.45 |
+| Play Strategy | ⚠️ Diverged | TS: simpler follow logic, no trick countdown, no position-aware winners, no partner trump guarantee |
 
 ---
 
-## 13. ITEMS FLAGGED FOR REVIEW
+## 14. ITEMS FOR REVIEW
 
-1. ✅ **Dealer rotation logic**: Confirmed correct — losing team = lower score.
-2. ✅ **Joker lead → ledSuit null**: RESOLVED — Joker can't lead, so this never happens. Remove null handling.
-3. ✅ **Kout failure = 16 via tug-of-war**: Confirmed correct — not instant loss.
-4. ✅ **Poison joker ignores biddingTeam param**: Confirmed correct — remove unused param.
-5. 🔍 **BotSettings trump weights possibly unused**: TODO — check if 2.5/0.45 are wired up.
-6. ✅ **Bot never leads Joker**: Now a hard rule — Joker cannot be led at all.
-7. ✅ **Bot persona deterministic**: RESOLVED — personas removed entirely.
-8. 🧠 **Forced bid escalation**: CHANGED — forced player can choose any bid level. Needs code update.
-9. 🧠 **Hand evaluator trump bonus**: Flagged for brainstorm — evaluate if current system or rank sums work better.
-10. 🧠 **Score-based bid aggression**: Flagged for brainstorm — thresholds too aggressive, especially for Seven.
+1. **TS bid thresholds diverged** — TS uses 4.5/5.5/6.5/7.5, Dart uses 5.0/6.0/7.0/8.0. Which is correct? Should they match?
+2. **TS missing shape floor + gates** — Dart has sophisticated hand-shape minimum bids and Seven/Kout gates. TS has none.
+3. **TS trump weights hardcoded** — Should use 2.5/0.45 to match Dart BotSettings.
+4. **TS play strategy gaps** — Missing: trick countdown (Joker play with ≤2 tricks left), position-aware following (highest vs lowest winner), partner trump guarantee.
+5. **Trick.ledSuit still handles Joker-lead case** — Returns null if first card is Joker. Dead code path since Joker can't lead, but still in the model.
+6. **Bot personas removed** — GameContext no longer has `persona` field. Play strategy no longer calls `_personaTieBreak`. Confirmed clean.
+7. **Void bonus jump** — Dart hand evaluator gives +1.0 for void in non-trump with trump (up from old +0.3). Significant change. TS evaluator still uses +0.3. Parity gap.
