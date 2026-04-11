@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import type { Env } from "./env";
 import { signToken, verifyToken } from "./auth/jwt";
-import { joinQueue, leaveQueue, getQueuedPlayers, removePlayersFromQueue, recordGame, claimMatchedPlayers } from "./matchmaking/queue";
+import { joinQueue, leaveQueue, getQueuedPlayers, removePlayersFromQueue, recordGame, claimMatchedPlayers, purgeStaleQueue } from "./matchmaking/queue";
 import { findBestMatch, assignSeats } from "./matchmaking/matcher";
 
 const ROOM_CHARSET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
@@ -53,6 +53,8 @@ app.post("/auth/anonymous", async (c) => {
 app.post("/api/matchmaking/join", async (c) => {
   const uid = c.get("uid" as never) as string;
   const { eloRating } = await c.req.json<{ eloRating: number }>();
+
+  await purgeStaleQueue(c.env.DB);
 
   try {
     await joinQueue(c.env.DB, uid, eloRating ?? 1000);
@@ -114,7 +116,12 @@ app.post("/api/matchmaking/join", async (c) => {
 
 app.post("/api/matchmaking/leave", async (c) => {
   const uid = c.get("uid" as never) as string;
-  await leaveQueue(c.env.DB, uid);
+  try {
+    await leaveQueue(c.env.DB, uid);
+  } catch (e: any) {
+    if (e?.message !== 'Not in queue') throw e;
+    // Already left — treat as success
+  }
 
   // Disconnect from lobby
   const lobbyId = c.env.MATCHMAKING_LOBBY.idFromName("global");
@@ -206,9 +213,15 @@ app.post("/api/rooms/start", async (c) => {
     return c.json(err, res.status as any);
   }
 
+  const startResult = await res.json<{ ok: boolean; players: string[] }>();
+
   await c.env.DB.prepare(
     "UPDATE room_codes SET status = 'playing' WHERE do_id = ?"
   ).bind(gameId).run();
+
+  if (startResult.players?.length === 4) {
+    await recordGame(c.env.DB, gameId, startResult.players);
+  }
 
   return c.json({ ok: true });
 });

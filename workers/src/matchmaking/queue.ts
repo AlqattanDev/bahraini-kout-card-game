@@ -1,6 +1,18 @@
 import type { QueuedPlayer } from "./matcher";
 import { expectedScore, newElo, teamAverageElo } from "./elo";
 
+export const QUEUE_STALE_AFTER_SECONDS = 600; // 10 minutes
+
+export async function purgeStaleQueue(db: D1Database): Promise<number> {
+  const result = await db
+    .prepare(
+      `DELETE FROM matchmaking_queue WHERE queued_at < datetime('now', '-' || ? || ' seconds')`
+    )
+    .bind(QUEUE_STALE_AFTER_SECONDS)
+    .run();
+  return result.meta.changes ?? 0;
+}
+
 export async function joinQueue(
   db: D1Database,
   uid: string,

@@ -19,6 +19,11 @@ function makeCtx(overrides: Partial<BotContext> = {}): BotContext {
     isLead: false,
     isForced: false,
     isBiddingTeam: false,
+    roundControlUrgency: 0,
+    partnerLikelyWinningTrick: false,
+    partnerNeedsProtection: false,
+    opponentLikelyVoidInLedSuit: false,
+    partnerLikelyVoidInLedSuit: false,
     ...overrides,
   };
 }

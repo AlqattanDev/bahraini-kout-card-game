@@ -36,7 +36,6 @@ describe("Counter-clockwise player rotation", () => {
 
   it("should handle bidding rotation counter-clockwise", () => {
     const players = ["p0", "p1", "p2", "p3"];
-    const passed: string[] = [];
 
     // Start at p0
     let currentIndex = 0;

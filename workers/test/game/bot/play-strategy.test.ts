@@ -20,6 +20,11 @@ function makePlayCtx(overrides: Partial<BotContext> = {}): BotContext {
     isLead: true,
     isForced: false,
     isBiddingTeam: false,
+    roundControlUrgency: 0,
+    partnerLikelyWinningTrick: false,
+    partnerNeedsProtection: false,
+    opponentLikelyVoidInLedSuit: false,
+    partnerLikelyVoidInLedSuit: false,
     ...overrides,
   };
 }

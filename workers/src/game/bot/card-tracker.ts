@@ -11,7 +11,7 @@ export class CardTracker {
     for (const play of plays) this.played.add(play.card);
   }
 
-  recordPlay(card: string): void {
+  recordPlay(_seat: number, card: string): void {
     this.played.add(card);
   }
 

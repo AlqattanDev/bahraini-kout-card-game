@@ -8,7 +8,7 @@ export interface GameCard {
   code: string;
 }
 
-export type GamePhase = 'WAITING' | 'LOBBY' | 'DEALING' | 'BIDDING' | 'TRUMP_SELECTION' | 'PLAYING' | 'ROUND_SCORING' | 'GAME_OVER';
+export type GamePhase = 'WAITING' | 'LOBBY' | 'DEALING' | 'BIDDING' | 'TRUMP_SELECTION' | 'BID_ANNOUNCEMENT' | 'PLAYING' | 'ROUND_SCORING' | 'GAME_OVER';
 export type TeamName = 'teamA' | 'teamB';
 
 export interface TrickPlay {
@@ -40,6 +40,8 @@ export interface GameDocument {
   metadata: { createdAt: string; status: string; winner?: TeamName; roomCode?: string };
   seats?: SeatState[];
   isRoomGame?: boolean;
+  forcedBidSeat?: number | null;
+  roundIndex?: number;
 }
 
 export interface SeatState {
@@ -49,7 +51,7 @@ export interface SeatState {
 }
 
 export interface PendingEvent {
-  type: 'bot_turn' | 'disconnect_timeout' | 'lobby_expiry' | 'round_delay';
+  type: 'bot_turn' | 'disconnect_timeout' | 'lobby_expiry' | 'round_delay' | 'bid_announcement' | 'human_timeout';
   fireAt: number;
   meta?: string;
 }

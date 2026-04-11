@@ -65,3 +65,19 @@ export function decodeCard(encoded: string): GameCard {
 export function rankValue(rank: RankName): number {
   return RANK_VALUES[rank];
 }
+
+/** Returns true if card `a` beats card `b` given the current trump and led suit. */
+export function beatsCard(a: string, b: string, trumpSuit: SuitName | null | undefined, ledSuit: SuitName | null | undefined): boolean {
+  const da = decodeCard(a);
+  const db = decodeCard(b);
+  if (da.isJoker) return true;
+  if (db.isJoker) return false;
+  if (trumpSuit) {
+    if (da.suit === trumpSuit && db.suit !== trumpSuit) return true;
+    if (da.suit !== trumpSuit && db.suit === trumpSuit) return false;
+    if (da.suit === trumpSuit && db.suit === trumpSuit) return RANK_VALUES[da.rank!] > RANK_VALUES[db.rank!];
+  }
+  if (da.suit === db.suit) return RANK_VALUES[da.rank!] > RANK_VALUES[db.rank!];
+  if (ledSuit && da.suit === ledSuit && db.suit !== ledSuit) return true;
+  return false;
+}

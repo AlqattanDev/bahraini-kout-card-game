@@ -17,6 +17,12 @@ export interface BotContext {
   isLead: boolean;
   isForced: boolean;
   isBiddingTeam: boolean;
+  // GameContext signals — computed by buildBotContext.
+  roundControlUrgency: number;
+  partnerLikelyWinningTrick: boolean;
+  partnerNeedsProtection: boolean;
+  opponentLikelyVoidInLedSuit: boolean;
+  partnerLikelyVoidInLedSuit: boolean;
 }
 
 export function teamForSeat(seat: number): TeamName {

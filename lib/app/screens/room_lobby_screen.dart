@@ -201,7 +201,7 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen>
               const SizedBox(height: 32),
 
               // Seat cards
-              if (_lobbyState != null) ..._buildSeats(),
+              if (_lobbyState != null) ..._buildSeats(MediaQuery.sizeOf(context).width),
               if (_lobbyState == null)
                 CircularProgressIndicator(color: KoutTheme.accent),
 
@@ -235,7 +235,8 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen>
     );
   }
 
-  List<Widget> _buildSeats() {
+  List<Widget> _buildSeats(double screenWidth) {
+    final cardWidth = (screenWidth - 32).clamp(180.0, 220.0);
     return _lobbyState!.seats.map((seat) {
       final String label;
       final IconData icon;
@@ -264,7 +265,7 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen>
       final seatWidget = Padding(
         padding: const EdgeInsets.symmetric(vertical: 4),
         child: Container(
-          width: 220,
+          width: cardWidth,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
             color: KoutTheme.primary,

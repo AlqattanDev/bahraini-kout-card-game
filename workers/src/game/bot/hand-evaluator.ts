@@ -1,62 +1,121 @@
 import { decodeCard } from '../card';
 import type { SuitName, RankName } from '../types';
 
-export function evaluateHand(hand: string[], trumpSuit?: SuitName): number {
-  let score = 0;
-  const bySuit = new Map<SuitName, RankName[]>();
-  const suitCounts = new Map<SuitName, number>();
+export interface HandStrength {
+  personalTricks: number;
+  strongestSuit: SuitName | null;
+}
 
-  for (const code of hand) {
-    const card = decodeCard(code);
-    if (card.isJoker) {
-      score += 1.0;
-      continue;
-    }
-    const suit = card.suit!;
-    const ranks = bySuit.get(suit) ?? [];
-    ranks.push(card.rank!);
-    bySuit.set(suit, ranks);
-    suitCounts.set(suit, (suitCounts.get(suit) ?? 0) + 1);
+export type PartnerAction = 'unknown' | 'bid' | 'passed';
+
+// Base trick probability for a card (no trump context).
+function baseProbability(rank: RankName): number {
+  switch (rank) {
+    case 'ace': return 0.85;
+    case 'king': return 0.65;
+    case 'queen': return 0.35;
+    case 'jack': return 0.15;
+    default: return 0.05; // ten and below
   }
+}
 
-  for (const [suit, ranks] of bySuit) {
-    const isTrump = suit === trumpSuit;
-    const count = ranks.length;
+// Bonus added when the card is in the prospective trump suit.
+function trumpBonus(rank: RankName): number {
+  switch (rank) {
+    case 'ace': return 0.15;
+    case 'king': return 0.25;
+    case 'queen': return 0.25;
+    case 'jack': return 0.25;
+    default: return 0.30; // ten and below
+  }
+}
 
-    for (const rank of ranks) {
-      if (rank === 'ace') score += 0.9;
-      else if (rank === 'king') score += count >= 3 ? 0.8 : 0.6;
-      else if (rank === 'queen') score += count >= 3 ? 0.5 : 0.3;
-      else if (rank === 'jack') score += 0.2;
-      else if (rank === 'ten') score += 0.1;
-
-      if (isTrump) {
-        if (rank === 'ace') score += 0.5;
-        else if (rank === 'king') score += 0.4;
-        else if (rank === 'queen') score += 0.3;
-        else if (rank === 'jack') score += 0.2;
-        else score += 0.3;
-      }
-    }
-
+function suitTextureBonus(bySuit: Map<SuitName, RankName[]>): number {
+  let bonus = 0.0;
+  for (const ranks of bySuit.values()) {
     const hasAce = ranks.includes('ace');
     const hasKing = ranks.includes('king');
     const hasQueen = ranks.includes('queen');
-    if (hasAce && hasKing && hasQueen) score += 0.5;
-    else if (hasAce && hasKing) score += 0.3;
-    else if (hasKing && hasQueen && !hasAce) score += 0.2;
+    if (hasAce && hasKing && hasQueen) bonus += 0.5;
+    else if (hasAce && hasKing) bonus += 0.3;
+    else if (hasKing && hasQueen && !hasAce) bonus += 0.2;
+  }
+  return bonus;
+}
 
-    if (count >= 4) score += 0.3;
+export function evaluateHand(hand: string[]): HandStrength {
+  if (hand.length === 0) return { personalTricks: 0, strongestSuit: null };
+
+  const bySuit = new Map<SuitName, RankName[]>();
+  const suitCounts = new Map<SuitName, number>();
+  let hasJoker = false;
+
+  for (const code of hand) {
+    const card = decodeCard(code);
+    if (card.isJoker) { hasJoker = true; continue; }
+    const suit = card.suit!;
+    const rank = card.rank!;
+    if (!bySuit.has(suit)) bySuit.set(suit, []);
+    bySuit.get(suit)!.push(rank);
+    suitCounts.set(suit, (suitCounts.get(suit) ?? 0) + 1);
   }
 
-  const hasAnyTrump = trumpSuit != null && bySuit.has(trumpSuit);
-  for (const suit of ['spades', 'hearts', 'clubs', 'diamonds'] as SuitName[]) {
-    if (!bySuit.has(suit)) {
-      if (suit === trumpSuit) { /* no bonus */ }
-      else if (hasAnyTrump) score += 0.3;
-      else score += 0.1;
+  let strongest: SuitName | null = null;
+  let bestPotential = -1;
+  for (const [suit, ranks] of bySuit) {
+    const potential = ranks.reduce((s, r) => s + baseProbability(r), 0);
+    if (potential > bestPotential) {
+      bestPotential = potential;
+      strongest = suit;
     }
   }
 
-  return Math.max(0, Math.min(8, score));
+  let score = 0.0;
+
+  if (hasJoker) score += 1.0; // guaranteed trick
+
+  for (const [suit, ranks] of bySuit) {
+    const isTrump = suit === strongest;
+    for (const rank of ranks) {
+      let cardScore = baseProbability(rank);
+      if (isTrump) cardScore += trumpBonus(rank);
+      score += cardScore;
+    }
+  }
+
+  score += suitTextureBonus(bySuit);
+
+  for (const count of suitCounts.values()) {
+    if (count >= 4) score += (count - 3) * 0.1;
+  }
+
+  const hasTrump = strongest !== null && (suitCounts.get(strongest) ?? 0) > 0;
+  for (const suit of ['spades', 'hearts', 'clubs', 'diamonds'] as SuitName[]) {
+    if (bySuit.has(suit)) continue; // not void in this suit
+    if (suit === strongest) continue; // void in own trump — no bonus
+    score += hasTrump ? 1.0 : 0.1;
+  }
+
+  return {
+    personalTricks: Math.max(0, Math.min(8, score)),
+    strongestSuit: strongest,
+  };
+}
+
+// Partner-contribution constants matching BotSettings in Dart.
+const PARTNER_ESTIMATE_DEFAULT = 1.0;
+const PARTNER_ESTIMATE_BID = 1.5;
+const PARTNER_ESTIMATE_PASS = 0.5;
+
+/** Partner-adjusted effective tricks, clamped to 0-8. */
+export function effectiveTricks(
+  strength: HandStrength,
+  partnerAction: PartnerAction,
+): number {
+  const estimate = partnerAction === 'bid'
+    ? PARTNER_ESTIMATE_BID
+    : partnerAction === 'passed'
+    ? PARTNER_ESTIMATE_PASS
+    : PARTNER_ESTIMATE_DEFAULT;
+  return Math.max(0, Math.min(8, strength.personalTricks + estimate));
 }

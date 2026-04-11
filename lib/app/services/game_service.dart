@@ -88,6 +88,8 @@ class GameService implements GameInputSink {
           case 'error':
             final errorData = data['data'] as Map<String, dynamic>;
             _errorController.add(errorData['message'] as String);
+          default:
+            break;
         }
       },
       onError: (error) {

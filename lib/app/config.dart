@@ -7,6 +7,8 @@ class AppConfig {
   static String get wsUrl {
     final uri = Uri.parse(workerUrl);
     final scheme = uri.scheme == 'https' ? 'wss' : 'ws';
-    return '$scheme://${uri.host}:${uri.port}';
+    final defaultPort = scheme == 'wss' ? 443 : 80;
+    final port = uri.port > 0 && uri.port != defaultPort ? ':${uri.port}' : '';
+    return '$scheme://${uri.host}$port';
   }
 }

@@ -2,6 +2,7 @@ import 'dart:math';
 import 'dart:ui';
 import 'package:flame/components.dart';
 import 'package:flame/effects.dart';
+import 'package:flutter/animation.dart';
 import '../../app/models/client_game_state.dart';
 import '../managers/layout_manager.dart';
 import '../theme/diwaniya_colors.dart';
@@ -96,11 +97,10 @@ class TrickAreaComponent extends Component {
         ));
         keptCards.add(existingCard);
       } else {
-        // New trick card. Check if there's an existing card flying in from AnimationManager
-        // If not, we'll add a fly-in effect from the base position of the seat (or screen edge).
+        // New trick card — create face-down, then flip to face-up.
         final cardComp = CardComponent(
           card: play.card,
-          isFaceUp: true,
+          isFaceUp: false,
           isHighlighted: false,
           showShadow: true,
           restScale: trickScale,
@@ -110,12 +110,26 @@ class TrickAreaComponent extends Component {
           ..scale = Vector2.all(trickScale)
           ..priority = 10 + i;
 
-        // Place directly at target — kout_game temp card handles fly-in visual
         cardComp.position = targetPos;
 
         _trickCards.add(cardComp);
         add(cardComp);
         keptCards.add(cardComp);
+
+        cardComp.add(
+          ScaleEffect.to(
+            Vector2(0, trickScale),
+            EffectController(duration: 0.12, curve: Curves.easeIn),
+          )..onComplete = () {
+            cardComp.isFaceUp = true;
+            cardComp.add(
+              ScaleEffect.to(
+                Vector2.all(trickScale),
+                EffectController(duration: 0.12, curve: Curves.easeOut),
+              ),
+            );
+          },
+        );
       }
     }
 

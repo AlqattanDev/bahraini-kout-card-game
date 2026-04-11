@@ -17,7 +17,6 @@ import { validatePlay, detectPoisonJoker } from "./play-validator";
 import { resolveTrick as resolveTrickWinner } from "./trick-resolver";
 import {
   calculateRoundResult,
-  calculatePoisonJokerResult,
   applyScore,
   applyKout,
   applyPoisonJoker,
@@ -77,6 +76,8 @@ export class GameRoom extends DurableObject<Env> {
       roundHistory: [],
       trickWinners: [],
       metadata: { createdAt: new Date().toISOString(), status: "active" },
+      forcedBidSeat: null,
+      roundIndex: 0,
     };
     this.game.seats = playerUids.map(uid => ({
       uid,
@@ -85,9 +86,10 @@ export class GameRoom extends DurableObject<Env> {
     }));
     this.game.isRoomGame = false;
 
-    // Store hands
+    // Store hands — validate 8 cards each
     for (let i = 0; i < 4; i++) {
       const hand = dealtHands[i].map((c) => c.code);
+      if (hand.length !== 8) throw new Error(`Player ${i} dealt ${hand.length} cards, expected 8`);
       this.hands.set(playerUids[i], hand);
     }
 
@@ -263,6 +265,7 @@ export class GameRoom extends DurableObject<Env> {
       const dealtHands = dealHands(deck);
       for (let i = 0; i < 4; i++) {
         const hand = dealtHands[i].map(c => c.code);
+        if (hand.length !== 8) throw new Error(`Player ${i} dealt ${hand.length} cards, expected 8`);
         this.hands.set(this.game.players[i], hand);
       }
 
@@ -281,6 +284,8 @@ export class GameRoom extends DurableObject<Env> {
         passed: [],
       };
       this.game.metadata.status = 'active';
+      this.game.forcedBidSeat = null;
+      this.game.roundIndex = 0;
 
       await this.persistAndBroadcast();
       this.broadcastHands();
@@ -293,7 +298,7 @@ export class GameRoom extends DurableObject<Env> {
         });
       }
 
-      return Response.json({ ok: true });
+      return Response.json({ ok: true, players: this.game.players });
     }
 
     if (url.pathname === "/status") {
@@ -409,6 +414,61 @@ export class GameRoom extends DurableObject<Env> {
             await this.startNextRound();
           }
           break;
+        case 'bid_announcement':
+          if (this.game.phase === 'BID_ANNOUNCEMENT') {
+            const firstPlayer = this.nextPlayer(this.game.players, this.game.bid!.player);
+            this.game.phase = 'PLAYING';
+            this.game.currentPlayer = firstPlayer;
+            this.game.currentTrick = { lead: firstPlayer, plays: [] };
+            await this.persistAndBroadcast();
+            await this.checkAndScheduleBotTurn();
+            await this.scheduleHumanTimeout();
+          }
+          break;
+        case 'human_timeout': {
+          if (!this.game) break;
+          const uid = event.meta;
+          if (!uid || this.game.currentPlayer !== uid) break; // already acted
+          const phase = this.game.phase;
+          if (phase === 'BIDDING') {
+            const biddingState = this.game.biddingState!;
+            if (biddingState.currentBidder !== uid) break;
+            // Forced if last bidder with no bid yet
+            const isForced = isLastBidder(biddingState.passed, uid, 4) && biddingState.highestBid === null;
+            if (isForced) {
+              // Must bid — bid minimum above current high (or 5 if none)
+              const minBid = (biddingState.highestBid ?? 4) + 1;
+              await this.handleBid(uid, minBid);
+            } else {
+              await this.handleBid(uid, 0); // pass
+            }
+          } else if (phase === 'TRUMP_SELECTION') {
+            if (!this.game.bid || this.game.bid.player !== uid) break;
+            // Pick the suit with the most cards in hand
+            const hand = this.hands.get(uid) ?? [];
+            const suitCounts: Record<string, number> = {};
+            for (const card of hand) {
+              const d = decodeCard(card);
+              if (!d.isJoker && d.suit) suitCounts[d.suit] = (suitCounts[d.suit] ?? 0) + 1;
+            }
+            const suits = ['spades', 'hearts', 'clubs', 'diamonds'];
+            const best = suits.reduce((a, b) => (suitCounts[a] ?? 0) >= (suitCounts[b] ?? 0) ? a : b);
+            await this.handleSelectTrump(uid, best);
+          } else if (phase === 'PLAYING') {
+            if (this.game.currentPlayer !== uid) break;
+            const hand = this.hands.get(uid) ?? [];
+            const trick = this.game.currentTrick!;
+            const isLead = trick.plays.length === 0;
+            const ledCard = isLead ? null : decodeCard(trick.plays[0].card);
+            const ledSuit = ledCard && !ledCard.isJoker ? ledCard.suit : null;
+            const isKout = this.game.bid?.amount === 8;
+            const isFirstTrick = (this.game.trickWinners ?? []).length === 0;
+            const legal = hand.filter(c => validatePlay(c, hand, ledSuit, isLead, this.game!.trumpSuit, isKout, isFirstTrick).valid);
+            const pick = legal.length > 0 ? legal[Math.floor(Math.random() * legal.length)] : hand[0];
+            if (pick) await this.handlePlayCard(uid, pick);
+          }
+          break;
+        }
         case 'disconnect_timeout':
           if (event.meta) {
             await this.handleForfeit(event.meta);
@@ -454,6 +514,7 @@ export class GameRoom extends DurableObject<Env> {
     game.currentPlayer = biddingState.highestBidder;
     await this.persistAndBroadcast();
     await this.checkAndScheduleBotTurn();
+    await this.scheduleHumanTimeout();
   }
 
   private async handleBid(uid: string, bidAmount: number): Promise<void> {
@@ -462,6 +523,8 @@ export class GameRoom extends DurableObject<Env> {
 
     const biddingState = game.biddingState!;
     if (biddingState.currentBidder !== uid) throw new Error("Not your turn to bid");
+
+    await this.cancelHumanTimeout();
 
     const isPass = bidAmount === 0;
 
@@ -492,6 +555,7 @@ export class GameRoom extends DurableObject<Env> {
         game.currentPlayer = complete.winner!;
         await this.persistAndBroadcast();
         await this.checkAndScheduleBotTurn();
+        await this.scheduleHumanTimeout();
         return;
       }
 
@@ -525,6 +589,7 @@ export class GameRoom extends DurableObject<Env> {
         game.currentPlayer = uid;
         await this.persistAndBroadcast();
         await this.checkAndScheduleBotTurn();
+        await this.scheduleHumanTimeout();
         return;
       }
 
@@ -551,6 +616,7 @@ export class GameRoom extends DurableObject<Env> {
 
     await this.persistAndBroadcast();
     await this.checkAndScheduleBotTurn();
+    await this.scheduleHumanTimeout();
   }
 
   private async handleSelectTrump(uid: string, suit: string): Promise<void> {
@@ -558,18 +624,22 @@ export class GameRoom extends DurableObject<Env> {
     if (game.phase !== "TRUMP_SELECTION") throw new Error("Not in TRUMP_SELECTION phase");
     if (!game.bid || game.bid.player !== uid) throw new Error("Only winning bidder can select trump");
 
+    await this.cancelHumanTimeout();
+
     const validSuits: SuitName[] = ["spades", "hearts", "clubs", "diamonds"];
     if (!validSuits.includes(suit as SuitName)) throw new Error(`Invalid suit: ${suit}`);
 
-    const firstPlayer = this.nextPlayer(game.players, uid);
-    game.phase = "PLAYING";
+    game.phase = "BID_ANNOUNCEMENT";
     game.trumpSuit = suit as SuitName;
-    game.currentPlayer = firstPlayer;
-    game.currentTrick = { lead: firstPlayer, plays: [] };
     game.tricks = { teamA: 0, teamB: 0 };
+    game.forcedBidSeat = null;
 
     await this.persistAndBroadcast();
-    await this.checkAndScheduleBotTurn();
+    // Brief announcement window (2.5s), then transition to PLAYING.
+    await this.scheduleEvent({
+      type: 'bid_announcement',
+      fireAt: Date.now() + 2500,
+    });
   }
 
   private async handlePlayCard(uid: string, card: string): Promise<void> {
@@ -577,18 +647,20 @@ export class GameRoom extends DurableObject<Env> {
     if (game.phase !== "PLAYING") throw new Error("Not in PLAYING phase");
     if (game.currentPlayer !== uid) throw new Error("Not your turn to play");
 
+    await this.cancelHumanTimeout();
+
     const hand = this.hands.get(uid);
     if (!hand) throw new Error("Hand not found");
-
-    // Poison Joker: last card is joker → automatic round loss
-    if (detectPoisonJoker(hand)) {
-      await this.resolvePoisonJoker(uid);
-      return;
-    }
 
     // Validate and commit the play
     const currentTrick = game.currentTrick!;
     const isLeadPlay = currentTrick.plays.length === 0;
+
+    // Poison Joker: only when leading and last card is joker → automatic round loss
+    if (isLeadPlay && detectPoisonJoker(hand)) {
+      await this.resolvePoisonJoker(uid);
+      return;
+    }
     const ledSuit = isLeadPlay ? null : (() => {
       const leadCard = decodeCard(currentTrick.plays[0].card);
       return leadCard.isJoker ? null : leadCard.suit;
@@ -609,6 +681,7 @@ export class GameRoom extends DurableObject<Env> {
       await this.persistAndBroadcast();
       this.sendHandToPlayer(uid, newHand);
       await this.checkAndScheduleBotTurn();
+      await this.scheduleHumanTimeout();
       return;
     }
 
@@ -619,7 +692,6 @@ export class GameRoom extends DurableObject<Env> {
   private async resolvePoisonJoker(uid: string): Promise<void> {
     const game = this.game!;
     const poisonTeam = this.getTeamForPlayer(uid);
-    const roundResult = calculatePoisonJokerResult(poisonTeam);
     const newScores = applyPoisonJoker(poisonTeam);
 
     game.scores = newScores;
@@ -650,6 +722,7 @@ export class GameRoom extends DurableObject<Env> {
       await this.persistAndBroadcast();
       this.broadcastHands();
       await this.checkAndScheduleBotTurn();
+      await this.scheduleHumanTimeout();
       return;
     }
 
@@ -683,6 +756,11 @@ export class GameRoom extends DurableObject<Env> {
 
   private async handleForfeit(disconnectedUid: string): Promise<void> {
     const game = this.game!;
+
+    // Cancel any pending timers that would fire into an invalid state
+    await this.cancelEvent('bid_announcement');
+    await this.cancelHumanTimeout();
+
     const playerTeam = this.getTeamForPlayer(disconnectedUid);
     const winningTeam: TeamName = playerTeam === "teamA" ? "teamB" : "teamA";
 
@@ -749,6 +827,26 @@ export class GameRoom extends DurableObject<Env> {
     }
   }
 
+  private async scheduleHumanTimeout(): Promise<void> {
+    if (!this.game || !this.game.isRoomGame) return;
+    const currentUid = this.game.currentPlayer;
+    const seatIdx = this.game.players.indexOf(currentUid);
+    // Only schedule for human seats
+    if (seatIdx < 0 || this.isBotSeat(seatIdx)) return;
+    const phase = this.game.phase;
+    if (phase !== 'BIDDING' && phase !== 'TRUMP_SELECTION' && phase !== 'PLAYING') return;
+    // 15 seconds timeout matching offline HumanPlayerController
+    await this.scheduleEvent({
+      type: 'human_timeout',
+      fireAt: Date.now() + 15000,
+      meta: currentUid,
+    });
+  }
+
+  private async cancelHumanTimeout(): Promise<void> {
+    await this.cancelEvent('human_timeout');
+  }
+
   private async handleBotTurn(): Promise<void> {
     if (!this.game || this.game.phase === 'GAME_OVER') return;
 
@@ -762,8 +860,14 @@ export class GameRoom extends DurableObject<Env> {
       case 'BIDDING': {
         const biddingState = this.game.biddingState!;
         const forced = isLastBidder(biddingState.passed, currentUid, 4) && biddingState.highestBid === null;
-        const forcedCtx = { ...ctx, isForced: forced };
-        const decision = BotEngine.bid(forcedCtx);
+        // Persist forced bid seat so buildBotContext can read it.
+        if (forced) {
+          this.game.forcedBidSeat = seatIdx;
+          await this.persistState();
+        }
+        // Rebuild ctx after potentially setting forcedBidSeat so isForced is correct.
+        const bidCtx = forced ? buildBotContext(this.game, this.hands, seatIdx) : ctx;
+        const decision = BotEngine.bid(bidCtx);
         if (decision.action === 'bid') {
           await this.handleBid(currentUid, decision.amount);
         } else {
@@ -802,8 +906,15 @@ export class GameRoom extends DurableObject<Env> {
     return players[(currentIndex - 1 + players.length) % players.length];
   }
 
-  private getPublicState(): Omit<GameDocument, "metadata"> & { gameId: string } {
+  private getPublicState(): Omit<GameDocument, 'metadata' | 'roundHistory'> & { gameId: string; cardCounts: Record<string, number>; passedPlayers: number[] } {
     const game = this.game!;
+    const cardCounts: Record<string, number> = {};
+    for (let i = 0; i < game.players.length; i++) {
+      cardCounts[String(i)] = this.hands.get(game.players[i])?.length ?? 0;
+    }
+    const passedPlayers = (game.biddingState?.passed ?? []).map(
+      uid => game.players.indexOf(uid)
+    ).filter(i => i >= 0);
     return {
       gameId: this.ctx.id.toString(),
       phase: game.phase,
@@ -817,8 +928,10 @@ export class GameRoom extends DurableObject<Env> {
       dealer: game.dealer,
       currentPlayer: game.currentPlayer,
       bidHistory: game.bidHistory ?? [],
-      roundHistory: game.roundHistory,
       trickWinners: game.trickWinners ?? [],
+      roundIndex: game.roundIndex ?? 0,
+      cardCounts,
+      passedPlayers,
     };
   }
 
@@ -906,11 +1019,12 @@ export class GameRoom extends DurableObject<Env> {
     const firstBidderIndex = (newDealerIndex - 1 + game.players.length) % game.players.length;
     const firstBidder = game.players[firstBidderIndex];
 
-    // Re-deal
+    // Re-deal — validate 8 cards each
     const deck = buildFourPlayerDeck();
     const dealtHands = dealHands(deck);
     for (let i = 0; i < 4; i++) {
       const hand = dealtHands[i].map((c) => c.code);
+      if (hand.length !== 8) throw new Error(`Player ${i} dealt ${hand.length} cards, expected 8`);
       this.hands.set(game.players[i], hand);
     }
 
@@ -931,10 +1045,13 @@ export class GameRoom extends DurableObject<Env> {
     game.trickWinners = [];
     game.bidHistory = [];
     game.roundHistory = [];
+    game.forcedBidSeat = null;
+    game.roundIndex = (game.roundIndex ?? 0) + 1;
 
     await this.persistAndBroadcast();
     this.broadcastHands();
     await this.checkAndScheduleBotTurn();
+    await this.scheduleHumanTimeout();
   }
 
   private async scheduleRoundAdvance(): Promise<void> {
