@@ -19,4 +19,4 @@ database_name = "kout-db"
 database_id = "95f3b092-2bbb-4193-84cd-78c8debf0255"
 
 [vars]
-ENVIRONMENT = "development"
+ENVIRONMENT = "production"
