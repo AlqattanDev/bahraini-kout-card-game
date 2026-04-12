@@ -97,10 +97,10 @@ class TrickAreaComponent extends Component {
         ));
         keptCards.add(existingCard);
       } else {
-        // New trick card — create face-down, then flip to face-up.
+        // New trick card — appear face-up immediately.
         final cardComp = CardComponent(
           card: play.card,
-          isFaceUp: false,
+          isFaceUp: true,
           isHighlighted: false,
           showShadow: true,
           restScale: trickScale,
@@ -115,21 +115,6 @@ class TrickAreaComponent extends Component {
         _trickCards.add(cardComp);
         add(cardComp);
         keptCards.add(cardComp);
-
-        cardComp.add(
-          ScaleEffect.to(
-            Vector2(0, trickScale),
-            EffectController(duration: 0.12, curve: Curves.easeIn),
-          )..onComplete = () {
-            cardComp.isFaceUp = true;
-            cardComp.add(
-              ScaleEffect.to(
-                Vector2.all(trickScale),
-                EffectController(duration: 0.12, curve: Curves.easeOut),
-              ),
-            );
-          },
-        );
       }
     }
 

@@ -47,5 +47,22 @@ REVIEW_SUMMARY.md
 # Superpowers internal
 .superpowers/
 
+# AI tool configs
+.agents/
+.augment/
+.claude/
+.goose/
+.kiro/
+.pi/
+.trae/
+.vibe/
+.windsurf/
+skills/
+skills-lock.json
+
+# Internal docs (not for repo)
+OFFLINE_VS_ONLINE_GAPS.md
+plans/
+
 # Duplicate generated files
 .flutter-plugins-dependencies *

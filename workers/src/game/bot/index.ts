@@ -77,7 +77,7 @@ export function buildBotContext(
     players: game.players,
     bidHistory,
     trumpSuit: game.trumpSuit ?? undefined,
-    currentBid: game.bid?.amount,
+    currentBid: game.biddingState?.highestBid ?? game.bid?.amount,
     currentTrick: currentTrickPlays,
     trickWinners,
     tricks: game.tricks,
