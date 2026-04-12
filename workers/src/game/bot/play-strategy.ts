@@ -5,8 +5,8 @@ import type { CardTracker } from './card-tracker';
 import type { BotContext } from './types';
 
 export function decidePlay(ctx: BotContext, tracker: CardTracker): string {
+  const isKout = ctx.currentBid === 8;
   const isFirstTrick = ctx.trickWinners.length === 0;
-  const isKout = ctx.currentBid !== undefined && ctx.currentBid >= 8;
   const legal = getLegalPlays(ctx.hand, ctx.currentTrick, ctx.trumpSuit, ctx.isLead, isKout, isFirstTrick);
   if (legal.length === 1) return legal[0];
 
@@ -17,21 +17,20 @@ export function decidePlay(ctx: BotContext, tracker: CardTracker): string {
 }
 
 function getLegalPlays(
-  hand: string[], trick: TrickPlay[], _trumpSuit: SuitName | undefined, isLead: boolean,
+  hand: string[], trick: TrickPlay[], trumpSuit: SuitName | undefined, isLead: boolean,
   isKout: boolean = false, isFirstTrick: boolean = false,
 ): string[] {
   if (isLead) {
-    const nonJoker = hand.filter(c => c !== 'JO');
-    const pool = nonJoker.length > 0 ? nonJoker : [...hand];
-    // Kout first trick: must lead trump if you have it
-    if (isKout && isFirstTrick && _trumpSuit) {
-      const trumpCards = pool.filter(c => {
+    // Kout first trick: must lead trump if you have any (matches PlayValidator).
+    if (isKout && isFirstTrick && trumpSuit) {
+      const trumpCards = hand.filter(c => {
         const d = decodeCard(c);
-        return !d.isJoker && d.suit === _trumpSuit;
+        return !d.isJoker && d.suit === trumpSuit;
       });
       if (trumpCards.length > 0) return trumpCards;
     }
-    return pool;
+    const nonJoker = hand.filter(c => c !== 'JO');
+    return nonJoker.length > 0 ? nonJoker : [...hand];
   }
 
   if (trick.length === 0) return [...hand];
@@ -53,13 +52,7 @@ function getLegalPlays(
 }
 
 function selectLead(legal: string[], ctx: BotContext, tracker: CardTracker): string {
-  const { trumpSuit, hand, trickWinners } = ctx;
-  const tricksRemaining = TRICKS_PER_ROUND - trickWinners.length;
-
-  // Joker countdown when urgency is high.
-  if (tricksRemaining <= 2 && ctx.roundControlUrgency > 0.7 && legal.includes('JO')) {
-    return 'JO';
-  }
+  const { trumpSuit, hand } = ctx;
 
   // Master card leads — non-trump before trump.
   const masters = legal.filter(c => {
