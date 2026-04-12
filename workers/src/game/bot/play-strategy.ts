@@ -5,7 +5,9 @@ import type { CardTracker } from './card-tracker';
 import type { BotContext } from './types';
 
 export function decidePlay(ctx: BotContext, tracker: CardTracker): string {
-  const legal = getLegalPlays(ctx.hand, ctx.currentTrick, ctx.trumpSuit, ctx.isLead);
+  const isFirstTrick = ctx.trickWinners.length === 0;
+  const isKout = ctx.currentBid !== undefined && ctx.currentBid >= 8;
+  const legal = getLegalPlays(ctx.hand, ctx.currentTrick, ctx.trumpSuit, ctx.isLead, isKout, isFirstTrick);
   if (legal.length === 1) return legal[0];
 
   if (ctx.isLead) {
@@ -16,10 +18,20 @@ export function decidePlay(ctx: BotContext, tracker: CardTracker): string {
 
 function getLegalPlays(
   hand: string[], trick: TrickPlay[], _trumpSuit: SuitName | undefined, isLead: boolean,
+  isKout: boolean = false, isFirstTrick: boolean = false,
 ): string[] {
   if (isLead) {
     const nonJoker = hand.filter(c => c !== 'JO');
-    return nonJoker.length > 0 ? nonJoker : [...hand];
+    const pool = nonJoker.length > 0 ? nonJoker : [...hand];
+    // Kout first trick: must lead trump if you have it
+    if (isKout && isFirstTrick && _trumpSuit) {
+      const trumpCards = pool.filter(c => {
+        const d = decodeCard(c);
+        return !d.isJoker && d.suit === _trumpSuit;
+      });
+      if (trumpCards.length > 0) return trumpCards;
+    }
+    return pool;
   }
 
   if (trick.length === 0) return [...hand];

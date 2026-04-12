@@ -960,7 +960,12 @@ export class GameRoom extends DurableObject<Env> {
         const bidCtx = forced ? buildBotContext(this.game, this.hands, seatIdx) : ctx;
         const decision = BotEngine.bid(bidCtx);
         if (decision.action === 'bid') {
-          await this.handleBid(currentUid, decision.amount);
+          try {
+            await this.handleBid(currentUid, decision.amount);
+          } catch {
+            // Bot bid was invalid (e.g. not higher) — fall back to pass
+            await this.handleBid(currentUid, 0);
+          }
         } else {
           await this.handleBid(currentUid, 0); // pass
         }
@@ -973,7 +978,21 @@ export class GameRoom extends DurableObject<Env> {
       }
       case 'PLAYING': {
         const card = BotEngine.play(ctx);
-        await this.handlePlayCard(currentUid, card);
+        try {
+          await this.handlePlayCard(currentUid, card);
+        } catch {
+          // Bot chose an invalid card — fall back to random legal card
+          const hand = this.hands.get(currentUid) ?? [];
+          const trick = this.game!.currentTrick!;
+          const isLead = trick.plays.length === 0;
+          const ledCard = isLead ? null : decodeCard(trick.plays[0].card);
+          const ledSuit = ledCard && !ledCard.isJoker ? ledCard.suit : null;
+          const isKout = this.game!.bid?.amount === 8;
+          const isFirstTrick = (this.game!.trickWinners ?? []).length === 0;
+          const legal = hand.filter(c => validatePlay(c, hand, ledSuit, isLead, this.game!.trumpSuit, isKout, isFirstTrick).valid);
+          const pick = legal.length > 0 ? legal[0] : hand[0];
+          if (pick) await this.handlePlayCard(currentUid, pick);
+        }
         break;
       }
     }

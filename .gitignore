@@ -47,5 +47,16 @@ REVIEW_SUMMARY.md
 # Superpowers internal
 .superpowers/
 
+# AI tool configs
+.augment/
+.claude/
+.goose/
+.kiro/
+.pi/
+.trae/
+.vibe/
+.windsurf/
+skills/
+
 # Duplicate generated files
 .flutter-plugins-dependencies *
