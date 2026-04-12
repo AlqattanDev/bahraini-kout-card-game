@@ -178,3 +178,17 @@ TS has `beatsCard` in `card.ts` used by play strategy and trick signals. Dart us
 | **Minor/cosmetic** | 3 | 3 | 0 |
 
 **All gaps from previous analyses have been resolved.** Dart and TypeScript implementations are fully in sync.
+
+---
+
+## 8. Remaining Known Issues (not parity gaps)
+
+These are issues that exist only in the online mode or only in documentation — not Dart/TS logic discrepancies.
+
+| # | Issue | Severity | Status |
+|---|-------|----------|--------|
+| 1 | **Reconnection timeout race** — human_timeout now refreshed on reconnect | Fixed | `game-room.ts:170-174` |
+| 2 | **GameRoom E2E tests** — were all `it.todo()`, now 20 real tests | Fixed | `game-room.test.ts` |
+| 3 | **No online "Play Again"** — matchmaking mode now navigates to matchmaking screen; room mode returns home | Fixed | `game_screen.dart:184-189` |
+| 4 | **No cross-language parity tests** — sync verified manually, no shared test vectors | Open | — |
+| 5 | **No ClientGameState.fromMap() Worker-format tests** — now covered | Fixed | `client_game_state_test.dart` |

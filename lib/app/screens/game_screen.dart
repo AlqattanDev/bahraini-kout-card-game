@@ -3,6 +3,7 @@ import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import '../app_routes.dart';
 import '../models/game_mode.dart';
+import '../models/navigation_args.dart';
 import '../services/game_service.dart';
 import '../widgets/app_snackbar.dart';
 import '../../game/kout_game.dart';
@@ -180,6 +181,15 @@ class _GameScreenState extends State<GameScreen> {
                       Navigator.of(context).pushReplacementNamed(
                         AppRoutes.game,
                         arguments: _gameMode,
+                      );
+                    } else if (_gameMode is OnlineGameMode) {
+                      final mode = _gameMode as OnlineGameMode;
+                      Navigator.of(context).pushReplacementNamed(
+                        AppRoutes.matchmaking,
+                        arguments: MatchmakingArgs(
+                          uid: mode.myUid,
+                          token: mode.token,
+                        ),
                       );
                     } else {
                       Navigator.of(context).pushNamedAndRemoveUntil(
