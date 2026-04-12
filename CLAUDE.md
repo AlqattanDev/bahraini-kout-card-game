@@ -20,9 +20,9 @@ These are non-obvious domain rules that can't be derived from reading code alone
 
 **Trick play:** Seat after bidder leads first trick. Must follow led suit if able. Joker exempt (playable anytime). Winner: Joker > highest trump > highest of led suit.
 
-**Joker rules:** Leading the Joker = instant round loss (+10 penalty to opponent). Poison Joker: if player's last card is Joker, team auto-loses (+10 penalty). Both use same scoring path.
+**Joker rules:** Leading the Joker = instant game loss (opponent score set to 31). Poison Joker: if player's last card is Joker, team auto-loses (opponent score set to 31). Both use same scoring path (`applyPoisonJoker` → `applyKout(opponent)`).
 
-**Scoring (tug-of-war to 31):** Single shared score at 0. Points first deduct from opponent, remainder goes to winner. Only one team ever has non-zero score. Bid 5: win +5, lose +10. Bid 6: win +6, lose +12. Bid 7: win +7, lose +14. Bid 8 (Kout): win = score set to 31 (instant win), lose = opponent set to 31. Bidding team wins round if tricks taken >= bid value.
+**Scoring (tug-of-war to 31):** Single shared score at 0. Points first deduct from opponent, remainder goes to winner. Only one team ever has non-zero score. Bid 5: win +5, lose +10. Bid 6: win +6, lose +12. Bid 7: win +7, lose +14. Bid 8 (Kout): win = score set to 31 (instant win), lose +16 to opponent (tug-of-war). Bidding team wins round if tricks taken >= bid value.
 
 ## Architecture
 
@@ -88,10 +88,10 @@ npx wrangler d1 execute kout-db --file=migrations/001_init.sql  # DB migrations
 
 ## Known Issues
 
-1. **Disconnect alarm bug** — `game-room.ts` alarm handler has early `return` after first forfeit, skipping remaining players. Remove the early return.
-2. **ELO never updates** — `users.elo_rating` in D1 is read but never written after games. Need to call ELO calc from GameRoom on GAME_OVER.
-3. **Online services incomplete** — Reconnection untested, no mid-game state recovery, no error display in UI, no matchmaking queue timeout.
-4. **WORKER_URL for prod** — `config.dart` defaults to localhost. Prod build needs `--dart-define=WORKER_URL=https://...workers.dev`. Also `wrangler.toml` JWT_SECRET is placeholder.
+1. **WORKER_URL for prod** — `config.dart` defaults to localhost. Prod build needs `--dart-define=WORKER_URL=https://...workers.dev`. Also `wrangler.toml` JWT_SECRET is placeholder.
+2. **GameRoom E2E tests stubbed** — `workers/test/game/game-room.test.ts` has all `it.todo()`. Individual validators/scorer/bot are tested, but the DO integration is not.
+3. **No online "Play Again"** — Offline can restart with same settings; online navigates back to home screen with no rematch flow.
+4. **No cross-language parity tests** — Dart/TS logic sync is verified by manual inspection only (`OFFLINE_VS_ONLINE_GAPS.md`). No shared test vectors.
 
 ## Priorities
 

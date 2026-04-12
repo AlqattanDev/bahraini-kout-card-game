@@ -140,4 +140,144 @@ void main() {
       }
     });
   });
+
+  group('ClientGameState.fromMap — Worker format', () {
+    Map<String, dynamic> workerGameData({
+      String phase = 'PLAYING',
+      String? currentPlayer = 'uid-0',
+    }) {
+      return {
+        'phase': phase,
+        'players': ['uid-0', 'uid-1', 'uid-2', 'uid-3'],
+        'scores': {'teamA': 10, 'teamB': 0},
+        'tricks': {'teamA': 4, 'teamB': 2},
+        'currentPlayer': currentPlayer,
+        'dealer': 'uid-3',
+        'trumpSuit': 'hearts',
+        'bid': {'player': 'uid-2', 'amount': 6},
+        'currentTrick': {
+          'lead': 'uid-0',
+          'plays': [
+            {'player': 'uid-0', 'card': 'HA'},
+          ],
+        },
+        'bidHistory': [
+          {'player': 'uid-3', 'action': 'pass'},
+          {'player': 'uid-2', 'action': '6'},
+          {'player': 'uid-1', 'action': 'pass'},
+          {'player': 'uid-0', 'action': 'pass'},
+        ],
+        'trickWinners': ['teamA', 'teamB', 'teamA', 'teamA', 'teamA', 'teamB'],
+        'passedPlayers': [3, 1, 0],
+        'cardCounts': {'0': 5, '1': 5, '2': 5, '3': 5},
+        'roundIndex': 2,
+      };
+    }
+
+    test('parses UPPER_SNAKE phase names', () {
+      for (final entry in <String, GamePhase>{
+        'WAITING': GamePhase.waiting,
+        'DEALING': GamePhase.dealing,
+        'BIDDING': GamePhase.bidding,
+        'TRUMP_SELECTION': GamePhase.trumpSelection,
+        'BID_ANNOUNCEMENT': GamePhase.bidAnnouncement,
+        'PLAYING': GamePhase.playing,
+        'ROUND_SCORING': GamePhase.roundScoring,
+        'GAME_OVER': GamePhase.gameOver,
+      }.entries) {
+        final data = workerGameData(phase: entry.key);
+        final state = ClientGameState.fromMap(data, 'uid-0', []);
+        expect(state.phase, entry.value, reason: 'phase ${entry.key}');
+      }
+    });
+
+    test('parses "players" key (not "playerUids")', () {
+      final state = ClientGameState.fromMap(workerGameData(), 'uid-0', []);
+      expect(state.playerUids, ['uid-0', 'uid-1', 'uid-2', 'uid-3']);
+    });
+
+    test('parses teamA/teamB score keys', () {
+      final state = ClientGameState.fromMap(workerGameData(), 'uid-0', []);
+      expect(state.scores[Team.a], 10);
+      expect(state.scores[Team.b], 0);
+    });
+
+    test('parses teamA/teamB trick keys', () {
+      final state = ClientGameState.fromMap(workerGameData(), 'uid-0', []);
+      expect(state.tricks[Team.a], 4);
+      expect(state.tricks[Team.b], 2);
+    });
+
+    test('parses "currentPlayer" key (not "currentPlayerUid")', () {
+      final state = ClientGameState.fromMap(workerGameData(), 'uid-0', []);
+      expect(state.currentPlayerUid, 'uid-0');
+    });
+
+    test('parses "dealer" key (not "dealerUid")', () {
+      final state = ClientGameState.fromMap(workerGameData(), 'uid-0', []);
+      expect(state.dealerUid, 'uid-3');
+    });
+
+    test('parses structured bid {player, amount}', () {
+      final state = ClientGameState.fromMap(workerGameData(), 'uid-0', []);
+      expect(state.bidderUid, 'uid-2');
+      expect(state.currentBid, BidAmount.six);
+    });
+
+    test('parses Worker trick format {lead, plays: [{player, card}]}', () {
+      final state = ClientGameState.fromMap(workerGameData(), 'uid-0', []);
+      expect(state.currentTrickPlays.length, 1);
+      expect(state.currentTrickPlays[0].playerUid, 'uid-0');
+      expect(
+        state.currentTrickPlays[0].card,
+        GameCard(suit: Suit.hearts, rank: Rank.ace),
+      );
+    });
+
+    test('parses bidHistory', () {
+      final state = ClientGameState.fromMap(workerGameData(), 'uid-0', []);
+      expect(state.bidHistory.length, 4);
+      expect(state.bidHistory[0].playerUid, 'uid-3');
+      expect(state.bidHistory[0].action, 'pass');
+      expect(state.bidHistory[1].playerUid, 'uid-2');
+      expect(state.bidHistory[1].action, '6');
+    });
+
+    test('parses trickWinners', () {
+      final state = ClientGameState.fromMap(workerGameData(), 'uid-0', []);
+      expect(state.trickWinners.length, 6);
+      expect(state.trickWinners[0], Team.a);
+      expect(state.trickWinners[1], Team.b);
+    });
+
+    test('parses passedPlayers', () {
+      final state = ClientGameState.fromMap(workerGameData(), 'uid-0', []);
+      expect(state.passedPlayers, [3, 1, 0]);
+    });
+
+    test('parses cardCounts from string-keyed map', () {
+      final state = ClientGameState.fromMap(workerGameData(), 'uid-0', []);
+      expect(state.cardCounts[0], 5);
+      expect(state.cardCounts[1], 5);
+      expect(state.cardCounts[2], 5);
+      expect(state.cardCounts[3], 5);
+    });
+
+    test('parses roundIndex', () {
+      final state = ClientGameState.fromMap(workerGameData(), 'uid-0', []);
+      expect(state.roundIndex, 2);
+    });
+
+    test('tugScore and leadingTeam computed correctly', () {
+      final state = ClientGameState.fromMap(workerGameData(), 'uid-0', []);
+      expect(state.tugScore, 10);
+      expect(state.leadingTeam, Team.a);
+    });
+
+    test('bidderTeam resolved from structured bid', () {
+      final state = ClientGameState.fromMap(workerGameData(), 'uid-0', []);
+      // uid-2 is seat 2 (even) → Team.a
+      expect(state.bidderTeam, Team.a);
+    });
+  });
 }

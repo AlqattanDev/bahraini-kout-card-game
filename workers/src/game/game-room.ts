@@ -169,6 +169,12 @@ export class GameRoom extends DurableObject<Env> {
       const hadDisconnect = events.some(e => e.type === 'disconnect_timeout' && e.meta === uid);
       if (hadDisconnect) {
         await this.cancelEvent('disconnect_timeout', uid);
+        // If it's this player's turn, refresh the human timeout so they get a
+        // full 15 s after reconnecting instead of inheriting a stale timer.
+        if (this.game && this.game.currentPlayer === uid) {
+          await this.cancelHumanTimeout();
+          await this.scheduleHumanTimeout();
+        }
         server.send(JSON.stringify({
           event: "reconnected",
           data: { gracePeriodRemaining: 90 },

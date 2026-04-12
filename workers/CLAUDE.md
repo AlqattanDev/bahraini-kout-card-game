@@ -64,7 +64,7 @@ Seats 0,2 = teamA. Seats 1,3 = teamB. Counter-clockwise: `nextSeat(i) = (i - 1 +
 - Kout first trick: leader must play trump if they have it.
 
 ### Joker Rules
-- Leading the Joker = instant round loss (+10 penalty to opponent, uses `applyPoisonJoker`).
+- Leading the Joker = instant game loss (opponent score set to 31, uses `applyPoisonJoker`).
 - Poison Joker: if player's last card is Joker, team auto-loses (opponent score set to 31).
 - Both use same scoring path → `applyPoisonJoker` → `applyKout(opponent)`.
 
@@ -76,7 +76,7 @@ Single shared score starting at 0. Points deduct from opponent first, remainder 
 | 5   | +5  | +10  |
 | 6   | +6  | +12  |
 | 7   | +7  | +14  |
-| 8   | score=31 | opponent=31 |
+| 8   | score=31 | +16  |
 
 Bidding team wins round if tricks >= bid value.
 
@@ -220,11 +220,8 @@ Config: `vitest.config.ts` — standard Vitest, no Cloudflare pool (yet). Tests 
 
 ## Known Issues
 
-1. **Disconnect alarm bug** — `game-room.ts` alarm handler has early `return` after first forfeit, skipping remaining players
-2. **ELO never updates** — `users.elo_rating` read but never written after games
-3. **DEALING phase cosmetic** — `'DEALING'` in GamePhase type but never set (offline has it for animation)
-4. **Bot delays flat** — 800-2000ms random vs Dart's context-aware timing
-5. **Singleton lead gap** — Dart leads singletons before trump strip; TS skips to trump strip
+1. **GameRoom E2E tests stubbed** — `test/game/game-room.test.ts` has all `it.todo()`. Individual validators/scorer/bot tested, but the DO orchestration is not.
+2. **No cross-language parity tests** — Dart/TS logic sync is manual-only (`OFFLINE_VS_ONLINE_GAPS.md`). No shared test vectors.
 
 ## API Routes
 
@@ -245,17 +242,17 @@ Config: `vitest.config.ts` — standard Vitest, no Cloudflare pool (yet). Tests 
 
 ### Client → Server
 ```json
-{"type": "bid", "amount": 6}
-{"type": "pass"}
-{"type": "select_trump", "suit": "hearts"}
-{"type": "play_card", "card": "SA"}
+{"action": "placeBid", "data": {"bidAmount": 6}}
+{"action": "placeBid", "data": {"bidAmount": 0}}
+{"action": "selectTrump", "data": {"suit": "hearts"}}
+{"action": "playCard", "data": {"card": "SA"}}
 ```
 
 ### Server → Client
 ```json
-{"type": "game_state", "state": {...}, "hand": [...]}
-{"type": "error", "message": "..."}
-{"type": "game_over", "winner": "teamA", "scores": {...}}
-{"type": "player_disconnected", "player": "uid"}
-{"type": "reconnected", "player": "uid"}
+{"event": "gameState", "data": {phase, players, scores, tricks, bid, ...}}
+{"event": "hand", "data": {"hand": ["SA", "HK", ...]}}
+{"event": "error", "data": {"code": "...", "message": "..."}}
+{"event": "reconnected", "data": {"gracePeriodRemaining": 90}}
+{"event": "lobby_state", "data": {seats, roomCode, isHost}}
 ```
