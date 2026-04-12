@@ -6,6 +6,10 @@ export function resolveTrick(
   ledSuit: SuitName,
   trumpSuit: SuitName
 ): string {
+  if (plays.length !== 4) {
+    throw new Error(`Trick must have exactly 4 plays, got ${plays.length}`);
+  }
+
   // Rule 1: Joker always wins
   for (const play of plays) {
     const card = decodeCard(play.card);

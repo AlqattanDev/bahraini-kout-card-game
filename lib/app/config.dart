@@ -1,7 +1,7 @@
 class AppConfig {
   static const String workerUrl = String.fromEnvironment(
     'WORKER_URL',
-    defaultValue: 'http://localhost:8787',
+    defaultValue: 'https://bahraini-kout.exidiful.workers.dev',
   );
 
   static String get wsUrl {

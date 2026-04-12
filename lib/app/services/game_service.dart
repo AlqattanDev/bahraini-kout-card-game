@@ -27,6 +27,7 @@ class GameService implements GameInputSink {
 
   List<String> _myHand = [];
   Map<String, dynamic>? _lastPublicState;
+  String? _lastKnownCurrentPlayer;
   bool _disposed = false;
   bool _hasReceivedMessage = false;
   int _reconnectAttempts = 0;
@@ -68,6 +69,7 @@ class GameService implements GameInputSink {
         switch (event) {
           case 'gameState':
             _lastPublicState = data['data'] as Map<String, dynamic>;
+            _lastKnownCurrentPlayer = _lastPublicState?['currentPlayer'] as String?;
             _stateController.add(
               ClientGameState.fromMap(_lastPublicState!, _myUid, _myHand),
             );
@@ -122,17 +124,27 @@ class GameService implements GameInputSink {
     _channel?.sink.add(jsonEncode({'action': action, 'data': data}));
   }
 
-  void sendBid(int bidAmount) =>
-      _sendAction('placeBid', {'bidAmount': bidAmount});
+  bool get _isMyTurn => _lastKnownCurrentPlayer == _myUid;
 
-  void sendPass() =>
-      _sendAction('placeBid', {'bidAmount': 0});
+  void sendBid(int bidAmount) {
+    if (!_isMyTurn) return;
+    _sendAction('placeBid', {'bidAmount': bidAmount});
+  }
 
-  void sendTrumpSelection(String suit) =>
-      _sendAction('selectTrump', {'suit': suit});
+  void sendPass() {
+    if (!_isMyTurn) return;
+    _sendAction('placeBid', {'bidAmount': 0});
+  }
 
-  void sendPlayCard(String cardCode) =>
-      _sendAction('playCard', {'card': cardCode});
+  void sendTrumpSelection(String suit) {
+    if (!_isMyTurn) return;
+    _sendAction('selectTrump', {'suit': suit});
+  }
+
+  void sendPlayCard(String cardCode) {
+    if (!_isMyTurn) return;
+    _sendAction('playCard', {'card': cardCode});
+  }
 
   // GameInputSink implementation
   @override

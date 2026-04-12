@@ -493,13 +493,22 @@ export class GameRoom extends DurableObject<Env> {
             await this.handleForfeit(event.meta);
           }
           break;
-        case 'bot_turn':
+        case 'bot_turn': {
+          const retryCount = parseInt(event.meta ?? '0', 10);
           try {
             await this.handleBotTurn();
           } catch (err) {
-            console.error('handleBotTurn failed:', err);
+            console.error(`handleBotTurn failed (attempt ${retryCount + 1}):`, err);
+            if (retryCount < 2) {
+              await this.scheduleEvent({
+                type: 'bot_turn',
+                fireAt: Date.now() + (retryCount + 1) * 1000,
+                meta: String(retryCount + 1),
+              });
+            }
           }
           break;
+        }
         case 'lobby_expiry':
           if (this.game?.phase === 'LOBBY') {
             this.game.metadata.status = 'closed';
@@ -724,6 +733,10 @@ export class GameRoom extends DurableObject<Env> {
     game.currentTrick = { ...currentTrick, plays: newPlays };
     await this.persistAndBroadcast();
     this.sendHandToPlayer(uid, newHand);
+
+    // Small delay so the 4-card state reaches all clients before resolution.
+    // Safe in Durable Objects — alarm/message handlers are serialized.
+    await new Promise(resolve => setTimeout(resolve, 200));
 
     // Now resolve the trick (will broadcast again with new trick or scoring)
     await this.resolveTrick(newPlays);
@@ -966,22 +979,60 @@ export class GameRoom extends DurableObject<Env> {
         }
         // Rebuild ctx after potentially setting forcedBidSeat so isForced is correct.
         const bidCtx = forced ? buildBotContext(this.game, this.hands, seatIdx) : ctx;
-        const decision = BotEngine.bid(bidCtx);
-        if (decision.action === 'bid') {
-          await this.handleBid(currentUid, decision.amount);
-        } else {
-          await this.handleBid(currentUid, 0); // pass
+        try {
+          const decision = BotEngine.bid(bidCtx);
+          if (decision.action === 'bid') {
+            try {
+              await this.handleBid(currentUid, decision.amount);
+            } catch {
+              // Bot bid was invalid (e.g. not higher) — fall back to pass
+              await this.handleBid(currentUid, 0);
+            }
+          } else {
+            await this.handleBid(currentUid, 0); // pass
+          }
+        } catch {
+          // Strategy itself threw — safe fallback: pass or forced minimum bid
+          const minBid = (biddingState.highestBid ?? 4) + 1;
+          await this.handleBid(currentUid, forced ? minBid : 0);
         }
         break;
       }
       case 'TRUMP_SELECTION': {
-        const suit = BotEngine.trump(ctx);
-        await this.handleSelectTrump(currentUid, suit);
+        try {
+          const suit = BotEngine.trump(ctx);
+          await this.handleSelectTrump(currentUid, suit);
+        } catch {
+          // Fallback: pick suit with most cards in hand
+          const hand = this.hands.get(currentUid) ?? [];
+          const suitCounts: Record<string, number> = {};
+          for (const card of hand) {
+            const d = decodeCard(card);
+            if (!d.isJoker && d.suit) suitCounts[d.suit] = (suitCounts[d.suit] ?? 0) + 1;
+          }
+          const suits = ['spades', 'hearts', 'clubs', 'diamonds'] as const;
+          const best = suits.reduce((a, b) => (suitCounts[a] ?? 0) >= (suitCounts[b] ?? 0) ? a : b);
+          await this.handleSelectTrump(currentUid, best);
+        }
         break;
       }
       case 'PLAYING': {
-        const card = BotEngine.play(ctx);
-        await this.handlePlayCard(currentUid, card);
+        try {
+          const card = BotEngine.play(ctx);
+          await this.handlePlayCard(currentUid, card);
+        } catch {
+          // Fallback: pick a random legal card
+          const hand = this.hands.get(currentUid) ?? [];
+          const trick = this.game.currentTrick!;
+          const isLead = trick.plays.length === 0;
+          const ledCard = isLead ? null : decodeCard(trick.plays[0].card);
+          const ledSuit = ledCard && !ledCard.isJoker ? ledCard.suit : null;
+          const isKout = this.game.bid?.amount === 8;
+          const isFirstTrick = (this.game.trickWinners ?? []).length === 0;
+          const legal = hand.filter(c => validatePlay(c, hand, ledSuit, isLead, this.game!.trumpSuit, isKout, isFirstTrick).valid);
+          const pick = legal.length > 0 ? legal[Math.floor(Math.random() * legal.length)] : hand[0];
+          if (pick) await this.handlePlayCard(currentUid, pick);
+        }
         break;
       }
     }
