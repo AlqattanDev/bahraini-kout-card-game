@@ -75,6 +75,30 @@ function selectLead(legal: string[], ctx: BotContext, tracker: CardTracker): str
     return aceWithKing ?? aces[0];
   }
 
+  // 3. Singleton voids — lead a singleton non-trump card when you have trump (play_strategy.dart).
+  if (trumpSuit) {
+    const hasTrump = hand.some(c => {
+      const d = decodeCard(c);
+      return !d.isJoker && d.suit === trumpSuit;
+    });
+    if (hasTrump) {
+      const singletons = legal.filter(c => {
+        const d = decodeCard(c);
+        if (d.isJoker || d.suit === trumpSuit) return false;
+        const count = hand.filter(h => {
+          const hd = decodeCard(h);
+          return !hd.isJoker && hd.suit === d.suit;
+        }).length;
+        return count === 1;
+      });
+      if (singletons.length > 0) {
+        singletons.sort((a, b) => rankVal(a) - rankVal(b));
+        return singletons[0];
+      }
+    }
+  }
+
+  // 4. Trump strip — bidding team with 3+ trumps: lead highest trump.
   if (ctx.isBiddingTeam && trumpSuit) {
     const myTrumps = legal.filter(c => {
       const d = decodeCard(c);
@@ -86,7 +110,7 @@ function selectLead(legal: string[], ctx: BotContext, tracker: CardTracker): str
     }
   }
 
-  // Partner void exploit.
+  // 5. Partner void exploit.
   const partnerVoids = tracker.knownVoids.get(ctx.partnerSeat);
   if (partnerVoids && partnerVoids.size > 0) {
     for (const voidSuit of partnerVoids) {
@@ -100,19 +124,6 @@ function selectLead(legal: string[], ctx: BotContext, tracker: CardTracker): str
         return suitCards[0];
       }
     }
-  }
-
-  // Short suit leads for defense.
-  if (!ctx.isBiddingTeam) {
-    const singles = legal.filter(c => {
-      const d = decodeCard(c);
-      if (d.isJoker || d.suit === trumpSuit) return false;
-      return hand.filter(h => {
-        const hd = decodeCard(h);
-        return !hd.isJoker && hd.suit === d.suit;
-      }).length === 1;
-    });
-    if (singles.length > 0) return singles[0];
   }
 
   return leadFromLongestSuit(legal, trumpSuit);

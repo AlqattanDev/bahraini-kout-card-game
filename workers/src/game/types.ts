@@ -51,7 +51,7 @@ export interface SeatState {
 }
 
 export interface PendingEvent {
-  type: 'bot_turn' | 'disconnect_timeout' | 'lobby_expiry' | 'round_delay' | 'bid_announcement' | 'human_timeout';
+  type: 'bot_turn' | 'disconnect_timeout' | 'lobby_expiry' | 'round_delay' | 'bid_announcement' | 'human_timeout' | 'deal_complete';
   fireAt: number;
   meta?: string;
 }

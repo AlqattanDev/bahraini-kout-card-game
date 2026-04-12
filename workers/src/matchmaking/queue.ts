@@ -138,10 +138,13 @@ export async function completeGame(
     .bind(winnerTeam, JSON.stringify(finalScores), gameId)
     .run();
 
-  // Update ELO ratings using proper formula
-  const teamAUids = [players[0], players[2]];
-  const teamBUids = [players[1], players[3]];
+  // Update ELO ratings using proper formula (skip bots)
+  const isHuman = (uid: string) => !uid.startsWith("bot_");
+  const teamAUids = [players[0], players[2]].filter(isHuman);
+  const teamBUids = [players[1], players[3]].filter(isHuman);
   const allUids = [...teamAUids, ...teamBUids];
+
+  if (allUids.length === 0) return;
 
   // Fetch current ELOs from DB
   const eloRows = await db
@@ -154,8 +157,12 @@ export async function completeGame(
     eloMap.set(row.uid, row.elo_rating);
   }
 
-  const teamAElos = teamAUids.map((uid) => eloMap.get(uid) ?? 1000);
-  const teamBElos = teamBUids.map((uid) => eloMap.get(uid) ?? 1000);
+  const teamAElos = teamAUids.length > 0
+    ? teamAUids.map((uid) => eloMap.get(uid) ?? 1000)
+    : [1000];
+  const teamBElos = teamBUids.length > 0
+    ? teamBUids.map((uid) => eloMap.get(uid) ?? 1000)
+    : [1000];
   const teamAAvg = teamAverageElo(teamAElos);
   const teamBAvg = teamAverageElo(teamBElos);
 
@@ -164,20 +171,25 @@ export async function completeGame(
   const teamAActual = winnerTeam === "teamA" ? 1 : 0;
   const teamBActual = winnerTeam === "teamB" ? 1 : 0;
 
+  // Batch UPDATE all human players' ELO ratings
+  const stmts: D1PreparedStatement[] = [];
   for (const uid of teamAUids) {
     const oldElo = eloMap.get(uid) ?? 1000;
     const updated = Math.max(0, newElo(oldElo, teamAExpected, teamAActual));
-    await db
-      .prepare("UPDATE users SET elo_rating = ?, updated_at = datetime('now') WHERE uid = ?")
-      .bind(updated, uid)
-      .run();
+    stmts.push(
+      db.prepare("UPDATE users SET elo_rating = ?, updated_at = datetime('now') WHERE uid = ?")
+        .bind(updated, uid)
+    );
   }
   for (const uid of teamBUids) {
     const oldElo = eloMap.get(uid) ?? 1000;
     const updated = Math.max(0, newElo(oldElo, teamBExpected, teamBActual));
-    await db
-      .prepare("UPDATE users SET elo_rating = ?, updated_at = datetime('now') WHERE uid = ?")
-      .bind(updated, uid)
-      .run();
+    stmts.push(
+      db.prepare("UPDATE users SET elo_rating = ?, updated_at = datetime('now') WHERE uid = ?")
+        .bind(updated, uid)
+    );
+  }
+  if (stmts.length > 0) {
+    await db.batch(stmts);
   }
 }

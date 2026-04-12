@@ -8,6 +8,7 @@ import 'package:flutter/painting.dart';
 import '../app/models/client_game_state.dart';
 import '../app/services/game_service.dart';
 import '../shared/models/game_state.dart';
+import '../shared/constants/timing.dart';
 import 'components/card_component.dart';
 import 'components/debug_opponent_hands_overlay.dart';
 import 'components/hand_component.dart';
@@ -231,7 +232,11 @@ class KoutGame extends FlameGame {
 
     if (newCount == 4 && _prevTrickPlayCount < 4) {
       _flashTrickWinnerSeat(state);
-      _trickPauseTimer = 1.0;
+      // Online: [paceOnlineGameStates] already applies trickResolutionDelay.
+      if (_connectionStream == null) {
+        _trickPauseTimer =
+            GameTiming.trickResolutionDelay.inMilliseconds / 1000.0;
+      }
     }
 
     if (newCount == 0 && _prevTrickPlayCount > 0) {

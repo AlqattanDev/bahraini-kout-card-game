@@ -12,15 +12,26 @@ class AuthService {
   bool get isAuthenticated => _uid != null && _token != null;
 
   Future<void> signInAnonymously() async {
-    // Check for cached credentials
     final prefs = await SharedPreferences.getInstance();
     final cachedToken = prefs.getString('auth_token');
     final cachedUid = prefs.getString('auth_uid');
 
     if (cachedToken != null && cachedUid != null) {
-      _token = cachedToken;
-      _uid = cachedUid;
-      return;
+      try {
+        final verify = await http.get(
+          Uri.parse('${AppConfig.workerUrl}/api/auth/verify'),
+          headers: {'Authorization': 'Bearer $cachedToken'},
+        );
+        if (verify.statusCode == 200) {
+          _token = cachedToken;
+          _uid = cachedUid;
+          return;
+        }
+      } catch (_) {
+        // Network error — fall through to fresh sign-in attempt
+      }
+      await prefs.remove('auth_token');
+      await prefs.remove('auth_uid');
     }
 
     // Request new anonymous identity

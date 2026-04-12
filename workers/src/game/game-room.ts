@@ -24,6 +24,7 @@ import {
   isRoundDecided,
 } from "./scorer";
 import { completeGame } from "../matchmaking/queue";
+import { botThinkingDelayMs, DEAL_DELAY_MS, HUMAN_TURN_TIMEOUT_MS } from "./bot-timing";
 
 type ClientAction =
   | { action: "placeBid"; data: { bidAmount: number } }
@@ -57,18 +58,13 @@ export class GameRoom extends DurableObject<Env> {
     const firstBidder = playerUids[firstBidderIndex];
 
     this.game = {
-      phase: "BIDDING",
+      phase: "DEALING",
       players: playerUids,
       currentTrick: null,
       tricks: { teamA: 0, teamB: 0 },
       scores: { teamA: 0, teamB: 0 },
       bid: null,
-      biddingState: {
-        currentBidder: firstBidder,
-        highestBid: null,
-        highestBidder: null,
-        passed: [],
-      },
+      biddingState: null,
       trumpSuit: null,
       dealer,
       currentPlayer: firstBidder,
@@ -95,6 +91,10 @@ export class GameRoom extends DurableObject<Env> {
 
     // Persist to storage
     await this.persistState();
+    await this.scheduleEvent({
+      type: "deal_complete",
+      fireAt: Date.now() + DEAL_DELAY_MS,
+    });
 
     return gameId;
   }
@@ -253,8 +253,10 @@ export class GameRoom extends DurableObject<Env> {
       if (seats[0].uid !== body.hostUid) {
         return Response.json({ error: 'Not the host' }, { status: 403 });
       }
+      // If seat 2 is empty, fill with a bot so the host can start solo
       if (!seats[2].uid) {
-        return Response.json({ error: 'Friend has not joined' }, { status: 400 });
+        seats[2] = { uid: 'bot_2', isBot: true, connected: true };
+        this.game.players[2] = 'bot_2';
       }
 
       // Cancel lobby expiry
@@ -274,15 +276,16 @@ export class GameRoom extends DurableObject<Env> {
       const firstBidderIndex = (dealerIndex - 1 + 4) % 4;
       const firstBidder = this.game.players[firstBidderIndex];
 
-      this.game.phase = 'BIDDING';
+      this.game.phase = 'DEALING';
       this.game.dealer = dealer;
       this.game.currentPlayer = firstBidder;
-      this.game.biddingState = {
-        currentBidder: firstBidder,
-        highestBid: null,
-        highestBidder: null,
-        passed: [],
-      };
+      this.game.biddingState = null;
+      this.game.bid = null;
+      this.game.trumpSuit = null;
+      this.game.currentTrick = null;
+      this.game.bidHistory = [];
+      this.game.roundHistory = [];
+      this.game.trickWinners = [];
       this.game.metadata.status = 'active';
       this.game.forcedBidSeat = null;
       this.game.roundIndex = 0;
@@ -290,13 +293,10 @@ export class GameRoom extends DurableObject<Env> {
       await this.persistAndBroadcast();
       this.broadcastHands();
 
-      // If first bidder is a bot, schedule bot turn
-      if (this.isBotSeat(firstBidderIndex)) {
-        await this.scheduleEvent({
-          type: 'bot_turn',
-          fireAt: Date.now() + 800 + Math.floor(Math.random() * 1200),
-        });
-      }
+      await this.scheduleEvent({
+        type: 'deal_complete',
+        fireAt: Date.now() + DEAL_DELAY_MS,
+      });
 
       return Response.json({ ok: true, players: this.game.players });
     }
@@ -329,6 +329,10 @@ export class GameRoom extends DurableObject<Env> {
     await this.loadState();
     if (!this.game) {
       this.sendError(ws, "NO_GAME", "No game in progress");
+      return;
+    }
+    if (this.game.phase === "DEALING") {
+      this.sendError(ws, "DEALING", "Cards are being dealt");
       return;
     }
 
@@ -364,7 +368,7 @@ export class GameRoom extends DurableObject<Env> {
   /**
    * Handle WebSocket close — start disconnect timer.
    */
-  async webSocketClose(ws: WebSocket, code: number, reason: string, _wasClean: boolean): Promise<void> {
+  async webSocketClose(ws: WebSocket, _code: number, _reason: string, _wasClean: boolean): Promise<void> {
     const tags = this.ctx.getTags(ws);
     const uid = tags[0];
     if (!uid) return;
@@ -380,7 +384,6 @@ export class GameRoom extends DurableObject<Env> {
       }
       await this.persistState();
       this.broadcastLobbyState();
-      ws.close(code, reason);
       return;
     }
 
@@ -389,8 +392,6 @@ export class GameRoom extends DurableObject<Env> {
       fireAt: Date.now() + 90_000,
       meta: uid,
     });
-
-    ws.close(code, reason);
   }
 
   /**
@@ -407,7 +408,8 @@ export class GameRoom extends DurableObject<Env> {
     const remaining = events.filter(e => e.fireAt > now + 100);
 
     for (const event of due) {
-      if (!this.game || this.game.phase === 'GAME_OVER') break;
+      if (!this.game) break;
+      if (this.game.phase === 'GAME_OVER' && event.type !== 'disconnect_timeout') break;
       switch (event.type) {
         case 'round_delay':
           if (this.game.phase === 'ROUND_SCORING') {
@@ -421,6 +423,23 @@ export class GameRoom extends DurableObject<Env> {
             this.game.currentPlayer = firstPlayer;
             this.game.currentTrick = { lead: firstPlayer, plays: [] };
             await this.persistAndBroadcast();
+            await this.checkAndScheduleBotTurn();
+            await this.scheduleHumanTimeout();
+          }
+          break;
+        case 'deal_complete':
+          if (this.game?.phase === 'DEALING') {
+            const firstBidder = this.firstBidderAfterDealer();
+            this.game.phase = 'BIDDING';
+            this.game.biddingState = {
+              currentBidder: firstBidder,
+              highestBid: null,
+              highestBidder: null,
+              passed: [],
+            };
+            this.game.currentPlayer = firstBidder;
+            await this.persistAndBroadcast();
+            this.broadcastHands();
             await this.checkAndScheduleBotTurn();
             await this.scheduleHumanTimeout();
           }
@@ -475,7 +494,11 @@ export class GameRoom extends DurableObject<Env> {
           }
           break;
         case 'bot_turn':
-          await this.handleBotTurn();
+          try {
+            await this.handleBotTurn();
+          } catch (err) {
+            console.error('handleBotTurn failed:', err);
+          }
           break;
         case 'lobby_expiry':
           if (this.game?.phase === 'LOBBY') {
@@ -489,9 +512,18 @@ export class GameRoom extends DurableObject<Env> {
       }
     }
 
-    await this.ctx.storage.put('pendingEvents', remaining);
-    if (remaining.length > 0) {
-      await this.ctx.storage.setAlarm(remaining[0].fireAt);
+    // Merge remaining with any new events added by handlers during this alarm
+    const currentEvents = await this.ctx.storage.get<PendingEvent[]>('pendingEvents') ?? [];
+    const processedTypes = new Set(due.map(e => `${e.type}:${e.fireAt}`));
+    const merged = [
+      ...currentEvents.filter(e => !processedTypes.has(`${e.type}:${e.fireAt}`)),
+      ...remaining.filter(r => !currentEvents.some(c => c.type === r.type && c.fireAt === r.fireAt)),
+    ].sort((a, b) => a.fireAt - b.fireAt);
+    await this.ctx.storage.put('pendingEvents', merged);
+    if (merged.length > 0) {
+      await this.ctx.storage.setAlarm(merged[0].fireAt);
+    } else {
+      await this.ctx.storage.deleteAlarm();
     }
   }
 
@@ -635,10 +667,10 @@ export class GameRoom extends DurableObject<Env> {
     game.forcedBidSeat = null;
 
     await this.persistAndBroadcast();
-    // Brief announcement window (2.5s), then transition to PLAYING.
+    // GameTiming.bidAnnouncementDelay (3s), then transition to PLAYING.
     await this.scheduleEvent({
       type: 'bid_announcement',
-      fireAt: Date.now() + 2500,
+      fireAt: Date.now() + 3000,
     });
   }
 
@@ -756,6 +788,8 @@ export class GameRoom extends DurableObject<Env> {
 
   private async handleForfeit(disconnectedUid: string): Promise<void> {
     const game = this.game!;
+    // Already finalized by an earlier forfeit in this alarm pass
+    if (game.phase === 'GAME_OVER') return;
 
     // Cancel any pending timers that would fire into an invalid state
     await this.cancelEvent('bid_announcement');
@@ -820,25 +854,82 @@ export class GameRoom extends DurableObject<Env> {
     const currentUid = this.game.currentPlayer;
     const seatIdx = this.game.players.indexOf(currentUid);
     if (seatIdx >= 0 && this.isBotSeat(seatIdx)) {
+      await this.cancelEvent('bot_turn');
+      const delay = this.computeBotDelayForSeat(seatIdx);
       await this.scheduleEvent({
         type: 'bot_turn',
-        fireAt: Date.now() + 800 + Math.floor(Math.random() * 1200),
+        fireAt: Date.now() + delay,
       });
     }
   }
 
+  /** Matches lib/shared/constants/timing.dart GameTiming.botThinkingDelay. */
+  private computeBotDelayForSeat(seatIdx: number): number {
+    const game = this.game!;
+    const phase = game.phase;
+    if (phase === 'BIDDING') {
+      const biddingState = game.biddingState!;
+      const uid = game.players[seatIdx];
+      const isForced =
+        isLastBidder(biddingState.passed, uid, PLAYER_COUNT) &&
+        biddingState.highestBid === null;
+      return botThinkingDelayMs({ phase: 'bidding', isForcedBid: isForced });
+    }
+    if (phase === 'TRUMP_SELECTION') {
+      return botThinkingDelayMs({
+        phase: 'trump',
+        bidAmount: game.bid?.amount,
+      });
+    }
+    if (phase === 'PLAYING') {
+      const uid = game.players[seatIdx];
+      const hand = this.hands.get(uid) ?? [];
+      const legalMoves = this.countLegalPlaysForCurrentTurn(hand);
+      const trickNumber = (game.trickWinners ?? []).length + 1;
+      return botThinkingDelayMs({
+        phase: 'playing',
+        legalMoves,
+        trickNumber,
+      });
+    }
+    return botThinkingDelayMs({ phase: 'playing', legalMoves: 1, trickNumber: 1 });
+  }
+
+  private countLegalPlaysForCurrentTurn(hand: string[]): number {
+    const game = this.game!;
+    const trick = game.currentTrick!;
+    const isLead = trick.plays.length === 0;
+    const ledCard = isLead ? null : decodeCard(trick.plays[0].card);
+    const ledSuit: SuitName | null =
+      ledCard && !ledCard.isJoker ? ledCard.suit! : null;
+    const isKout = game.bid?.amount === 8;
+    const isFirstTrick = (game.trickWinners ?? []).length === 0;
+    let n = 0;
+    for (const c of hand) {
+      if (validatePlay(c, hand, ledSuit, isLead, game.trumpSuit, isKout, isFirstTrick).valid) {
+        n++;
+      }
+    }
+    return Math.max(1, n);
+  }
+
+  private firstBidderAfterDealer(): string {
+    const game = this.game!;
+    const dealerIdx = game.players.indexOf(game.dealer);
+    return game.players[(dealerIdx - 1 + game.players.length) % game.players.length];
+  }
+
   private async scheduleHumanTimeout(): Promise<void> {
-    if (!this.game || !this.game.isRoomGame) return;
+    if (!this.game) return;
     const currentUid = this.game.currentPlayer;
     const seatIdx = this.game.players.indexOf(currentUid);
-    // Only schedule for human seats
+    // Match offline: 15s for any human (room bots use isBot; matchmaking is all humans).
     if (seatIdx < 0 || this.isBotSeat(seatIdx)) return;
     const phase = this.game.phase;
     if (phase !== 'BIDDING' && phase !== 'TRUMP_SELECTION' && phase !== 'PLAYING') return;
-    // 15 seconds timeout matching offline HumanPlayerController
     await this.scheduleEvent({
       type: 'human_timeout',
-      fireAt: Date.now() + 15000,
+      fireAt: Date.now() + HUMAN_TURN_TIMEOUT_MS,
       meta: currentUid,
     });
   }
@@ -1028,17 +1119,12 @@ export class GameRoom extends DurableObject<Env> {
       this.hands.set(game.players[i], hand);
     }
 
-    // Reset game state for new round
-    game.phase = "BIDDING";
+    // Reset game state for new round — DEALING then BIDDING (matches LocalGameController._deal).
+    game.phase = "DEALING";
     game.dealer = newDealer;
     game.currentPlayer = firstBidder;
     game.bid = null;
-    game.biddingState = {
-      currentBidder: firstBidder,
-      highestBid: null,
-      highestBidder: null,
-      passed: [],
-    };
+    game.biddingState = null;
     game.trumpSuit = null;
     game.currentTrick = null;
     game.tricks = { teamA: 0, teamB: 0 };
@@ -1050,14 +1136,17 @@ export class GameRoom extends DurableObject<Env> {
 
     await this.persistAndBroadcast();
     this.broadcastHands();
-    await this.checkAndScheduleBotTurn();
-    await this.scheduleHumanTimeout();
+    await this.scheduleEvent({
+      type: "deal_complete",
+      fireAt: Date.now() + DEAL_DELAY_MS,
+    });
   }
 
   private async scheduleRoundAdvance(): Promise<void> {
+    // GameTiming.scoringDelay — same pause as offline before the next deal.
     await this.scheduleEvent({
       type: 'round_delay',
-      fireAt: Date.now() + 5000,
+      fireAt: Date.now() + 2000,
     });
   }
 
@@ -1100,11 +1189,9 @@ export class GameRoom extends DurableObject<Env> {
   }
 
   private async loadState(): Promise<void> {
-    if (this.game) return; // Already loaded
+    // Always sync from storage — alarm wakes can reuse warm memory with stale `game`/`hands`.
     this.game = (await this.ctx.storage.get<GameDocument>("game")) ?? null;
     const handsObj = await this.ctx.storage.get<Record<string, string[]>>("hands");
-    if (handsObj) {
-      this.hands = new Map(Object.entries(handsObj));
-    }
+    this.hands = handsObj ? new Map(Object.entries(handsObj)) : new Map();
   }
 }

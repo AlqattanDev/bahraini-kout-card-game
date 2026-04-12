@@ -9,7 +9,7 @@ class LobbyState {
     required this.isHost,
   });
 
-  bool get isFull => seats.where((s) => !s.isBot).every((s) => s.uid != null);
+  bool get isFull => seats.every((s) => s.isBot || s.uid != null);
 
   factory LobbyState.fromMap(Map<String, dynamic> data) {
     final rawSeats = data['seats'] as List<dynamic>;

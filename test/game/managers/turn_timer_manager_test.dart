@@ -58,7 +58,7 @@ void main() {
       );
 
       manager.tick(1.0, beforeReset, seats);
-      expect(seats[1].timerProgress, closeTo(0.75, 0.0001));
+      expect(seats[1].timerProgress, closeTo(1.0 - 1.0 / 15.0, 0.0001));
 
       final afterReset = _state(
         phase: GamePhase.playing,
@@ -67,7 +67,31 @@ void main() {
       );
 
       manager.tick(1.0, afterReset, seats);
-      expect(seats[1].timerProgress, closeTo(0.75, 0.0001));
+      expect(seats[1].timerProgress, closeTo(1.0 - 1.0 / 15.0, 0.0001));
+    });
+
+    test('same turn window for bot seats as humans', () {
+      final manager = TurnTimerManager();
+      final seats = _seats();
+      final botTurn = ClientGameState(
+        phase: GamePhase.playing,
+        playerUids: const ['uid-0', 'bot_1', 'uid-2', 'uid-3'],
+        scores: const {Team.a: 0, Team.b: 0},
+        tricks: const {Team.a: 0, Team.b: 0},
+        currentPlayerUid: 'bot_1',
+        dealerUid: 'uid-0',
+        trumpSuit: Suit.spades,
+        currentBid: BidAmount.six,
+        bidderUid: 'uid-1',
+        currentTrickPlays: const [],
+        myHand: const [],
+        myUid: 'uid-0',
+        bidHistory: const [],
+        trickWinners: const [],
+        cardCounts: const {0: 8, 1: 8, 2: 8, 3: 8},
+      );
+      manager.tick(1.0, botTurn, seats);
+      expect(seats[1].timerProgress, closeTo(1.0 - 1.0 / 15.0, 0.0001));
     });
   });
 }

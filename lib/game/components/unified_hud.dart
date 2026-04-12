@@ -37,9 +37,6 @@ class UnifiedHudComponent extends PositionComponent {
   double _pipAnimTimer = 0.0;
   double _displayScore = 0.0;
   int _targetScore = 0;
-  int _elapsedSeconds = 0;
-  double _elapsedSecondsSmooth = 0.0;
-
   UnifiedHudComponent({required double screenWidth})
       : super(
           position: Vector2(screenWidth - _hudWidth - 12, 10),
@@ -113,13 +110,10 @@ class UnifiedHudComponent extends PositionComponent {
       _pipAnimTimer = math.max(0.0, _pipAnimTimer - dt);
     }
     _displayScore += (_targetScore - _displayScore) * math.min(1.0, dt * 8.0);
-    _elapsedSecondsSmooth +=
-        (_elapsedSeconds - _elapsedSecondsSmooth) * math.min(1.0, dt * 4.0);
   }
 
   void updateTimer(Duration elapsed) {
     final totalSeconds = elapsed.inSeconds.clamp(0, 3599);
-    _elapsedSeconds = totalSeconds;
     final m = totalSeconds ~/ 60;
     final s = totalSeconds % 60;
     timerText = '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
@@ -240,8 +234,8 @@ class UnifiedHudComponent extends PositionComponent {
       y += 1 + _rowGap;
     }
 
-    // --- Row 4: Timer (smooth color transition) ---
-    final timerColor = _timerColorForElapsed(_elapsedSecondsSmooth);
+    // --- Row 4: Elapsed game clock (not turn countdown — keep neutral color) ---
+    final timerColor = DiwaniyaColors.cream.withValues(alpha: 0.45);
 
     TextRenderer.draw(
         canvas,
@@ -285,26 +279,6 @@ class UnifiedHudComponent extends PositionComponent {
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.0,
     );
-  }
-
-  Color _timerColorForElapsed(double seconds) {
-    if (seconds >= 55) {
-      final t = math.min(1.0, (seconds - 55) / 5);
-      return Color.lerp(
-        DiwaniyaColors.goldAccent.withValues(alpha: 0.7),
-        KoutTheme.lossColor.withValues(alpha: 0.9),
-        t,
-      )!;
-    }
-    if (seconds >= 45) {
-      final t = (seconds - 45) / 10;
-      return Color.lerp(
-        DiwaniyaColors.cream.withValues(alpha: 0.45),
-        DiwaniyaColors.goldAccent.withValues(alpha: 0.7),
-        t,
-      )!;
-    }
-    return DiwaniyaColors.cream.withValues(alpha: 0.45);
   }
 
   void _drawDivider(Canvas canvas, double y) {
