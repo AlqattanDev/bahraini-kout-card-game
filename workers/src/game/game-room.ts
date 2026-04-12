@@ -717,7 +717,15 @@ export class GameRoom extends DurableObject<Env> {
       return;
     }
 
-    // Trick complete — resolve winner and check round status
+    // Trick complete — broadcast the 4th card FIRST so the client sees all 4
+    // plays before the trick is resolved. This matches offline behavior where
+    // _emitState() is called after each card, and enables proper pacing delays
+    // (cardPlayDelay for 3→4, trickResolutionDelay for 4→0).
+    game.currentTrick = { ...currentTrick, plays: newPlays };
+    await this.persistAndBroadcast();
+    this.sendHandToPlayer(uid, newHand);
+
+    // Now resolve the trick (will broadcast again with new trick or scoring)
     await this.resolveTrick(newPlays);
   }
 
@@ -850,7 +858,7 @@ export class GameRoom extends DurableObject<Env> {
   }
 
   private async checkAndScheduleBotTurn(): Promise<void> {
-    if (!this.game || !this.game.isRoomGame) return;
+    if (!this.game) return;
     const currentUid = this.game.currentPlayer;
     const seatIdx = this.game.players.indexOf(currentUid);
     if (seatIdx >= 0 && this.isBotSeat(seatIdx)) {

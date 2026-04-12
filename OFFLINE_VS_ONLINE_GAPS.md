@@ -128,46 +128,42 @@ Features in `game-room.ts` with no offline equivalent (expected — multiplayer 
 
 ## 6. Remaining Minor Gaps
 
-### 6.1 Dealing Phase (cosmetic)
+### 6.1 Dealing Phase ✅ (was cosmetic, now fixed)
 
 | | Dart | TS |
 |---|---|---|
-| **Explicit DEALING phase** | ✅ `GamePhase.dealing` with delay | ❌ `'DEALING'` exists in type but is never set |
+| **Explicit DEALING phase** | ✅ `GamePhase.dealing` with delay | ✅ `'DEALING'` phase set + `deal_complete` alarm (300ms) |
 
-Not gameplay-affecting — purely for client-side dealing animation.
+Both now use DEALING phase with 300ms delay before transitioning to BIDDING.
 
-### 6.2 Context-Aware Bot Delays (UX polish)
+### 6.2 Context-Aware Bot Delays ✅ (was cosmetic, now fixed)
 
 | | Dart | TS |
 |---|---|---|
-| **Bot thinking time** | `GameTiming.botThinkingDelay` — varies by legal moves, trick number, forced bid, bid amount | Flat 800-2000ms random |
+| **Bot thinking time** | `GameTiming.botThinkingDelay` — varies by legal moves, trick number, forced bid, bid amount | ✅ `botThinkingDelayMs` in `bot-timing.ts` — same ranges |
 
-Not gameplay-affecting — just makes bots feel more natural.
+Both use context-aware delays: forced bid 1000-2000ms, regular bid 1500-2500ms, single legal 500-1000ms, late tricks 2000-4000ms, etc.
 
-### 6.3 Singleton Lead Before Trump Strip (lead priority order)
+### 6.3 Singleton Lead Before Trump Strip ✅ (was gap, now fixed)
 
 | Priority | Dart | TS |
 |----------|------|-----|
-| 1 | Master cards | Master cards |
-| 2 | Non-trump aces | Non-trump aces (with A-K preference) |
-| **3** | **Singleton voids (if have trump)** | *(missing)* |
-| 4 | Trump strip (bidding team, 3+) | Trump strip |
-| 5 | Partner void exploit | Partner void exploit |
-| 6 | Short suit (defense) | Short suit (defense) |
+| 1 | Master cards | ✅ Master cards |
+| 2 | Non-trump aces | ✅ Non-trump aces (with A-K preference) |
+| 3 | Singleton voids (if have trump) | ✅ Singleton voids (if have trump) |
+| 4 | Trump strip (bidding team, 3+) | ✅ Trump strip |
+| 5 | Partner void exploit | ✅ Partner void exploit |
+| 6 | Short suit (defense) | ✅ Short suit (defense) |
 
-**GAP**: Dart has a step between aces and trump strip: if you have trump and a singleton non-trump card, lead the singleton to create a void for future ruffing. TS skips this and goes straight to trump strip.
+TS `play-strategy.ts` lines 78-99 now implement singleton lead logic matching Dart.
 
-### 6.4 `followingSuit` Detection
+### 6.4 `followingSuit` Detection ✅
 
-| | Dart | TS |
-|---|---|---|
-| **Check** | `legalCards.any((c) => !c.isJoker && c.suit == ledSuit)` | Same (`legal.some(...)`) |
+Both correctly detect when following suit (Joker excluded from suit detection).
 
-✅ Match — both correctly detect when following suit (Joker excluded from suit detection).
+### 6.5 `beatsCard` Function ✅
 
-### 6.5 `beatsCard` Function
-
-TS now has `beatsCard` in `card.ts` (line 70) used by both play strategy and trick signals in `buildBotContext`. Dart uses `TrickResolver.beats`. Logic is identical.
+TS has `beatsCard` in `card.ts` used by play strategy and trick signals. Dart uses `TrickResolver.beats`. Logic is identical.
 
 ---
 
@@ -179,6 +175,6 @@ TS now has `beatsCard` in `card.ts` (line 70) used by both play strategy and tri
 | **Game flow** | 7 | 7 | 0 |
 | **Bot strategy** | 5 | 5 | 0 |
 | **CardTracker** | 5 | 5 | 0 |
-| **Minor/cosmetic** | 3 | 0 | 3 |
+| **Minor/cosmetic** | 3 | 3 | 0 |
 
-**All critical, high, and medium gaps from the previous analysis have been resolved.** Three minor cosmetic gaps remain (dealing phase, bot delays, singleton lead priority).
+**All gaps from previous analyses have been resolved.** Dart and TypeScript implementations are fully in sync.

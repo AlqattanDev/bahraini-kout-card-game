@@ -5,7 +5,9 @@ import type { CardTracker } from './card-tracker';
 import type { BotContext } from './types';
 
 export function decidePlay(ctx: BotContext, tracker: CardTracker): string {
-  const legal = getLegalPlays(ctx.hand, ctx.currentTrick, ctx.trumpSuit, ctx.isLead);
+  const isKout = ctx.currentBid === 8;
+  const isFirstTrick = ctx.trickWinners.length === 0;
+  const legal = getLegalPlays(ctx.hand, ctx.currentTrick, ctx.trumpSuit, ctx.isLead, isKout, isFirstTrick);
   if (legal.length === 1) return legal[0];
 
   if (ctx.isLead) {
@@ -15,9 +17,18 @@ export function decidePlay(ctx: BotContext, tracker: CardTracker): string {
 }
 
 function getLegalPlays(
-  hand: string[], trick: TrickPlay[], _trumpSuit: SuitName | undefined, isLead: boolean,
+  hand: string[], trick: TrickPlay[], trumpSuit: SuitName | undefined, isLead: boolean,
+  isKout: boolean = false, isFirstTrick: boolean = false,
 ): string[] {
   if (isLead) {
+    // Kout first trick: must lead trump if you have any (matches PlayValidator).
+    if (isKout && isFirstTrick && trumpSuit) {
+      const trumpCards = hand.filter(c => {
+        const d = decodeCard(c);
+        return !d.isJoker && d.suit === trumpSuit;
+      });
+      if (trumpCards.length > 0) return trumpCards;
+    }
     const nonJoker = hand.filter(c => c !== 'JO');
     return nonJoker.length > 0 ? nonJoker : [...hand];
   }
@@ -41,13 +52,7 @@ function getLegalPlays(
 }
 
 function selectLead(legal: string[], ctx: BotContext, tracker: CardTracker): string {
-  const { trumpSuit, hand, trickWinners } = ctx;
-  const tricksRemaining = TRICKS_PER_ROUND - trickWinners.length;
-
-  // Joker countdown when urgency is high.
-  if (tricksRemaining <= 2 && ctx.roundControlUrgency > 0.7 && legal.includes('JO')) {
-    return 'JO';
-  }
+  const { trumpSuit, hand } = ctx;
 
   // Master card leads — non-trump before trump.
   const masters = legal.filter(c => {
