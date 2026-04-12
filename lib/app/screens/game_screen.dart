@@ -6,6 +6,7 @@ import '../models/game_mode.dart';
 import '../services/game_service.dart';
 import '../widgets/app_snackbar.dart';
 import '../../game/kout_game.dart';
+import '../../game/online_state_pacing.dart';
 import '../../game/overlays/bid_overlay.dart';
 import '../../game/overlays/trump_selector.dart';
 import '../../game/overlays/round_result_overlay.dart';
@@ -55,7 +56,11 @@ class _GameScreenState extends State<GameScreen> {
         _gameService = GameService(gameId: gameId, myUid: myUid, token: token);
 
         _koutGame = KoutGame(
-          stateStream: _gameService!.stateStream,
+          stateStream: paceOnlineGameStates(
+            _gameService!.stateStream,
+            myUid: myUid,
+            connectionStream: _gameService!.connectionStream,
+          ),
           inputSink: _gameService!,
           connectionStream: _gameService!.connectionStream,
         );

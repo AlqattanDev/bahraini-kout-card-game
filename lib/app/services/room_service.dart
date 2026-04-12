@@ -4,15 +4,20 @@ import '../config.dart';
 import '../services/auth_service.dart';
 
 class RoomService {
-  final AuthService _auth;
+  final AuthService? _auth;
+  final String? _token;
 
-  RoomService({AuthService? auth}) : _auth = auth ?? AuthService();
+  RoomService({AuthService? auth, String? token})
+      : _auth = auth,
+        _token = token;
+
+  String? get _effectiveToken => _token ?? _auth?.token;
 
   Future<({String roomCode, String gameId})> createRoom() async {
     final response = await http.post(
       Uri.parse('${AppConfig.workerUrl}/api/rooms/create'),
       headers: {
-        'Authorization': 'Bearer ${_auth.token}',
+        'Authorization': 'Bearer $_effectiveToken',
         'Content-Type': 'application/json',
       },
     );
@@ -30,7 +35,7 @@ class RoomService {
     final response = await http.post(
       Uri.parse('${AppConfig.workerUrl}/api/rooms/join'),
       headers: {
-        'Authorization': 'Bearer ${_auth.token}',
+        'Authorization': 'Bearer $_effectiveToken',
         'Content-Type': 'application/json',
       },
       body: jsonEncode({'code': code.toUpperCase()}),
@@ -49,7 +54,7 @@ class RoomService {
     final response = await http.post(
       Uri.parse('${AppConfig.workerUrl}/api/rooms/start'),
       headers: {
-        'Authorization': 'Bearer ${_auth.token}',
+        'Authorization': 'Bearer $_effectiveToken',
         'Content-Type': 'application/json',
       },
       body: jsonEncode({'gameId': gameId}),

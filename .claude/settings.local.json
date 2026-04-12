@@ -4,7 +4,10 @@
       "Bash(flutter run:*)",
       "Bash(flutter clean:*)",
       "Bash(flutter analyze:*)",
-      "Bash(flutter test:*)"
+      "Bash(flutter test:*)",
+      "Bash(flutter devices:*)",
+      "Bash(flutter emulators:*)",
+      "Bash(npx wrangler:*)"
     ]
   }
 }

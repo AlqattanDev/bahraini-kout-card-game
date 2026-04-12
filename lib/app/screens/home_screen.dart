@@ -158,7 +158,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _createRoom() async {
-    final roomService = RoomService();
+    final roomService = RoomService(auth: _authService);
     try {
       final result = await roomService.createRoom();
       if (!mounted) return;
@@ -233,7 +233,7 @@ class _HomeScreenState extends State<HomeScreen> {
       context.showErrorSnack('Code must be 6 characters');
       return;
     }
-    final roomService = RoomService();
+    final roomService = RoomService(auth: _authService);
     try {
       final gameId = await roomService.joinRoom(code);
       if (!mounted) return;

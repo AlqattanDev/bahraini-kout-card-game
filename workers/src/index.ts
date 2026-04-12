@@ -36,6 +36,12 @@ app.use("/api/*", async (c, next) => {
   }
 });
 
+// Lightweight JWT check so clients can drop stale cached tokens (e.g. after JWT_SECRET change in dev).
+app.get("/api/auth/verify", (c) => {
+  const uid = c.get("uid" as never) as string;
+  return c.json({ ok: true, uid });
+});
+
 // ─── Auth ──────────────────────────────────────────────────────────────────
 app.post("/auth/anonymous", async (c) => {
   const uid = crypto.randomUUID();

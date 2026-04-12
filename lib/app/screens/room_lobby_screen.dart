@@ -67,7 +67,7 @@ class _RoomLobbyScreenState extends State<RoomLobbyScreen>
     _myUid = args.myUid;
     _token = args.token;
     _isHost = args.isHost;
-    _roomService = RoomService();
+    _roomService = RoomService(token: _token);
 
     _gameService = GameService(gameId: _gameId, myUid: _myUid, token: _token);
 
